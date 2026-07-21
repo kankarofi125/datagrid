@@ -1,13 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { formatNaira } from "@/lib/money";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { MobileAppMenu } from "@/components/layout/MobileAppMenu";
 
 export function AppTopBar({ balance, phone }: { balance: number; phone: string }) {
-  const [hidden, setHidden] = useState(false);
   const [time, setTime] = useState("");
 
   useEffect(() => {
@@ -33,32 +30,11 @@ export function AppTopBar({ balance, phone }: { balance: number; phone: string }
             <p className="font-mono-num text-[10px] tracking-widest text-amber">
               LAGOS {time} WAT
             </p>
-            <p className="truncate text-xs text-paper/60">{phone || "DataGrid"}</p>
+            <p className="truncate text-[11px] text-paper/55">{phone || "DataGrid"}</p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="[&_button]:border-white/15 [&_button]:bg-black/25 [&_button]:text-paper">
-            <NotificationBell />
-          </div>
-          <Link
-            href="/wallet"
-            className="flex items-center gap-2 rounded-full border border-white/10 bg-black/25 px-3 py-1.5"
-          >
-            <button
-              type="button"
-              aria-label={hidden ? "Show balance" : "Hide balance"}
-              onClick={(e) => {
-                e.preventDefault();
-                setHidden((h) => !h);
-              }}
-              className="text-paper/70"
-            >
-              {hidden ? "○" : "◉"}
-            </button>
-            <span className="font-mono-num text-sm font-semibold tabular-nums">
-              {hidden ? "₦••••" : formatNaira(balance)}
-            </span>
-          </Link>
+        <div className="[&_button]:border-white/15 [&_button]:bg-black/25 [&_button]:text-paper">
+          <NotificationBell />
         </div>
       </div>
     </header>

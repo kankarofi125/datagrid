@@ -81,7 +81,7 @@ const quickActions = [
   { href: "/buy/data", label: "Data" },
   { href: "/buy/airtime", label: "Airtime" },
   { href: "/buy/electricity", label: "Power" },
-  { href: "/wallet", label: "Fund" },
+  { href: "/history", label: "History" },
 ];
 
 export function DashboardMobile({
@@ -100,35 +100,45 @@ export function DashboardMobile({
   const netCount = networks.length || 4;
 
   return (
-    <div className="space-y-4 px-3 py-3 pb-5">
-      {/* Compact header — name + tiny balance pill (not a wallet section) */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <HeroEnter delay={0}>
-            <p className="font-mono-num text-[9px] uppercase tracking-[0.16em] text-ink/40">
-              Control home
-            </p>
-          </HeroEnter>
-          <HeroEnter delay={40}>
-            <h1 className="font-display truncate text-xl leading-none text-ink">
-              {first.toUpperCase()}.
-            </h1>
-          </HeroEnter>
-        </div>
-        <HeroEnter delay={60}>
-          <Link
-            href="/wallet"
-            className="shrink-0 rounded-full border border-line bg-paper px-2.5 py-1"
-          >
-            <p className="font-mono-num text-[10px] font-semibold tabular-nums text-green">
-              {formatNaira(balance, { compact: true })}
-            </p>
-          </Link>
+    <div className="space-y-3.5 px-3 py-3 pb-5">
+      {/* Compact header */}
+      <div>
+        <HeroEnter delay={0}>
+          <p className="font-mono-num text-[9px] uppercase tracking-[0.16em] text-ink/40">
+            Control home
+          </p>
+        </HeroEnter>
+        <HeroEnter delay={40}>
+          <h1 className="font-display text-xl leading-none text-ink">
+            {first.toUpperCase()}.
+          </h1>
         </HeroEnter>
       </div>
 
-      {/* Replacement for main wallet: fast-path action chips */}
-      <HeroEnter delay={80}>
+      {/* Compact main wallet (restored, smaller) */}
+      <HeroEnter delay={70}>
+        <section className="overflow-hidden rounded-xl bg-green-deep text-paper">
+          <div className="bg-grid flex items-center justify-between gap-3 px-3.5 py-3">
+            <div className="min-w-0">
+              <p className="font-mono-num text-[8px] tracking-[0.14em] text-amber/90">
+                MAIN WALLET
+              </p>
+              <p className="font-mono-num mt-1 text-xl font-semibold leading-none tabular-nums">
+                {formatNaira(balance)}
+              </p>
+            </div>
+            <Link
+              href="/wallet"
+              className="pressable shrink-0 rounded-lg bg-amber px-3 py-2 text-[11px] font-semibold text-ink"
+            >
+              Fund
+            </Link>
+          </div>
+        </section>
+      </HeroEnter>
+
+      {/* Fast path */}
+      <HeroEnter delay={100}>
         <section>
           <p className="font-mono-num mb-1.5 text-[9px] tracking-[0.14em] text-ink/40">
             FAST PATH
@@ -138,7 +148,7 @@ export function DashboardMobile({
               <Link
                 key={a.href}
                 href={a.href}
-                className="pressable flex flex-col items-center justify-center rounded-xl border border-line bg-paper px-1 py-2.5 text-center"
+                className="pressable flex flex-col items-center justify-center rounded-xl border border-line bg-paper px-1 py-2 text-center"
               >
                 <span className="text-[11px] font-semibold leading-tight text-ink">
                   {a.label}
@@ -150,7 +160,7 @@ export function DashboardMobile({
       </HeroEnter>
 
       {/* Compact rebuy */}
-      <Reveal delay={100}>
+      <Reveal delay={120}>
         <section>
           <div className="mb-1.5 flex items-center justify-between">
             <p className="font-mono-num text-[9px] tracking-[0.14em] text-ink/40">
@@ -163,7 +173,10 @@ export function DashboardMobile({
           {lastTx.length === 0 ? (
             <div className="rounded-xl border border-dashed border-line px-3 py-3 text-center">
               <p className="text-[11px] text-ink/50">No orders yet.</p>
-              <Link href="/buy/data" className="font-mono-num mt-1 inline-block text-[9px] text-green">
+              <Link
+                href="/buy/data"
+                className="font-mono-num mt-1 inline-block text-[9px] text-green"
+              >
                 BUY DATA →
               </Link>
             </div>
@@ -199,14 +212,14 @@ export function DashboardMobile({
 
       {/* Compact services */}
       <section>
-        <Reveal delay={130}>
+        <Reveal delay={150}>
           <p className="font-mono-num mb-1.5 text-[9px] tracking-[0.14em] text-ink/40">
             SERVICES
           </p>
         </Reveal>
         <div className="grid grid-cols-3 gap-1.5">
           {services.map((s, i) => (
-            <Reveal key={s.href} delay={140 + i * 30}>
+            <Reveal key={s.href} delay={160 + i * 30}>
               <Link
                 href={s.href}
                 className={cn(
@@ -247,7 +260,7 @@ export function DashboardMobile({
       </section>
 
       {/* Tiny network row */}
-      <Reveal delay={280}>
+      <Reveal delay={300}>
         <section className="rounded-xl border border-line bg-paper px-2.5 py-2">
           <div className="mb-1.5 flex items-center justify-between">
             <p className="font-mono-num text-[9px] tracking-[0.12em] text-ink/40">
@@ -291,7 +304,7 @@ export function DashboardMobile({
       </Reveal>
 
       {/* Compact more list */}
-      <Reveal delay={320}>
+      <Reveal delay={340}>
         <section className="overflow-hidden rounded-xl border border-line bg-paper">
           {moreLinks.map((item, i) => (
             <Link

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { Sheet } from "@/components/ui/Sheet";
 
 type Note = {
   id: string;
@@ -47,8 +48,8 @@ export function NotificationBell({ className }: { className?: string }) {
       <button
         type="button"
         onClick={() => {
-          setOpen((o) => !o);
-          if (!open) load();
+          setOpen(true);
+          load();
         }}
         className="relative rounded-md border border-line bg-paper p-2 text-ink hover:border-green"
         aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
@@ -68,60 +69,66 @@ export function NotificationBell({ className }: { className?: string }) {
         )}
       </button>
 
-      {open && (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-40 cursor-default"
-            aria-label="Close notifications"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-line bg-paper shadow-xl">
-            <div className="flex items-center justify-between border-b border-line px-3 py-2">
-              <p className="font-mono-num text-[10px] tracking-widest text-ink/50">
-                NOTIFICATIONS
-              </p>
-              {unread > 0 && (
-                <button
-                  type="button"
-                  onClick={markAll}
-                  className="font-mono-num text-[10px] text-green"
-                >
-                  MARK ALL READ
-                </button>
-              )}
-            </div>
-            <ul className="max-h-72 overflow-y-auto" aria-live="polite">
-              {items.length === 0 ? (
-                <li className="px-3 py-6 text-center text-sm text-ink/50">No notifications</li>
-              ) : (
-                items.map((n) => (
-                  <li
-                    key={n.id}
-                    className={cn(
-                      "border-b border-line px-3 py-3 last:border-0",
-                      n.status === "UNREAD" && "bg-green/5"
-                    )}
-                  >
-                    <p className="text-sm font-semibold">{n.title}</p>
-                    <p className="mt-0.5 text-xs text-ink/60">{n.body}</p>
-                    <p className="font-mono-num mt-1 text-[10px] text-ink/40">
-                      {new Date(n.createdAt).toLocaleString("en-NG")}
-                    </p>
-                  </li>
-                ))
-              )}
-            </ul>
-            <Link
-              href="/history"
-              className="block border-t border-line px-3 py-2 text-center text-xs text-green"
-              onClick={() => setOpen(false)}
+      <Sheet open={open} onClose={() => setOpen(false)} title="ALERTS.">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="font-mono-num text-[10px] tracking-wide text-ink/45">
+            {unread > 0 ? `${unread} unread` : "All caught up"}
+          </p>
+          {unread > 0 && (
+            <button
+              type="button"
+              onClick={markAll}
+              className="font-mono-num text-[10px] tracking-wide text-green"
             >
-              View history
-            </Link>
-          </div>
-        </>
-      )}
+              MARK ALL READ
+            </button>
+          )}
+        </div>
+
+        <ul className="max-h-[min(52vh,380px)] space-y-0 overflow-y-auto overscroll-contain rounded-xl border border-line">
+          {items.length === 0 ? (
+            <li className="px-3 py-10 text-center text-sm text-ink/50">
+              No notifications yet.
+            </li>
+          ) : (
+            items.map((n) => (
+              <li
+                key={n.id}
+                className={cn(
+                  "border-b border-line px-3 py-3 last:border-0",
+                  n.status === "UNREAD" && "bg-green/[0.04]"
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  {n.status === "UNREAD" && (
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-green" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold leading-snug text-ink">{n.title}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-ink/55">{n.body}</p>
+                    <p className="font-mono-num mt-1.5 text-[9px] text-ink/35">
+                      {new Date(n.createdAt).toLocaleString("en-NG", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+
+        <Link
+          href="/history"
+          className="mt-4 flex h-11 items-center justify-center rounded-lg border border-green/30 text-sm font-semibold text-green"
+          onClick={() => setOpen(false)}
+        >
+          View history
+        </Link>
+      </Sheet>
     </div>
   );
 }
