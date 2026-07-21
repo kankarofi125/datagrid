@@ -4,7 +4,7 @@ import { RateTicker } from "@/components/layout/RateTicker";
 import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import { NetworkStatusBoard } from "@/components/landing/NetworkStatusBoard";
 import { GuestPurchaseWidget } from "@/components/landing/GuestPurchaseWidget";
-import { ScrollPhoneStory } from "@/components/landing/ScrollPhoneStory";
+import { HeroPhoneImage } from "@/components/landing/HeroPhoneImage";
 import { RateBoard } from "@/components/landing/RateBoard";
 import { MarginCalculator } from "@/components/landing/MarginCalculator";
 import { CountUp } from "@/components/motion/CountUp";
@@ -168,7 +168,7 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        <ScrollPhoneStory />
+        <HeroPhoneImage />
 
         {/* Rate + margin desk */}
         <section className="mx-auto max-w-7xl px-4 py-20 lg:px-8">

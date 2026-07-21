@@ -8,14 +8,11 @@ import { Input } from "@/components/ui/Input";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { TopUtilityStrip } from "@/components/layout/TopUtilityStrip";
 import { HeroEnter, Reveal } from "@/components/motion/Reveal";
-import { sanitizeNgPhoneInput } from "@/lib/phone";
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [phone, setPhone] = useState(() =>
-    sanitizeNgPhoneInput(params.get("phone") || "")
-  );
+  const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +65,12 @@ function LoginForm() {
     <div className="space-y-4">
       {step === "phone" ? (
         <>
-          <PhoneInput value={phone} onChange={setPhone} />
+          <PhoneInput
+            value={phone}
+            onChange={setPhone}
+            placeholder=""
+            autoComplete="off"
+          />
           <Button fullWidth size="lg" onClick={requestCode} disabled={pending}>
             Send OTP
           </Button>

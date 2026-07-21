@@ -24,11 +24,11 @@ type Props = Omit<
  */
 export function PhoneInput({
   label = "Phone number",
-  hint = "11 digits · e.g. 08125679851",
+  hint,
   error,
   value,
   onChange,
-  placeholder = "08125679851",
+  placeholder = "",
   mono = true,
   ...rest
 }: Props & { mono?: boolean }) {
