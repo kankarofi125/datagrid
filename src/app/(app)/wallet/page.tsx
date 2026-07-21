@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { Sheet } from "@/components/ui/Sheet";
 import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Responsive";
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
@@ -240,12 +241,10 @@ export default function WalletPage() {
   const xferSheet = (
     <Sheet open={xferOpen} onClose={() => setXferOpen(false)} title="SEND MONEY">
       <div className="space-y-3">
-        <Input
+        <PhoneInput
           label="Recipient phone"
-          mono
           value={xferPhone}
-          onChange={(e) => setXferPhone(e.target.value)}
-          placeholder="0803…"
+          onChange={setXferPhone}
         />
         <Input
           label="Amount"

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { Sheet } from "@/components/ui/Sheet";
 import { PinPad } from "@/components/buy/PinPad";
 import { StatusTrail } from "@/components/buy/StatusTrail";
@@ -101,13 +102,7 @@ export default function BuyAirtimePage() {
 
   const form = (
     <div className="space-y-5">
-      <Input
-        label="Phone number"
-        mono
-        inputMode="tel"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-      />
+      <PhoneInput value={phone} onChange={setPhone} />
       {network && (
         <span
           className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"

@@ -5,6 +5,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { formatNaira } from "@/lib/money";
 
 type Req = {
@@ -81,7 +82,7 @@ export default function AdminWalletsPage() {
           with same admin only when dual-approval blocks." />
 
       <div className="max-w-md space-y-3 surface p-5">
-        <Input label="User phone" mono value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <PhoneInput label="User phone" value={phone} onChange={setPhone} />
         <Input
           label="Amount"
           mono

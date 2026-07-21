@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { Sheet } from "@/components/ui/Sheet";
 import {
   detectNetwork,
@@ -154,14 +155,7 @@ export function GuestPurchaseWidget({ plans = DEMO_PLANS }: { plans?: Plan[] }) 
         {(tab === "DATA" || tab === "AIRTIME") && (
           <>
             <div>
-              <Input
-                label="Phone number"
-                placeholder="0803 000 0000"
-                inputMode="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                mono
-              />
+              <PhoneInput value={phone} onChange={setPhone} />
               {network && (
                 <div className="mt-2 flex items-center gap-2">
                   <span

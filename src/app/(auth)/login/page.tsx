@@ -5,13 +5,17 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { TopUtilityStrip } from "@/components/layout/TopUtilityStrip";
 import { HeroEnter, Reveal } from "@/components/motion/Reveal";
+import { sanitizeNgPhoneInput } from "@/lib/phone";
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [phone, setPhone] = useState(params.get("phone") || "");
+  const [phone, setPhone] = useState(() =>
+    sanitizeNgPhoneInput(params.get("phone") || "")
+  );
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [error, setError] = useState<string | null>(null);
@@ -64,14 +68,7 @@ function LoginForm() {
     <div className="space-y-4">
       {step === "phone" ? (
         <>
-          <Input
-            label="Phone number"
-            placeholder="0803 000 0000"
-            inputMode="tel"
-            mono
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
+          <PhoneInput value={phone} onChange={setPhone} />
           <Button fullWidth size="lg" onClick={requestCode} disabled={pending}>
             Send OTP
           </Button>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { Sheet } from "@/components/ui/Sheet";
 import { PinPad } from "@/components/buy/PinPad";
 import { StatusTrail } from "@/components/buy/StatusTrail";
@@ -82,14 +83,7 @@ export function BuyDataFormBody({
         </div>
       )}
 
-      <Input
-        label="Phone number"
-        placeholder="0803 000 0000"
-        mono
-        inputMode="tel"
-        value={s.phone}
-        onChange={(e) => s.setPhone(e.target.value)}
-      />
+      <PhoneInput value={s.phone} onChange={s.setPhone} />
       {s.network && (
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"

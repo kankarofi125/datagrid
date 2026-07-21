@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   detectNetwork,
   formatPhoneDisplay,
+  sanitizeNgPhoneInput,
   toLocalPhone,
   type NetworkCode,
 } from "@/lib/phone";
@@ -32,7 +33,8 @@ export type TypeFilter = "ALL" | "SME" | "GIFTING" | "RETAIL";
 
 export function useBuyData() {
   const router = useRouter();
-  const [phone, setPhone] = useState("");
+  const [phone, setPhoneRaw] = useState("");
+  const setPhone = (value: string) => setPhoneRaw(sanitizeNgPhoneInput(value));
   const [plans, setPlans] = useState<Plan[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [selected, setSelected] = useState<Plan | null>(null);

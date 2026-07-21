@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Responsive";
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
@@ -156,13 +157,7 @@ export default function SchedulesPage() {
           </button>
         ))}
       </div>
-      <Input
-        label="Phone"
-        mono
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        placeholder="0803…"
-      />
+      <PhoneInput label="Phone" value={phone} onChange={setPhone} />
       {network && (
         <p className="text-xs text-ink/50">
           Network: {NETWORK_LABELS[network]}

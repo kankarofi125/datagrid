@@ -1,5 +1,13 @@
 /** Nigerian phone normalization + network prefix detection */
 
+/**
+ * Local MSISDN is 11 digits: leading 0 + 10-digit national number.
+ * Example: 08125679851 → E.164 +2348125679851 (10 digits after country code).
+ */
+export const NG_LOCAL_MAX_DIGITS = 11;
+/** Digits after dropping the leading 0 (or after +234). */
+export const NG_NSN_MAX_DIGITS = 10;
+
 export type NetworkCode = "MTN" | "GLO" | "AIRTEL" | "NINEMOBILE";
 
 export const DEFAULT_PREFIXES: Record<NetworkCode, string[]> = {
@@ -26,13 +34,36 @@ export const NETWORK_LABELS: Record<NetworkCode, string> = {
   NINEMOBILE: "9mobile",
 };
 
+/**
+ * Sanitize live typing/paste into local digit form (max 11).
+ * Accepts 0812…, 812…, 234812…, +234812… and caps length.
+ */
+export function sanitizeNgPhoneInput(input: string): string {
+  let d = input.replace(/\D/g, "");
+  if (d.startsWith("234")) {
+    // +234 / 234 → strip country code; keep at most 10 NSN digits after
+    d = d.slice(3);
+    if (d.startsWith("0")) d = d.slice(1);
+    d = "0" + d.slice(0, NG_NSN_MAX_DIGITS);
+  } else if (d.startsWith("0")) {
+    d = d.slice(0, NG_LOCAL_MAX_DIGITS);
+  } else {
+    // National number without leading 0 — allow up to 10 digits
+    d = d.slice(0, NG_NSN_MAX_DIGITS);
+  }
+  return d;
+}
+
 /** Digits only local form starting with 0, or null */
 export function toLocalPhone(input: string): string | null {
   let d = input.replace(/\D/g, "");
-  if (d.startsWith("234") && d.length >= 13) d = "0" + d.slice(3);
-  if (d.startsWith("2340")) d = "0" + d.slice(4);
-  if (d.length === 10 && !d.startsWith("0")) d = "0" + d;
-  if (d.length === 11 && d.startsWith("0")) return d;
+  if (d.startsWith("234")) {
+    d = d.slice(3);
+    if (d.startsWith("0")) d = d.slice(1);
+    if (d.length === NG_NSN_MAX_DIGITS) d = "0" + d;
+  }
+  if (d.length === NG_NSN_MAX_DIGITS && !d.startsWith("0")) d = "0" + d;
+  if (d.length === NG_LOCAL_MAX_DIGITS && d.startsWith("0")) return d;
   return null;
 }
 
