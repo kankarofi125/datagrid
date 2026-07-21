@@ -27,9 +27,9 @@ function LoginForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({} as { error?: string; cooldownSec?: number; devHint?: string }));
       if (!res.ok) {
-        setError(data.error || "Could not send code");
+        setError(data.error || "Could not send code. Check server database config.");
         if (data.cooldownSec) setCooldown(data.cooldownSec);
         return;
       }
@@ -50,7 +50,7 @@ function LoginForm() {
           referral: params.get("ref") || undefined,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({} as { error?: string }));
       if (!res.ok) {
         setError(data.error || "Verification failed");
         return;
