@@ -35,12 +35,11 @@ export function Input({
       <input
         id={inputId}
         className={cn(
-          "h-12 w-full rounded-xl border-2 border-green/20 bg-green-deep/[0.03] px-3.5 text-base text-ink",
+          "h-11 w-full rounded-lg border border-green/25 bg-paper px-3 text-base text-ink",
           "placeholder:text-ink/30",
-          "shadow-[inset_0_1px_0_rgba(255,255,255,.6)]",
-          "focus:border-green focus:outline-none focus:ring-2 focus:ring-green/20",
+          "focus:border-green focus:outline-none focus:ring-2 focus:ring-green/15",
           mono && "font-mono-num tracking-wide",
-          error && "border-danger focus:border-danger focus:ring-danger/20",
+          error && "border-danger focus:border-danger focus:ring-danger/15",
           className
         )}
         {...props}

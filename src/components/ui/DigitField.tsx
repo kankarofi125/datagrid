@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef } from "react";
+import { useId } from "react";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -21,8 +21,8 @@ type Props = {
 };
 
 /**
- * Branded digit entry with underscore placeholders (_).
- * One cell per digit — empty shows "_".
+ * Normal-height branded digit field.
+ * Placeholder shows underscores (_ _ _ …); value is plain digits.
  */
 export function DigitField({
   label,
@@ -41,16 +41,11 @@ export function DigitField({
 }: Props) {
   const autoId = useId();
   const id = idProp || autoId;
-  const inputRef = useRef<HTMLInputElement>(null);
   const digits = value.replace(/\D/g, "").slice(0, length);
-
-  function handleChange(raw: string) {
-    const next = raw.replace(/\D/g, "").slice(0, length);
-    onChange(next);
-  }
+  const placeholder = Array.from({ length }, () => "_").join(" ");
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn("flex flex-col gap-1.5", className)}>
       {label && (
         <label
           htmlFor={id}
@@ -60,59 +55,28 @@ export function DigitField({
           {label}
         </label>
       )}
-
-      <div
+      <input
+        id={id}
+        type={masked ? "password" : "text"}
+        inputMode={inputMode}
+        autoComplete={masked ? "off" : "one-time-code"}
+        autoFocus={autoFocus}
+        disabled={disabled}
+        value={digits}
+        maxLength={length}
+        placeholder={placeholder}
+        aria-label={ariaLabel || label || "Digit entry"}
+        aria-invalid={Boolean(error)}
         className={cn(
-          "relative cursor-text rounded-xl border-2 border-green/20 bg-green-deep/[0.03] p-3 sm:p-3.5",
-          "shadow-[inset_0_1px_0_rgba(255,255,255,.6)]",
-          "focus-within:border-green focus-within:ring-2 focus-within:ring-green/20",
-          error && "border-danger focus-within:border-danger focus-within:ring-danger/20",
+          "h-11 w-full rounded-lg border border-green/25 bg-paper px-3 text-base text-ink",
+          "font-mono-num tracking-[0.2em]",
+          "placeholder:tracking-[0.2em] placeholder:text-ink/25",
+          "focus:border-green focus:outline-none focus:ring-2 focus:ring-green/15",
+          error && "border-danger focus:border-danger focus:ring-danger/15",
           disabled && "opacity-60"
         )}
-        onClick={() => inputRef.current?.focus()}
-      >
-        <div
-          className="pointer-events-none flex flex-wrap justify-center gap-1.5 sm:gap-2"
-          aria-hidden
-        >
-          {Array.from({ length }).map((_, i) => {
-            const filled = i < digits.length;
-            const ch = filled ? (masked ? "•" : digits[i]) : "_";
-            const isCursor = i === digits.length && !disabled;
-            return (
-              <span
-                key={i}
-                className={cn(
-                  "font-mono-num flex h-10 w-7 items-center justify-center rounded-md text-lg font-semibold sm:h-11 sm:w-8 sm:text-xl",
-                  filled
-                    ? "bg-green-deep text-paper"
-                    : "bg-paper text-ink/25 ring-1 ring-inset ring-line",
-                  isCursor && "ring-2 ring-green text-green/40"
-                )}
-              >
-                {ch}
-              </span>
-            );
-          })}
-        </div>
-
-        <input
-          ref={inputRef}
-          id={id}
-          type={masked ? "password" : "text"}
-          inputMode={inputMode}
-          autoComplete="one-time-code"
-          autoFocus={autoFocus}
-          disabled={disabled}
-          value={digits}
-          maxLength={length}
-          aria-label={ariaLabel || label || "Digit entry"}
-          aria-invalid={Boolean(error)}
-          className="absolute inset-0 h-full w-full cursor-text opacity-0"
-          onChange={(e) => handleChange(e.target.value)}
-        />
-      </div>
-
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, length))}
+      />
       {error ? (
         <p className="text-sm text-danger" role="alert">
           {error}
