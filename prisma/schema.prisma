@@ -1,12 +1,13 @@
-// DataGrid — local SQLite for M1 (swap to postgres via DATABASE_URL later)
+// DataGrid — Postgres (Neon). Use pooled DATABASE_URL + optional DIRECT_URL for migrations.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum KycTier {
