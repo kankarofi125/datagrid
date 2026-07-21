@@ -1,0 +1,518 @@
+// DataGrid — local SQLite for M1 (swap to postgres via DATABASE_URL later)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum KycTier {
+  T0
+  T1
+  T2
+  T3
+}
+
+enum KycStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum UserRole {
+  USER
+  AGENT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum WalletKind {
+  MAIN
+  COMMISSION
+}
+
+enum TxService {
+  AIRTIME
+  DATA
+  ELECTRICITY
+  CABLE
+  BETTING
+  EXAM_PIN
+  WALLET_FUND
+  WALLET_TRANSFER
+  WITHDRAWAL
+  AIRTIME_TO_CASH
+  COMMISSION_PAYOUT
+  REFUND
+}
+
+enum TxStatus {
+  PENDING
+  PROCESSING
+  DELIVERED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PlanType {
+  SME
+  GIFTING
+  RETAIL
+}
+
+enum ProviderRole {
+  PRIMARY
+  FALLBACK
+}
+
+enum BillerCategory {
+  ELECTRICITY
+  CABLE
+  BETTING
+  EXAM
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+enum DisputeStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  REJECTED
+}
+
+enum ScheduleFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum FundingProvider {
+  PAYSTACK
+  FLUTTERWAVE
+  MONNIFY
+}
+
+model User {
+  id             String    @id @default(cuid())
+  phone          String    @unique
+  phoneLocal     String
+  email          String?   @unique
+  name           String?
+  pinHash        String?
+  totpSecret     String?
+  totpEnabled    Boolean   @default(false)
+  role           UserRole  @default(USER)
+  kycTier        KycTier   @default(T0)
+  kycStatus      KycStatus @default(NONE)
+  referralCode   String    @unique
+  referredById   String?
+  referredBy     User?     @relation("Referrals", fields: [referredById], references: [id])
+  referrals      User[]    @relation("Referrals")
+  agentSince     DateTime?
+  lifetimeVolume Decimal   @default(0)
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  wallets         Wallet[]
+  virtualAccounts VirtualAccount[]
+  transactions    Transaction[]
+  beneficiaries   Beneficiary[]
+  kycDocuments    KycDocument[]
+  commissions     Commission[]     @relation("Earner")
+  commissionsFrom Commission[]     @relation("Source")
+  disputes        Dispute[]
+  notifications   Notification[]
+  apiKeys         ApiKey[]
+  schedules       ScheduledTopUp[]
+  auditLogs       AuditLog[]
+  tickets         SupportTicket[]
+  otpChallenges   OtpChallenge[]
+  sessions        Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+}
+
+model OtpChallenge {
+  id         String    @id @default(cuid())
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone      String
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model KycDocument {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier       KycTier
+  docType    String
+  payload    String // JSON
+  status     KycStatus @default(PENDING)
+  reviewNote String?
+  reviewedBy String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Wallet {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      WalletKind @default(MAIN)
+  balance   Decimal    @default(0)
+  currency  String     @default("NGN")
+  version   Int        @default(0)
+  updatedAt DateTime   @updatedAt
+  createdAt DateTime   @default(now())
+
+  ledger WalletLedger[]
+
+  @@unique([userId, kind])
+}
+
+model WalletLedger {
+  id            String   @id @default(cuid())
+  walletId      String
+  wallet        Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  transactionId String?
+  direction     String
+  amount        Decimal
+  balanceAfter  Decimal
+  memo          String?
+  createdAt     DateTime @default(now())
+}
+
+model VirtualAccount {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider      FundingProvider @default(MONNIFY)
+  accountNumber String
+  bankName      String
+  accountName   String
+  providerRef   String?
+  isActive      Boolean         @default(true)
+  meta          String? // JSON
+  createdAt     DateTime        @default(now())
+
+  @@unique([provider, accountNumber])
+}
+
+model Transaction {
+  id              String           @id @default(cuid())
+  userId          String?
+  user            User?            @relation(fields: [userId], references: [id])
+  guestPhone      String?
+  guestEmail      String?
+  service         TxService
+  status          TxStatus         @default(PENDING)
+  amount          Decimal
+  cost            Decimal?
+  commission      Decimal          @default(0)
+  phone           String?
+  networkCode     String?
+  planId          String?
+  plan            Plan?            @relation(fields: [planId], references: [id])
+  billerId        String?
+  biller          Biller?          @relation(fields: [billerId], references: [id])
+  meterNumber     String?
+  smartCardNumber String?
+  customerName    String?
+  token           String?
+  packageCode     String?
+  idempotencyKey  String           @unique
+  providerId      String?
+  provider        Provider?        @relation(fields: [providerId], references: [id])
+  providerRef     String?
+  providerMeta    String?
+  fundingProvider FundingProvider?
+  fundingRef      String?
+  orderRef        String           @unique
+  receiptUrl      String?
+  statusTrail     String           @default("[]")
+  meta            String?
+  failureReason   String?
+  isGuest         Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deliveredAt     DateTime?
+
+  commissions   Commission[]
+  disputes      Dispute[]
+  notifications Notification[]
+  providerLogs  ProviderLog[]
+}
+
+model Network {
+  id          String        @id @default(cuid())
+  code        String        @unique
+  name        String
+  color       String
+  isActive    Boolean       @default(true)
+  uptimePct   Decimal       @default(99.9)
+  status      String        @default("OPERATIONAL")
+  ussdBalance String?
+  sortOrder   Int           @default(0)
+  plans       Plan[]
+  prefixes    PhonePrefix[]
+  updatedAt   DateTime      @updatedAt
+}
+
+model PhonePrefix {
+  id        String  @id @default(cuid())
+  prefix    String  @unique
+  networkId String
+  network   Network @relation(fields: [networkId], references: [id], onDelete: Cascade)
+}
+
+model Plan {
+  id            String           @id @default(cuid())
+  networkId     String
+  network       Network          @relation(fields: [networkId], references: [id])
+  type          PlanType
+  name          String
+  sizeMb        Int
+  validityDays  Int
+  retailPrice   Decimal
+  resellerPrice Decimal
+  providerCode  String?
+  isActive      Boolean          @default(true)
+  sortOrder     Int              @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  transactions  Transaction[]
+  schedules     ScheduledTopUp[]
+}
+
+model Biller {
+  id           String          @id @default(cuid())
+  category     BillerCategory
+  code         String          @unique
+  name         String
+  logoKey      String?
+  validateType String?
+  isActive     Boolean         @default(true)
+  meta         String?
+  packages     BillerPackage[]
+  transactions Transaction[]
+}
+
+model BillerPackage {
+  id            String  @id @default(cuid())
+  billerId      String
+  biller        Biller  @relation(fields: [billerId], references: [id], onDelete: Cascade)
+  code          String
+  name          String
+  amount        Decimal
+  resellerPrice Decimal?
+  validityDays  Int?
+  isActive      Boolean @default(true)
+  sortOrder     Int     @default(0)
+
+  @@unique([billerId, code])
+}
+
+model Provider {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  name        String
+  role        ProviderRole @default(FALLBACK)
+  isActive    Boolean      @default(true)
+  priority    Int          @default(100)
+  baseUrl     String?
+  config      String?
+  successRate Decimal      @default(100)
+  lastHealth  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  transactions Transaction[]
+  logs         ProviderLog[]
+}
+
+model ProviderLog {
+  id            String       @id @default(cuid())
+  providerId    String
+  provider      Provider     @relation(fields: [providerId], references: [id])
+  transactionId String?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  action        String
+  requestMeta   String?
+  responseMeta  String?
+  success       Boolean
+  latencyMs     Int?
+  error         String?
+  createdAt     DateTime     @default(now())
+}
+
+model Beneficiary {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label       String
+  phone       String?
+  networkCode String?
+  meterNumber String?
+  smartCard   String?
+  service     TxService
+  meta        String?
+  createdAt   DateTime  @default(now())
+}
+
+model Commission {
+  id            String       @id @default(cuid())
+  earnerId      String
+  earner        User         @relation("Earner", fields: [earnerId], references: [id])
+  sourceUserId  String?
+  sourceUser    User?        @relation("Source", fields: [sourceUserId], references: [id])
+  transactionId String?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  kind          String
+  amount        Decimal
+  rateBps       Int?
+  createdAt     DateTime     @default(now())
+}
+
+model ScheduledTopUp {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service     TxService
+  phone       String
+  networkCode String?
+  planId      String?
+  plan        Plan?             @relation(fields: [planId], references: [id])
+  amount      Decimal?
+  frequency   ScheduleFrequency
+  dayOfWeek   Int?
+  hourWat     Int
+  minuteWat   Int               @default(0)
+  nextRunAt   DateTime
+  isActive    Boolean           @default(true)
+  lastRunAt   DateTime?
+  createdAt   DateTime          @default(now())
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  keyPrefix  String
+  keyHash    String    @unique
+  scopes     String    // JSON array
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model Dispute {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  transactionId String
+  transaction   Transaction  @relation(fields: [transactionId], references: [id])
+  reason        String
+  status        DisputeStatus @default(OPEN)
+  resolution    String?
+  resolvedBy    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Notification {
+  id            String              @id @default(cuid())
+  userId        String?
+  user          User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId String?
+  transaction   Transaction?       @relation(fields: [transactionId], references: [id])
+  channel       NotificationChannel @default(IN_APP)
+  title         String
+  body          String
+  status        NotificationStatus  @default(UNREAD)
+  meta          String?
+  createdAt     DateTime            @default(now())
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  orderRef  String?
+  subject   String
+  body      String
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  before     String?
+  after      String?
+  ip         String?
+  createdAt  DateTime @default(now())
+}
+
+model Setting {
+  key       String   @id
+  value     String // JSON
+  updatedAt DateTime @updatedAt
+}
+
+enum CreditRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/** Manual wallet credit — dual approval at launch */
+model WalletCreditRequest {
+  id          String              @id @default(cuid())
+  userId      String
+  amount      Decimal
+  reason      String
+  status      CreditRequestStatus @default(PENDING)
+  requestedBy String
+  approvedBy  String?
+  rejectedBy  String?
+  note        String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}

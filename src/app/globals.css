@@ -1,26 +1,449 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f3f4ec;
+  --ink: #0b231a;
+  --green: #008751;
+  --green-deep: #04291c;
+  --amber: #ffb703;
+  --red: #e5484d;
+  --line: rgba(11, 35, 26, 0.14);
+  --mtn: #ffcc00;
+  --glo: #3dae2b;
+  --airtel: #e4002b;
+  --ninemobile: #00a94f;
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-press: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --shadow-card: 0 1px 0 rgba(11, 35, 26, 0.04), 0 12px 32px -16px rgba(11, 35, 26, 0.18);
+  --shadow-lift: 0 2px 0 rgba(11, 35, 26, 0.06), 0 20px 40px -20px rgba(11, 35, 26, 0.28);
 }
 
 @theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-green: var(--green);
+  --color-green-deep: var(--green-deep);
+  --color-amber: var(--amber);
+  --color-danger: var(--red);
+  --color-line: var(--line);
+  --color-mtn: var(--mtn);
+  --color-glo: var(--glo);
+  --color-airtel: var(--airtel);
+  --color-ninemobile: var(--ninemobile);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-anton);
+  --font-sans: var(--font-instrument);
+  --font-mono: var(--font-plex);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-instrument), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Blueprint grid — the "grid" in DataGrid */
+.bg-grid {
+  background-color: var(--green-deep);
+  background-image:
+    linear-gradient(rgba(243, 244, 236, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(243, 244, 236, 0.045) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.bg-grid-paper {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(rgba(11, 35, 26, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 35, 26, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.font-display {
+  font-family: var(--font-anton), Impact, sans-serif;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  line-height: 0.92;
+}
+
+.font-mono-num {
+  font-family: var(--font-plex), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Surface system (desktop cards) ───────────── */
+.surface {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-card);
+}
+
+.surface-deep {
+  background: var(--green-deep);
+  border: 1px solid rgba(243, 244, 236, 0.08);
+  border-radius: 0.75rem;
+  color: var(--paper);
+}
+
+.surface-interactive {
+  transition:
+    transform 0.28s var(--ease-out-expo),
+    box-shadow 0.28s var(--ease-out-expo),
+    border-color 0.2s ease;
+}
+.surface-interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+  border-color: rgba(0, 135, 81, 0.35);
+}
+.surface-interactive:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+/* Network-edge lift on plan / service cards */
+.edge-card {
+  position: relative;
+  overflow: hidden;
+  border-left-width: 3px;
+  transition:
+    transform 0.28s var(--ease-out-expo),
+    box-shadow 0.28s var(--ease-out-expo);
+}
+.edge-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(0, 135, 81, 0.04) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.edge-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+}
+.edge-card:hover::after {
+  opacity: 1;
+}
+
+/* ── Motion: living system ────────────────────── */
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+}
+
+.pulse-dot {
+  animation: status-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee 40s linear infinite;
+}
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes stamp-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.4) rotate(-12deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.95) rotate(-6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-8deg);
+  }
+}
+
+.stamp-delivered {
+  animation: stamp-in 0.55s var(--ease-out-expo) forwards;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.sheet-enter {
+  animation: sheet-up 0.36s var(--ease-out-expo);
+}
+
+/* Scroll reveal — y + clip, not generic fade */
+.reveal-base {
+  opacity: 0;
+  transform: translateY(18px);
+  clip-path: inset(0 0 12% 0);
+  transition:
+    opacity 0.7s var(--ease-out-expo),
+    transform 0.75s var(--ease-out-expo),
+    clip-path 0.75s var(--ease-out-expo);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: transform, opacity, clip-path;
+}
+.reveal-in {
+  opacity: 1;
+  transform: translateY(0);
+  clip-path: inset(0 0 0 0);
+}
+
+/* Hero entrance orchestrated on load */
+.hero-enter {
+  opacity: 0;
+  transform: translateY(22px);
+  filter: blur(4px);
+  transition:
+    opacity 0.8s var(--ease-out-expo),
+    transform 0.85s var(--ease-out-expo),
+    filter 0.7s ease;
+  transition-delay: var(--hero-delay, 0ms);
+}
+.hero-enter-on {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+/* Mono label scan-line feel (subtle) */
+@keyframes label-in {
+  from {
+    opacity: 0;
+    letter-spacing: 0.28em;
+  }
+  to {
+    opacity: 1;
+    letter-spacing: 0.16em;
+  }
+}
+.mono-label-in {
+  animation: label-in 0.6s var(--ease-out-expo) both;
+}
+
+/* Ambient grid drift on deep panels */
+@keyframes grid-drift {
+  0% {
+    background-position: 0 0, 0 0;
+  }
+  100% {
+    background-position: 40px 40px, 40px 40px;
+  }
+}
+.bg-grid-live {
+  animation: grid-drift 48s linear infinite;
+}
+
+/* Focus rings */
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+/* Button press */
+.pressable {
+  transition: transform 0.12s var(--ease-press);
+}
+.pressable:active {
+  transform: scale(0.97);
+}
+
+/* Link underline draw */
+.link-draw {
+  background-image: linear-gradient(var(--green), var(--green));
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.3s var(--ease-out-expo);
+}
+.link-draw:hover {
+  background-size: 100% 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .pulse-dot,
+  .marquee-track,
+  .stamp-delivered,
+  .sheet-enter,
+  .bg-grid-live,
+  .mono-label-in {
+    animation: none !important;
+  }
+  .reveal-base,
+  .hero-enter {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+  .surface-interactive:hover,
+  .edge-card:hover {
+    transform: none;
+  }
+}
+
+/* Skip link */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--green);
+  color: white;
+  padding: 0.5rem 1rem;
+}
+.skip-link:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+}
+
+.pb-tabbar {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 1024px) {
+  .pb-tabbar {
+    padding-bottom: 0;
+  }
+}
+
+/* Low-data mode */
+html.low-data .bg-grid,
+html.low-data .bg-grid-paper {
+  background-image: none !important;
+}
+html.low-data .marquee-track,
+html.low-data .pulse-dot,
+html.low-data .stamp-delivered,
+html.low-data .bg-grid-live {
+  animation: none !important;
+}
+html.low-data video,
+html.low-data [data-heavy-media] {
+  display: none !important;
+}
+html.low-data .reveal-base {
+  opacity: 1;
+  transform: none;
+  clip-path: none;
+  transition: none;
+}
+
+/* Desktop bento service grid */
+.bento-services {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+}
+.bento-services > :nth-child(1) {
+  grid-column: span 7;
+  grid-row: span 2;
+  min-height: 220px;
+}
+.bento-services > :nth-child(2) {
+  grid-column: span 5;
+  min-height: 104px;
+}
+.bento-services > :nth-child(3) {
+  grid-column: span 5;
+  min-height: 104px;
+}
+.bento-services > :nth-child(n + 4) {
+  grid-column: span 3;
+  min-height: 128px;
+}
+
+@media (max-width: 1279px) {
+  .bento-services > :nth-child(1) {
+    grid-column: span 12;
+    grid-row: span 1;
+    min-height: 160px;
+  }
+  .bento-services > :nth-child(2),
+  .bento-services > :nth-child(3) {
+    grid-column: span 6;
+  }
+  .bento-services > :nth-child(n + 4) {
+    grid-column: span 6;
+  }
+}
+
+/* Moats asymmetric but aligned baseline */
+.moat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+.moat-grid > :nth-child(1) {
+  margin-top: 0;
+}
+.moat-grid > :nth-child(2) {
+  margin-top: 2.5rem;
+}
+.moat-grid > :nth-child(3) {
+  margin-top: 1rem;
+}
+.moat-grid > :nth-child(4) {
+  margin-top: 0.5rem;
+}
+.moat-grid > :nth-child(5) {
+  margin-top: 3rem;
+}
+.moat-grid > :nth-child(6) {
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 1023px) {
+  .moat-grid {
+    grid-template-columns: 1fr;
+  }
+  .moat-grid > * {
+    margin-top: 0 !important;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .moat-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
