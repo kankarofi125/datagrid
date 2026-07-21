@@ -35,9 +35,9 @@ export function Input({
       <input
         id={inputId}
         className={cn(
-          "h-11 w-full rounded-lg border border-green/25 bg-paper px-3 text-base text-ink",
+          "h-11 w-full rounded-lg border border-line bg-paper px-3 text-base text-ink",
           "placeholder:text-ink/30",
-          "focus:border-green focus:outline-none focus:ring-2 focus:ring-green/15",
+          "focus:border-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10",
           mono && "font-mono-num tracking-wide",
           error && "border-danger focus:border-danger focus:ring-danger/15",
           className

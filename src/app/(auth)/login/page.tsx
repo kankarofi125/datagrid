@@ -383,7 +383,7 @@ function LoginForm() {
         </HeroEnter>
         <OnboardingRail step={step} />
         <Reveal delay={200}>
-          <div className="surface mt-6 border-2 border-green/15 p-5">{form}</div>
+          <div className="surface mt-6 p-5">{form}</div>
         </Reveal>
         <HeroEnter delay={260}>
           <p className="font-mono-num mt-10 text-[11px] text-ink/40">
@@ -433,7 +433,7 @@ function LoginForm() {
           </HeroEnter>
           <OnboardingRail step={step} />
           <Reveal delay={240}>
-            <div className="surface mt-6 max-w-sm border-2 border-green/15 p-6">{form}</div>
+            <div className="surface mt-6 max-w-sm p-6">{form}</div>
           </Reveal>
         </div>
       </div>
