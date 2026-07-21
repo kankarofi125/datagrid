@@ -55,13 +55,18 @@ export async function POST(req: Request) {
     session.isLoggedIn = true;
     await session.save();
 
+    const needsPinSetup = !user.pinHash;
+
     return NextResponse.json({
       ok: true,
+      needsPinSetup,
+      isNew: !user.pinHash && !user.lastLoginAt,
       user: {
         id: user.id,
         phone: user.phoneLocal,
         name: user.name,
         role: user.role,
+        hasPin: Boolean(user.pinHash),
       },
     });
   } catch (err) {

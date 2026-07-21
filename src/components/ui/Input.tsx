@@ -10,6 +10,7 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
   mono?: boolean;
 };
 
+/** Branded DataGrid text field */
 export function Input({
   className,
   label,
@@ -25,18 +26,21 @@ export function Input({
       {label && (
         <label
           htmlFor={inputId}
-          className="font-mono-num text-[11px] uppercase tracking-[0.14em] text-ink/70"
+          className="font-mono-num flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-ink/70"
         >
+          <span className="inline-block h-3 w-0.5 rounded-full bg-green" aria-hidden />
           {label}
         </label>
       )}
       <input
         id={inputId}
         className={cn(
-          "h-12 w-full rounded-md border border-line bg-paper px-3 text-base text-ink placeholder:text-ink/35",
+          "h-12 w-full rounded-xl border-2 border-green/20 bg-green-deep/[0.03] px-3.5 text-base text-ink",
+          "placeholder:text-ink/30",
+          "shadow-[inset_0_1px_0_rgba(255,255,255,.6)]",
           "focus:border-green focus:outline-none focus:ring-2 focus:ring-green/20",
-          mono && "font-mono-num",
-          error && "border-danger",
+          mono && "font-mono-num tracking-wide",
+          error && "border-danger focus:border-danger focus:ring-danger/20",
           className
         )}
         {...props}
@@ -46,7 +50,7 @@ export function Input({
           {error}
         </p>
       ) : hint ? (
-        <p className="text-xs text-ink/55">{hint}</p>
+        <p className="font-mono-num text-[11px] text-ink/50">{hint}</p>
       ) : null}
     </div>
   );

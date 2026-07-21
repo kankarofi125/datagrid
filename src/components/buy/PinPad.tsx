@@ -28,15 +28,19 @@ export function PinPad({
 
   return (
     <div>
-      <div className="mb-4 flex justify-center gap-3" aria-label="PIN digits">
+      <div className="mb-4 flex justify-center gap-2" aria-label="PIN digits">
         {Array.from({ length: maxLength }).map((_, i) => (
           <span
             key={i}
             className={cn(
-              "h-3 w-3 rounded-full border-2 border-ink/30",
-              i < value.length && "border-green bg-green"
+              "font-mono-num flex h-10 w-8 items-center justify-center rounded-md text-lg font-semibold",
+              i < value.length
+                ? "bg-green-deep text-paper"
+                : "bg-paper text-ink/25 ring-1 ring-inset ring-line"
             )}
-          />
+          >
+            {i < value.length ? "•" : "_"}
+          </span>
         ))}
       </div>
       <div className="mx-auto grid max-w-[260px] grid-cols-3 gap-2">

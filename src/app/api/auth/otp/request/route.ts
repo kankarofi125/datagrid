@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { requestOtp } from "@/lib/auth/otp";
+import { prisma } from "@/lib/db";
+import { toE164 } from "@/lib/phone";
 
 export async function POST(req: Request) {
   try {
@@ -12,10 +14,20 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const e164 = toE164(phone) || result.phone;
+    const user = await prisma.user.findUnique({
+      where: { phone: e164 },
+      select: { pinHash: true },
+    });
+
     return NextResponse.json({
       ok: true,
       phone: result.phone,
       phoneLocal: result.phoneLocal,
+      exists: Boolean(user),
+      hasPin: Boolean(user?.pinHash),
+      isNew: !user,
       // only in simulate mode
       devHint: result.devHint,
     });
