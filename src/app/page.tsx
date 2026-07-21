@@ -56,13 +56,15 @@ export default async function LandingPage() {
       <TopUtilityStrip />
       <RateTicker items={data.ticker} />
 
-      <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded bg-green-deep font-display text-sm text-amber">
+      <header className="sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3 lg:px-8">
+          <Link href="/" className="flex min-w-0 items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-green-deep font-display text-sm text-amber">
               DG
             </span>
-            <span className="font-display text-xl tracking-wide text-ink">DATAGRID</span>
+            <span className="font-display text-lg tracking-wide text-ink sm:text-xl">
+              DATAGRID
+            </span>
           </Link>
           <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
             <Link href="/rates" className="link-draw text-ink/70 hover:text-ink">
@@ -75,8 +77,13 @@ export default async function LandingPage() {
               Buy
             </Link>
           </nav>
-          <div className="flex items-center gap-2">
-            <Link href="/login">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <Link href="/rates" className="md:hidden">
+              <Button variant="ghost" size="sm">
+                Rates
+              </Button>
+            </Link>
+            <Link href="/login" className="hidden sm:block">
               <Button variant="ghost" size="sm">
                 Log in
               </Button>
@@ -89,78 +96,92 @@ export default async function LandingPage() {
       </header>
 
       <main id="main">
-        {/* Hero — control room split */}
+        {/* Hero — control room split; buy widget first on mobile */}
         <section className="bg-grid-paper relative overflow-hidden border-b border-line">
-          <div className="mx-auto grid max-w-7xl items-start gap-10 px-4 py-12 lg:grid-cols-12 lg:gap-12 lg:px-8 lg:py-20">
-            <div className="lg:col-span-7">
-              <HeroEnter delay={0}>
-                <p className="font-mono-num text-[11px] uppercase tracking-[0.2em] text-green">
-                  National grid for your phone · NG
-                </p>
-              </HeroEnter>
-              <HeroEnter delay={80}>
-                <h1 className="font-display mt-5 text-[clamp(2.75rem,8vw,5.75rem)] text-ink">
-                  DATA IN TEN
-                  <br />
-                  SECONDS.
-                  <br />
-                  <span className="text-green">LIGHT IN TWENTY.</span>
-                </h1>
-              </HeroEnter>
-              <HeroEnter delay={160}>
-                <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink/70">
-                  Airtime, data, electricity tokens, cable TV, betting wallets, exam pins —
-                  delivered with a status trail. Guest checkout. Reseller wholesale when you scale.
-                </p>
-              </HeroEnter>
+          <div className="mx-auto grid max-w-7xl items-start gap-8 px-3 py-8 sm:px-4 sm:py-12 lg:grid-cols-12 lg:gap-12 lg:px-8 lg:py-20">
+            <div className="order-2 space-y-6 sm:space-y-8 lg:order-1 lg:col-span-7">
+              <div>
+                <HeroEnter delay={0}>
+                  <p className="font-mono-num text-[10px] uppercase tracking-[0.18em] text-green sm:text-[11px] sm:tracking-[0.2em]">
+                    National grid for your phone · NG
+                  </p>
+                </HeroEnter>
+                <HeroEnter delay={80}>
+                  <h1 className="font-display mt-3 text-[clamp(2.15rem,9vw,5.75rem)] leading-[0.95] text-ink sm:mt-5">
+                    DATA IN TEN
+                    <br />
+                    SECONDS.
+                    <br />
+                    <span className="text-green">LIGHT IN TWENTY.</span>
+                  </h1>
+                </HeroEnter>
+                <HeroEnter delay={160}>
+                  <p className="mt-4 max-w-xl text-base leading-relaxed text-ink/70 sm:mt-6 sm:text-lg">
+                    Airtime, data, electricity tokens, cable TV, betting wallets, exam pins —
+                    delivered with a status trail. Guest checkout. Reseller wholesale when you scale.
+                  </p>
+                </HeroEnter>
 
-              <HeroEnter delay={220}>
-                <div className="mt-8 flex flex-wrap items-center gap-3">
-                  <Link href="#buy">
-                    <Button size="lg">Buy without account</Button>
-                  </Link>
-                  <Link href="/login">
-                    <Button size="lg" variant="secondary">
-                      Agent / dashboard
-                    </Button>
-                  </Link>
-                </div>
-              </HeroEnter>
+                <HeroEnter delay={220}>
+                  <div className="mt-6 flex flex-col gap-2.5 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                    <Link href="#buy" className="w-full sm:w-auto">
+                      <Button size="lg" className="w-full sm:w-auto">
+                        Buy without account
+                      </Button>
+                    </Link>
+                    <Link href="/login" className="w-full sm:w-auto">
+                      <Button size="lg" variant="secondary" className="w-full sm:w-auto">
+                        Agent / dashboard
+                      </Button>
+                    </Link>
+                  </div>
+                </HeroEnter>
+              </div>
 
               <HeroEnter delay={300}>
-                <div className="mt-12 grid max-w-xl grid-cols-3 gap-3">
-                  <div className="surface p-4">
-                    <p className="font-mono-num text-[10px] tracking-widest text-ink/45">
+                <div className="grid grid-cols-3 gap-2 sm:max-w-xl sm:gap-3">
+                  <div className="surface p-3 sm:p-4">
+                    <p className="font-mono-num text-[9px] tracking-widest text-ink/45 sm:text-[10px]">
                       DELIVERED
                     </p>
-                    <p className="font-mono-num mt-2 text-2xl font-semibold text-ink lg:text-3xl">
+                    <p className="font-mono-num mt-1.5 text-lg font-semibold text-ink sm:mt-2 sm:text-2xl lg:text-3xl">
                       <CountUp value={412} prefix="₦" suffix="M" />
                     </p>
                   </div>
-                  <div className="surface p-4">
-                    <p className="font-mono-num text-[10px] tracking-widest text-ink/45">ORDERS</p>
-                    <p className="font-mono-num mt-2 text-2xl font-semibold text-ink lg:text-3xl">
+                  <div className="surface p-3 sm:p-4">
+                    <p className="font-mono-num text-[9px] tracking-widest text-ink/45 sm:text-[10px]">
+                      ORDERS
+                    </p>
+                    <p className="font-mono-num mt-1.5 text-lg font-semibold text-ink sm:mt-2 sm:text-2xl lg:text-3xl">
                       <CountUp value={96000} />
                     </p>
                   </div>
-                  <div className="surface-deep p-4">
-                    <p className="font-mono-num text-[10px] tracking-widest text-amber">UPTIME</p>
-                    <p className="font-mono-num mt-2 text-2xl font-semibold lg:text-3xl">99.6%</p>
+                  <div className="surface-deep p-3 sm:p-4">
+                    <p className="font-mono-num text-[9px] tracking-widest text-amber sm:text-[10px]">
+                      UPTIME
+                    </p>
+                    <p className="font-mono-num mt-1.5 text-lg font-semibold sm:mt-2 sm:text-2xl lg:text-3xl">
+                      99.6%
+                    </p>
                   </div>
                 </div>
               </HeroEnter>
 
               <HeroEnter delay={380}>
-                <div className="mt-8 max-w-md">
+                <div className="w-full max-w-md">
                   <NetworkStatusBoard networks={data.networks} />
                 </div>
               </HeroEnter>
             </div>
 
-            <div id="buy" className="lg:col-span-5 lg:sticky lg:top-24">
-              <HeroEnter delay={200}>
+            {/* Buy first on mobile so guests convert without scrolling past long copy */}
+            <div
+              id="buy"
+              className="order-1 scroll-mt-20 lg:order-2 lg:col-span-5 lg:sticky lg:top-24"
+            >
+              <HeroEnter delay={120}>
                 <GuestPurchaseWidget plans={data.plans} />
-                <p className="font-mono-num mt-3 text-center text-[10px] tracking-wide text-ink/40">
+                <p className="font-mono-num mt-2 text-center text-[10px] tracking-wide text-ink/40 sm:mt-3">
                   LIVE WIDGET · GUEST ORDER · NO ACCOUNT
                 </p>
               </HeroEnter>
@@ -171,35 +192,35 @@ export default async function LandingPage() {
         <HeroPhoneImage />
 
         {/* Rate + margin desk */}
-        <section className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
+        <section className="mx-auto max-w-7xl px-3 py-12 sm:px-4 sm:py-16 lg:px-8 lg:py-20">
           <Reveal>
             <p className="font-mono-num text-[11px] tracking-[0.2em] text-ink/45">RATE DESK</p>
-            <h2 className="font-display mt-2 text-4xl text-ink lg:text-5xl">
+            <h2 className="font-display mt-2 text-3xl text-ink sm:text-4xl lg:text-5xl">
               PRICES ON THE GRID.
             </h2>
           </Reveal>
-          <div className="mt-10 grid items-start gap-6 lg:grid-cols-5 lg:gap-8">
-            <Reveal className="lg:col-span-3" delay={60}>
+          <div className="mt-8 grid items-start gap-5 sm:mt-10 sm:gap-6 lg:grid-cols-5 lg:gap-8">
+            <Reveal className="min-w-0 lg:col-span-3" delay={60}>
               <RateBoard />
             </Reveal>
-            <Reveal className="lg:col-span-2" delay={140}>
+            <Reveal className="min-w-0 lg:col-span-2" delay={140}>
               <MarginCalculator />
             </Reveal>
           </div>
         </section>
 
         {/* Moats — asymmetric, aligned system */}
-        <section className="bg-grid bg-grid-live py-20 text-paper">
-          <div className="mx-auto max-w-7xl px-4 lg:px-8">
+        <section className="bg-grid bg-grid-live py-12 text-paper sm:py-16 lg:py-20">
+          <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-8">
             <Reveal>
               <p className="font-mono-num text-[11px] tracking-[0.2em] text-amber">MOATS</p>
-              <h2 className="font-display mt-3 text-[clamp(2rem,5vw,3.5rem)]">
+              <h2 className="font-display mt-3 text-[clamp(1.75rem,6vw,3.5rem)] leading-tight">
                 Built for Nigeria.
                 <br />
                 Not a template.
               </h2>
             </Reveal>
-            <ul className="moat-grid mt-12">
+            <ul className="moat-grid mt-8 sm:mt-12">
               {[
                 ["Guest checkout", "Buy first. Account later — with this number."],
                 ["Network auto-detect", "0803… snaps to MTN. Prefix map admin-editable."],
@@ -209,12 +230,12 @@ export default async function LandingPage() {
                 ["One-tap repeat", "Last 3 buys as chips on the home grid."],
               ].map(([t, d], i) => (
                 <Reveal key={t} delay={i * 60} as="li">
-                  <div className="h-full border border-white/10 bg-black/25 p-6 backdrop-blur-[1px] transition hover:border-amber/40 hover:bg-black/35">
+                  <div className="h-full border border-white/10 bg-black/25 p-4 backdrop-blur-[1px] transition hover:border-amber/40 hover:bg-black/35 sm:p-6">
                     <p className="font-mono-num text-[10px] text-amber">
                       {String(i + 1).padStart(2, "0")}
                     </p>
-                    <h3 className="mt-3 text-lg font-semibold">{t}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-paper/65">{d}</p>
+                    <h3 className="mt-2 text-base font-semibold sm:mt-3 sm:text-lg">{t}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-paper/65 sm:mt-2">{d}</p>
                   </div>
                 </Reveal>
               ))}
@@ -223,11 +244,11 @@ export default async function LandingPage() {
         </section>
 
         {/* FAQ */}
-        <section className="mx-auto max-w-3xl px-4 py-20 lg:px-8">
+        <section className="mx-auto max-w-3xl px-3 py-12 sm:px-4 sm:py-16 lg:px-8 lg:py-20">
           <Reveal>
-            <h2 className="font-display text-4xl text-ink lg:text-5xl">FAQ</h2>
+            <h2 className="font-display text-3xl text-ink sm:text-4xl lg:text-5xl">FAQ</h2>
           </Reveal>
-          <dl className="mt-10 space-y-0">
+          <dl className="mt-8 space-y-0 sm:mt-10">
             {[
               [
                 "Do I need an account?",
@@ -243,9 +264,9 @@ export default async function LandingPage() {
               ],
             ].map(([q, a], i) => (
               <Reveal key={q} delay={i * 80}>
-                <div className="border-b border-line py-5">
+                <div className="border-b border-line py-4 sm:py-5">
                   <dt className="text-base font-semibold text-ink">{q}</dt>
-                  <dd className="mt-2 leading-relaxed text-ink/65">{a}</dd>
+                  <dd className="mt-2 text-sm leading-relaxed text-ink/65 sm:text-base">{a}</dd>
                 </div>
               </Reveal>
             ))}
@@ -254,7 +275,7 @@ export default async function LandingPage() {
       </main>
 
       <footer className="border-t border-line bg-green-deep text-paper">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-8 px-3 py-10 sm:grid-cols-2 sm:gap-10 sm:px-4 sm:py-14 lg:grid-cols-4 lg:px-8">
           <div>
             <p className="font-display text-2xl text-amber">DATAGRID</p>
             <p className="mt-3 text-sm leading-relaxed text-paper/60">

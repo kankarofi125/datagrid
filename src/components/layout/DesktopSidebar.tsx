@@ -4,22 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { formatNaira } from "@/lib/money";
-
-const NAV = [
-  { href: "/dashboard", label: "Control home", mono: "01" },
-  { href: "/buy/data", label: "Buy data", mono: "02" },
-  { href: "/buy/airtime", label: "Buy airtime", mono: "03" },
-  { href: "/buy/electricity", label: "Electricity", mono: "04" },
-  { href: "/buy/cable", label: "Cable TV", mono: "05" },
-  { href: "/buy/betting", label: "Betting", mono: "06" },
-  { href: "/buy/pins", label: "Exam pins", mono: "07" },
-  { href: "/wallet", label: "Wallet", mono: "08" },
-  { href: "/history", label: "History", mono: "09" },
-  { href: "/schedules", label: "Schedules", mono: "10" },
-  { href: "/referrals", label: "Referrals", mono: "11" },
-  { href: "/agent", label: "Agent / API", mono: "12" },
-  { href: "/settings", label: "Settings", mono: "13" },
-];
+import { APP_NAV } from "@/components/layout/app-nav";
 
 export function DesktopSidebar({
   balance,
@@ -62,7 +47,7 @@ export function DesktopSidebar({
 
       <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Desktop primary">
         <ul className="space-y-0.5">
-          {NAV.map((item) => {
+          {APP_NAV.map((item) => {
             const active =
               path === item.href ||
               (item.href !== "/dashboard" && path.startsWith(item.href));
