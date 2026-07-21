@@ -12,6 +12,7 @@ import {
   formatPhoneDisplay,
   NETWORK_COLORS,
   NETWORK_LABELS,
+  networkBadgeStyle,
 } from "@/lib/phone";
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
@@ -87,9 +88,12 @@ export function BuyDataFormBody({
       {s.network && (
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-          style={{ backgroundColor: NETWORK_COLORS[s.network] }}
+          style={networkBadgeStyle(s.network)}
         >
-          <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-ink/60" />
+          <span
+            className="pulse-dot h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: NETWORK_COLORS[s.network] }}
+          />
           {NETWORK_LABELS[s.network]} detected
         </span>
       )}

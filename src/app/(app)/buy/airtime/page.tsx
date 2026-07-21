@@ -18,6 +18,7 @@ import {
   formatPhoneDisplay,
   NETWORK_COLORS,
   NETWORK_LABELS,
+  networkBadgeStyle,
   toLocalPhone,
 } from "@/lib/phone";
 import { formatNaira } from "@/lib/money";
@@ -105,9 +106,13 @@ export default function BuyAirtimePage() {
       <PhoneInput value={phone} onChange={setPhone} />
       {network && (
         <span
-          className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
-          style={{ backgroundColor: NETWORK_COLORS[network] }}
+          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+          style={networkBadgeStyle(network)}
         >
+          <span
+            className="pulse-dot h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: NETWORK_COLORS[network] }}
+          />
           {NETWORK_LABELS[network]}
         </span>
       )}

@@ -20,11 +20,28 @@ export const DEFAULT_PREFIXES: Record<NetworkCode, string[]> = {
   NINEMOBILE: ["0809", "0817", "0818", "0908", "0909"],
 };
 
+/** Solid brand colors (dots, accents) */
 export const NETWORK_COLORS: Record<NetworkCode, string> = {
   MTN: "#FFCC00",
   GLO: "#3DAE2B",
   AIRTEL: "#E4002B",
   NINEMOBILE: "#00A94F",
+};
+
+/** Soft chip backgrounds for detector badges (lighter, less heavy) */
+export const NETWORK_SOFT_BG: Record<NetworkCode, string> = {
+  MTN: "#FFF6CC",
+  GLO: "#E8F6E4",
+  AIRTEL: "#FCE8EC",
+  NINEMOBILE: "#E0F5EB",
+};
+
+/** Readable text on soft badge backgrounds */
+export const NETWORK_SOFT_TEXT: Record<NetworkCode, string> = {
+  MTN: "#8A6D00",
+  GLO: "#2A7A1E",
+  AIRTEL: "#B30022",
+  NINEMOBILE: "#007A3A",
 };
 
 export const NETWORK_LABELS: Record<NetworkCode, string> = {
@@ -33,6 +50,17 @@ export const NETWORK_LABELS: Record<NetworkCode, string> = {
   AIRTEL: "Airtel",
   NINEMOBILE: "9mobile",
 };
+
+/** Inline style for light network detector chips */
+export function networkBadgeStyle(code: NetworkCode): {
+  backgroundColor: string;
+  color: string;
+} {
+  return {
+    backgroundColor: NETWORK_SOFT_BG[code],
+    color: NETWORK_SOFT_TEXT[code],
+  };
+}
 
 /**
  * Sanitize live typing/paste into local digit form (max 11).

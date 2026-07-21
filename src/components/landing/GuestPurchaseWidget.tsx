@@ -10,6 +10,7 @@ import {
   formatPhoneDisplay,
   NETWORK_COLORS,
   NETWORK_LABELS,
+  networkBadgeStyle,
   toLocalPhone,
   type NetworkCode,
 } from "@/lib/phone";
@@ -159,10 +160,13 @@ export function GuestPurchaseWidget({ plans = DEMO_PLANS }: { plans?: Plan[] }) 
               {network && (
                 <div className="mt-2 flex items-center gap-2">
                   <span
-                    className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-ink"
-                    style={{ backgroundColor: NETWORK_COLORS[network] }}
+                    className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                    style={networkBadgeStyle(network)}
                   >
-                    <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-ink/70" />
+                    <span
+                      className="pulse-dot h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: NETWORK_COLORS[network] }}
+                    />
                     {NETWORK_LABELS[network]}
                   </span>
                   <span className="font-mono-num text-[11px] text-ink/50">
