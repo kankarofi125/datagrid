@@ -1,25 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { MobileAppMenu } from "@/components/layout/MobileAppMenu";
+import { useLocalClock } from "@/hooks/useLocalClock";
 
 export function AppTopBar({ balance, phone }: { balance: number; phone: string }) {
-  const [time, setTime] = useState("");
-
-  useEffect(() => {
-    const fmt = () =>
-      new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Africa/Lagos",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      }).format(new Date());
-    setTime(fmt());
-    const id = setInterval(() => setTime(fmt()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const clock = useLocalClock();
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-green-deep text-paper lg:hidden">
@@ -27,8 +13,10 @@ export function AppTopBar({ balance, phone }: { balance: number; phone: string }
         <div className="flex min-w-0 items-center gap-2">
           <MobileAppMenu balance={balance} phone={phone} />
           <div className="min-w-0">
-            <p className="font-mono-num text-[10px] tracking-widest text-amber">
-              LAGOS {time} WAT
+            <p className="font-mono-num truncate text-[10px] tracking-widest text-amber">
+              <span className="uppercase">{clock.place || "LOCAL"}</span>{" "}
+              {clock.time || "—"}
+              {clock.zoneAbbr ? ` ${clock.zoneAbbr}` : ""}
             </p>
             <p className="truncate text-[11px] text-paper/55">{phone || "DataGrid"}</p>
           </div>
