@@ -52,6 +52,27 @@ export async function GET() {
       { status: 503 }
     );
   }
+
+  // Common Vercel misconfig: leftover SQLite URL from local M1 setup
+  if (
+    process.env.DATABASE_URL?.startsWith("file:") ||
+    dbUrlMeta?.protocol === "file"
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        service: "datagrid",
+        db: "down",
+        reason:
+          "DATABASE_URL is still SQLite (file:./dev.db). Replace it on Vercel with your Neon postgresql:// URL and redeploy.",
+        hasDatabaseUrl,
+        hasDirectUrl,
+        dbUrlMeta,
+        time: new Date().toISOString(),
+      },
+      { status: 503 }
+    );
+  }
   try {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({
