@@ -35,11 +35,12 @@ export function Input({
       <input
         id={inputId}
         className={cn(
-          "h-11 w-full rounded-lg border border-line bg-paper px-3 text-base text-ink",
+          "h-11 w-full rounded-lg border border-green/40 bg-paper px-3 text-base text-ink",
           "placeholder:text-ink/30",
-          "focus:border-ink/35 focus:outline-none focus:ring-2 focus:ring-ink/10",
+          "outline-none ring-0",
+          "focus:border-green focus:outline-none focus:ring-0",
           mono && "font-mono-num tracking-wide",
-          error && "border-danger focus:border-danger focus:ring-danger/15",
+          error && "border-danger focus:border-danger",
           className
         )}
         {...props}

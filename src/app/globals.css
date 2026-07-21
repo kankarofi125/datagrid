@@ -269,10 +269,16 @@ body {
   animation: grid-drift 48s linear infinite;
 }
 
-/* Focus rings */
+/* Focus rings — thin green (never amber/gold on form controls) */
 :focus-visible {
-  outline: 2px solid var(--amber);
+  outline: 1px solid var(--green);
   outline-offset: 2px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
 }
 
 /* Button press */
