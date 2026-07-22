@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/schedules",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/provider-health",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
