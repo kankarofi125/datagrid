@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Input } from "@/components/ui/Input";
 import { formatNaira } from "@/lib/money";
 import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
@@ -20,13 +21,15 @@ type Tx = {
 };
 
 export default function AdminTransactionsPage() {
+  const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Tx[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [service, setService] = useState("");
 
-  const load = useCallback(() => {
+  const load = useCallback((isInitial = false) => {
+    if (isInitial) setLoading(true);
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (status) params.set("status", status);
@@ -37,11 +40,12 @@ export default function AdminTransactionsPage() {
         setRows(d.transactions || []);
         setStatusCounts(d.statusCounts || {});
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [q, status, service]);
 
   useEffect(() => {
-    load();
+    load(true);
   }, [load]);
 
   const filters = (
@@ -92,6 +96,10 @@ export default function AdminTransactionsPage() {
       </div>
     </div>
   );
+
+  if (loading) {
+    return <SkeletonPage variant="list" />;
+  }
 
   return (
     <div className="space-y-4">

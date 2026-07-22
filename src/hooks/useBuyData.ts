@@ -48,12 +48,14 @@ export function useBuyData() {
   const [orderRef, setOrderRef] = useState<string | null>(null);
   const [ussdHint, setUssdHint] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   const network = detectNetwork(phone);
   const local = toLocalPhone(phone);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
       fetch("/api/catalog/plans").then((r) => r.json()),
       fetch("/api/wallet").then((r) => r.json()),
@@ -66,7 +68,8 @@ export function useBuyData() {
         setHasPin(pinRes.hasPin !== false);
         setBeneficiaries(b.beneficiaries || []);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const filtered = useMemo(() => {
@@ -176,6 +179,7 @@ export function useBuyData() {
     orderRef,
     ussdHint,
     error,
+    loading,
     pending,
     network,
     local,

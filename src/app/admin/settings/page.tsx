@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Reveal } from "@/components/motion/Reveal";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -9,12 +10,15 @@ import { Input } from "@/components/ui/Input";
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, string | number>>({});
   const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   useEffect(() => {
     fetch("/api/admin/settings")
       .then((r) => r.json())
-      .then((d) => setSettings((d.settings || {}) as Record<string, string | number>));
+      .then((d) => setSettings((d.settings || {}) as Record<string, string | number>))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   function save() {
@@ -56,6 +60,10 @@ export default function AdminSettingsPage() {
         }
       />
     );
+  }
+
+  if (loading) {
+    return <SkeletonPage variant="form" />;
   }
 
   return (

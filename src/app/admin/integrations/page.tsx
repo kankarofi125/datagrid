@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { cn } from "@/lib/cn";
 
@@ -15,14 +16,20 @@ type Row = {
 };
 
 export default function AdminIntegrationsPage() {
+  const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
 
   useEffect(() => {
     fetch("/api/admin/integrations")
       .then((r) => r.json())
       .then((d) => setRows(d.integrations || []))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading) {
+    return <SkeletonPage variant="admin" />;
+  }
 
   return (
     <div className="space-y-4">

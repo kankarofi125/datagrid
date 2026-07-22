@@ -8,6 +8,7 @@ import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 
 type RefData = {
   referralCode: string;
@@ -49,11 +50,7 @@ export default function ReferralsPage() {
   }
 
   if (!data) {
-    return (
-      <div className="px-4 py-12 text-center text-sm text-ink/50 lg:px-8">
-        Loading referral desk…
-      </div>
-    );
+    return <SkeletonPage variant="list" />;
   }
 
   const body = (

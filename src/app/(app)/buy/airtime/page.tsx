@@ -22,6 +22,7 @@ import {
   toLocalPhone,
 } from "@/lib/phone";
 import { formatNaira } from "@/lib/money";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 
 const QUICK = [100, 200, 500, 1000, 2000, 5000];
 
@@ -36,6 +37,7 @@ export default function BuyAirtimePage() {
   const [trail, setTrail] = useState<{ at: string; status: string; note?: string }[]>([]);
   const [orderRef, setOrderRef] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   const network = detectNetwork(phone);
@@ -48,7 +50,8 @@ export default function BuyAirtimePage() {
       .then((d) => {
         if (d.balance != null) setBalance(d.balance);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   function openSheet() {
@@ -99,6 +102,10 @@ export default function BuyAirtimePage() {
       setStatus("delivered");
       router.refresh();
     });
+  }
+
+  if (loading) {
+    return <SkeletonPage variant="form" />;
   }
 
   const form = (

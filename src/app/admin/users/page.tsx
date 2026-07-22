@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Reveal } from "@/components/motion/Reveal";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -23,12 +24,15 @@ type User = {
 export default function AdminUsersPage() {
   const [q, setQ] = useState("");
   const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   function load(query = q) {
     fetch(`/api/admin/users?q=${encodeURIComponent(query)}`)
       .then((r) => r.json())
-      .then((d) => setUsers(d.users || []));
+      .then((d) => setUsers(d.users || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -44,6 +48,10 @@ export default function AdminUsersPage() {
       });
       load();
     });
+  }
+
+  if (loading) {
+    return <SkeletonPage variant="list" />;
   }
 
   return (

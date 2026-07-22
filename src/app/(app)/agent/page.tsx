@@ -8,6 +8,7 @@ import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Respons
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
 import { formatNaira } from "@/lib/money";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 
 type KeyRow = {
   id: string;
@@ -75,7 +76,7 @@ export default function AgentPage() {
   }
 
   if (allowed === null) {
-    return <div className="p-8 text-sm text-ink/50">Loading…</div>;
+    return <SkeletonPage variant="form" />;
   }
 
   if (!allowed) {

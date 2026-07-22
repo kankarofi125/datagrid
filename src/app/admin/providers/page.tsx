@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Reveal } from "@/components/motion/Reveal";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -29,6 +30,7 @@ type Log = {
 export default function AdminProvidersPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   function load() {
@@ -37,7 +39,9 @@ export default function AdminProvidersPage() {
       .then((d) => {
         setProviders(d.providers || []);
         setLogs(d.logs || []);
-      });
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -64,6 +68,10 @@ export default function AdminProvidersPage() {
       });
       load();
     });
+  }
+
+  if (loading) {
+    return <SkeletonPage variant="admin" />;
   }
 
   return (

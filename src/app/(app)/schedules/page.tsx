@@ -15,6 +15,7 @@ import {
 } from "@/lib/phone";
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 
 type Plan = {
   id: string;
@@ -51,24 +52,28 @@ export default function SchedulesPage() {
   const [hourWat, setHourWat] = useState(18);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   const network = detectNetwork(phone);
 
-  function load() {
-    fetch("/api/schedules")
-      .then((r) => r.json())
-      .then((d) => setSchedules(d.schedules || []));
-    fetch("/api/catalog/plans")
-      .then((r) => r.json())
-      .then((d) => {
-        setPlans(d.plans || []);
-        if (d.plans?.[0]) setPlanId(d.plans[0].id);
-      });
+  function load(isInitial = false) {
+    if (isInitial) setLoading(true);
+    Promise.all([
+      fetch("/api/schedules").then((r) => r.json()),
+      fetch("/api/catalog/plans").then((r) => r.json()),
+    ])
+      .then(([s, p]) => {
+        setSchedules(s.schedules || []);
+        setPlans(p.plans || []);
+        if (p.plans?.[0]) setPlanId(p.plans[0].id);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
-    load();
+    load(true);
   }, []);
 
   const filteredPlans = network
@@ -297,6 +302,10 @@ export default function SchedulesPage() {
       )}
     </section>
   );
+
+  if (loading) {
+    return <SkeletonPage variant="list" />;
+  }
 
   return (
     <>

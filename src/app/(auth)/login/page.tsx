@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { DigitField } from "@/components/ui/DigitField";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { TopUtilityStrip } from "@/components/layout/TopUtilityStrip";
 import { HeroEnter, Reveal } from "@/components/motion/Reveal";
 import { sanitizeNgPhoneInput, toLocalPhone, NG_LOCAL_MAX_DIGITS } from "@/lib/phone";
@@ -495,7 +496,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-grid-paper">
       <TopUtilityStrip />
-      <Suspense fallback={<div className="p-8">Loading…</div>}>
+      <Suspense fallback={<SkeletonPage variant="form" />}>
         <LoginForm />
       </Suspense>
     </div>

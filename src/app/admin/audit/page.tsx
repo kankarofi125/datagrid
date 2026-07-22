@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Reveal } from "@/components/motion/Reveal";
 import { useEffect, useState } from "react";
 
@@ -16,13 +17,20 @@ type Log = {
 };
 
 export default function AdminAuditPage() {
+  const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<Log[]>([]);
 
   useEffect(() => {
     fetch("/api/admin/audit")
       .then((r) => r.json())
-      .then((d) => setLogs(d.logs || []));
+      .then((d) => setLogs(d.logs || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading) {
+    return <SkeletonPage variant="list" />;
+  }
 
   return (
     <div className="space-y-6">

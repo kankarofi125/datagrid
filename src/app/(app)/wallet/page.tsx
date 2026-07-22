@@ -10,6 +10,7 @@ import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 
 type LedgerRow = {
   id: string;
@@ -41,9 +42,11 @@ export default function WalletPage() {
   } | null>(null);
   const [copied, setCopied] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback((isInitial = false) => {
+    if (isInitial) setLoading(true);
     return fetch("/api/wallet")
       .then((r) => r.json())
       .then((d) => {
@@ -51,11 +54,12 @@ export default function WalletPage() {
         if (d.commissionBalance != null) setCommission(d.commissionBalance);
         if (d.ledger) setLedger(d.ledger);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    refresh();
+    refresh(true);
   }, [refresh]);
 
   function fund() {
@@ -293,6 +297,10 @@ export default function WalletPage() {
       </Button>
     </Sheet>
   );
+
+  if (loading) {
+    return <SkeletonPage variant="list" />;
+  }
 
   const ledgerList = (
     <section>

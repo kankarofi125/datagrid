@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Reveal } from "@/components/motion/Reveal";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -22,12 +23,15 @@ export default function AdminDisputesPage() {
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [orderRef, setOrderRef] = useState("");
   const [reason, setReason] = useState("Customer complaint");
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   function load() {
     fetch("/api/admin/disputes")
       .then((r) => r.json())
-      .then((d) => setDisputes(d.disputes || []));
+      .then((d) => setDisputes(d.disputes || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -59,6 +63,10 @@ export default function AdminDisputesPage() {
       });
       load();
     });
+  }
+
+  if (loading) {
+    return <SkeletonPage variant="list" />;
   }
 
   return (

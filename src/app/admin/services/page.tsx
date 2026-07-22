@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { formatNaira } from "@/lib/money";
 import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { cn } from "@/lib/cn";
@@ -22,16 +23,18 @@ type Catalog = {
 };
 
 export default function AdminServicesPage() {
+  const [loading, setLoading] = useState(true);
   const [data, setData] = useState<Catalog | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/services")
       .then((r) => r.json())
       .then(setData)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  if (!data) return <p className="text-xs text-ink/50">Loading services…</p>;
+  if (!data || loading) return <SkeletonPage variant="admin" />;
 
   return (
     <div className="space-y-4 lg:space-y-6">

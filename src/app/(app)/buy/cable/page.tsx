@@ -11,6 +11,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { ConfirmPurchaseSheet } from "@/components/buy/ConfirmPurchaseSheet";
 import { ReceiptCard } from "@/components/buy/ReceiptCard";
 import { formatNaira } from "@/lib/money";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
 
 type Pkg = { code: string; name: string; amount: number };
@@ -31,6 +32,7 @@ export default function CablePage() {
   const [trail, setTrail] = useState<{ at: string; status: string; note?: string }[]>([]);
   const [orderRef, setOrderRef] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   const biller = useMemo(
@@ -52,7 +54,9 @@ export default function CablePage() {
         if (list[0].packages?.[0]) setPackageCode(list[0].packages[0].code);
       }
       if (w.balance != null) setBalance(w.balance);
-    });
+    })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -134,6 +138,10 @@ export default function CablePage() {
       setStatus("delivered");
       router.refresh();
     });
+  }
+
+  if (loading) {
+    return <SkeletonPage variant="form" />;
   }
 
   const form = (

@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Reveal } from "@/components/motion/Reveal";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -26,12 +27,15 @@ export default function AdminWalletsPage() {
   const [reason, setReason] = useState("Support goodwill");
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   function load() {
     fetch("/api/admin/wallets")
       .then((r) => r.json())
-      .then((d) => setRequests(d.requests || []));
+      .then((d) => setRequests(d.requests || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -74,6 +78,10 @@ export default function AdminWalletsPage() {
       setMsg(`${decision} · ${data.orderRef || data.status}`);
       load();
     });
+  }
+
+  if (loading) {
+    return <SkeletonPage variant="admin" />;
   }
 
   return (

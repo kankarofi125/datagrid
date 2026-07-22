@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { cn } from "@/lib/cn";
@@ -20,6 +21,7 @@ export default function AdminGatewaysPage() {
   const [gateways, setGateways] = useState<Gateway[]>([]);
   const [paymentMode, setPaymentMode] = useState("simulate");
   const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   const load = useCallback(() => {
@@ -29,7 +31,8 @@ export default function AdminGatewaysPage() {
         setGateways(d.gateways || []);
         setPaymentMode(d.paymentMode || "simulate");
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -51,6 +54,10 @@ export default function AdminGatewaysPage() {
       setMsg(`${g.name} ${!g.enabled ? "enabled" : "disabled"}`);
       load();
     });
+  }
+
+  if (loading) {
+    return <SkeletonPage variant="admin" />;
   }
 
   return (

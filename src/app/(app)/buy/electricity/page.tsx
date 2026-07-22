@@ -11,6 +11,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { ConfirmPurchaseSheet } from "@/components/buy/ConfirmPurchaseSheet";
 import { TokenReceipt } from "@/components/buy/TokenReceipt";
 import { formatNaira } from "@/lib/money";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
 
 type Biller = { id: string; code: string; name: string };
@@ -33,6 +34,7 @@ export default function ElectricityPage() {
   const [orderRef, setOrderRef] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   const n = Number(amount) || 0;
@@ -46,7 +48,9 @@ export default function ElectricityPage() {
       setBillers(b.billers || []);
       if (b.billers?.[0]) setDisco(b.billers[0].code);
       if (w.balance != null) setBalance(w.balance);
-    });
+    })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   async function validateMeter() {
@@ -124,6 +128,10 @@ export default function ElectricityPage() {
       setStatus("delivered");
       router.refresh();
     });
+  }
+
+  if (loading) {
+    return <SkeletonPage variant="form" />;
   }
 
   const form = (

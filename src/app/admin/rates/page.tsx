@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Reveal } from "@/components/motion/Reveal";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -19,12 +20,15 @@ type Plan = {
 export default function AdminRatesPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
   function load() {
     fetch("/api/admin/plans")
       .then((r) => r.json())
-      .then((d) => setPlans(d.plans || []));
+      .then((d) => setPlans(d.plans || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -46,6 +50,10 @@ export default function AdminRatesPage() {
       setMsg("Saved");
       load();
     });
+  }
+
+  if (loading) {
+    return <SkeletonPage variant="admin" />;
   }
 
   return (
