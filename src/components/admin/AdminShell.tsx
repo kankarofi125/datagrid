@@ -6,6 +6,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { ADMIN_NAV, type AdminNavItem } from "@/components/admin/admin-nav";
 import { Sheet } from "@/components/ui/Sheet";
+import { AdminProviders } from "@/components/providers/AppProviders";
+import {
+  RealtimeDot,
+  useRealtimeStatus,
+} from "@/components/realtime/RealtimeProvider";
 
 export function AdminShell({
   children,
@@ -86,14 +91,15 @@ export function AdminShell({
   );
 
   return (
+    <AdminProviders>
     <div className="min-h-screen bg-grid-paper lg:flex">
       <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-r lg:border-white/10 lg:bg-green-deep lg:text-paper">
         <div className="border-b border-white/10 px-5 py-5">
           <Link href="/admin" className="font-display text-xl text-amber">
             DG ERP
           </Link>
-          <p className="font-mono-num mt-1 text-[10px] tracking-widest text-paper/40">
-            CONTROL ROOM
+          <p className="font-mono-num mt-1 flex items-center gap-2 text-[10px] tracking-widest text-paper/40">
+            CONTROL ROOM <AdminLiveHint />
           </p>
           <p className="mt-2 truncate text-xs text-paper/55">
             {name || username || phone}
@@ -176,5 +182,16 @@ export function AdminShell({
         </div>
       </main>
     </div>
+    </AdminProviders>
+  );
+}
+
+function AdminLiveHint() {
+  const { connected } = useRealtimeStatus();
+  return (
+    <span className="inline-flex items-center gap-1 font-mono-num normal-case tracking-normal text-paper/50">
+      <RealtimeDot />
+      {connected ? "live" : "…"}
+    </span>
   );
 }

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { cached, CacheKeys, CacheTags, invalidate } from "@/lib/cache";
+import { publishRealtime, userChannel } from "@/lib/realtime";
 
 export async function GET() {
   const session = await requireUser();
@@ -8,24 +10,34 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const items = await prisma.notification.findMany({
-    where: { userId: session.userId, channel: "IN_APP" },
-    orderBy: { createdAt: "desc" },
-    take: 30,
-  });
+  const userId = session.userId;
+  const data = await cached(
+    CacheKeys.notifications(userId),
+    async () => {
+      const items = await prisma.notification.findMany({
+        where: { userId, channel: "IN_APP" },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+      });
+      const unread = items.filter((n) => n.status === "UNREAD").length;
+      return {
+        unread,
+        notifications: items.map((n) => ({
+          id: n.id,
+          title: n.title,
+          body: n.body,
+          status: n.status,
+          createdAt: n.createdAt,
+          transactionId: n.transactionId,
+        })),
+        cachedAt: new Date().toISOString(),
+      };
+    },
+    { ttl: 20, tags: [CacheTags.notifications(userId)] }
+  );
 
-  const unread = items.filter((n) => n.status === "UNREAD").length;
-
-  return NextResponse.json({
-    unread,
-    notifications: items.map((n) => ({
-      id: n.id,
-      title: n.title,
-      body: n.body,
-      status: n.status,
-      createdAt: n.createdAt,
-      transactionId: n.transactionId,
-    })),
+  return NextResponse.json(data, {
+    headers: { "X-Cache-Layer": "upstash" },
   });
 }
 
@@ -41,6 +53,10 @@ export async function PATCH(req: Request) {
       where: { userId: session.userId, status: "UNREAD" },
       data: { status: "READ" },
     });
+    await invalidate(CacheKeys.notifications(session.userId));
+    await publishRealtime(userChannel(session.userId), "notifications:read", {
+      all: true,
+    });
     return NextResponse.json({ ok: true });
   }
 
@@ -50,6 +66,10 @@ export async function PATCH(req: Request) {
   await prisma.notification.updateMany({
     where: { id, userId: session.userId },
     data: { status: "READ" },
+  });
+  await invalidate(CacheKeys.notifications(session.userId));
+  await publishRealtime(userChannel(session.userId), "notifications:read", {
+    id,
   });
   return NextResponse.json({ ok: true });
 }

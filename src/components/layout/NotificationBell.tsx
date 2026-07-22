@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { Sheet } from "@/components/ui/Sheet";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Note = {
   id: string;
@@ -17,6 +19,7 @@ export function NotificationBell({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(() => {
     fetch("/api/notifications")
@@ -24,15 +27,22 @@ export function NotificationBell({ className }: { className?: string }) {
       .then((d) => {
         setUnread(d.unread || 0);
         setItems(d.notifications || []);
+        setLoading(false);
       })
-      .catch(() => {});
+      .catch(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     load();
-    const id = setInterval(load, 30000);
+    const id = setInterval(load, 45000);
     return () => clearInterval(id);
   }, [load]);
+
+  useRealtimeRefresh("me", load, [
+    "tx:delivered",
+    "notifications:read",
+    "invalidate",
+  ]);
 
   async function markAll() {
     await fetch("/api/notifications", {
@@ -86,7 +96,16 @@ export function NotificationBell({ className }: { className?: string }) {
         </div>
 
         <ul className="max-h-[min(52vh,380px)] space-y-0 overflow-y-auto overscroll-contain rounded-xl border border-line">
-          {items.length === 0 ? (
+          {loading ? (
+            <li className="space-y-2 p-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-1.5 border-b border-line pb-2 last:border-0">
+                  <Skeleton className="h-3 w-2/5" />
+                  <Skeleton className="h-2.5 w-full" />
+                </div>
+              ))}
+            </li>
+          ) : items.length === 0 ? (
             <li className="px-3 py-10 text-center text-sm text-ink/50">
               No notifications yet.
             </li>

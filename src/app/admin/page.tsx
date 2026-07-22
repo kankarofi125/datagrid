@@ -6,6 +6,8 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { formatNaira } from "@/lib/money";
 import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { cn } from "@/lib/cn";
+import { SkeletonPage } from "@/components/ui/Skeleton";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 
 type Analytics = {
   gmv: number;
@@ -40,15 +42,21 @@ const QUICK = [
 export default function AdminCommandPage() {
   const [data, setData] = useState<Analytics | null>(null);
 
-  useEffect(() => {
+  function load() {
     fetch("/api/admin/analytics?days=30")
       .then((r) => r.json())
       .then(setData)
       .catch(() => {});
+  }
+
+  useEffect(() => {
+    load();
   }, []);
 
+  useRealtimeRefresh("admin:ops", load, ["tx:delivered", "invalidate"]);
+
   if (!data) {
-    return <p className="text-xs text-ink/50">Loading command center…</p>;
+    return <SkeletonPage variant="admin" />;
   }
 
   return (

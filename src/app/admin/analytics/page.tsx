@@ -12,6 +12,8 @@ import {
 import { formatNaira } from "@/lib/money";
 import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { cn } from "@/lib/cn";
+import { SkeletonPage } from "@/components/ui/Skeleton";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 
 type Daily = {
   date: string;
@@ -44,13 +46,20 @@ export default function AdminAnalyticsPage() {
   const [days, setDays] = useState(30);
   const [data, setData] = useState<Analytics | null>(null);
 
-  useEffect(() => {
-    setData(null);
+  function load() {
     fetch(`/api/admin/analytics?days=${days}`)
       .then((r) => r.json())
       .then(setData)
       .catch(() => {});
+  }
+
+  useEffect(() => {
+    setData(null);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days]);
+
+  useRealtimeRefresh("admin:ops", load, ["tx:delivered", "invalidate"]);
 
   const gmvSeries = useMemo(
     () => (data?.daily || []).map((d) => ({ label: d.label, value: d.gmv })),
@@ -88,12 +97,7 @@ export default function AdminAnalyticsPage() {
   );
 
   if (!data) {
-    return (
-      <div className="space-y-4">
-        <AdminPageHeader kicker="INSIGHTS" title="ANALYTICS." />
-        <p className="text-xs text-ink/50">Loading charts…</p>
-      </div>
-    );
+    return <SkeletonPage variant="analytics" />;
   }
 
   const delta = data.gmvDeltaPct;

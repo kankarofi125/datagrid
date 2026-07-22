@@ -5,6 +5,7 @@ import { AppTopBar } from "@/components/layout/AppTopBar";
 import { DesktopSidebar } from "@/components/layout/DesktopSidebar";
 import { DesktopTopBar } from "@/components/layout/DesktopTopBar";
 import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
+import { AppProviders } from "@/components/providers/AppProviders";
 
 /**
  * Single content tree; chrome adapts:
@@ -21,33 +22,35 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-paper lg:flex">
-      {/* Desktop sidebar — sticky full height */}
-      <div className="hidden lg:sticky lg:top-0 lg:block lg:h-screen lg:shrink-0">
-        <DesktopSidebar balance={balance} phone={phone} />
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile top bar */}
-        <AppTopBar balance={balance} phone={phone} />
-        {/* Desktop top bar */}
-        <div className="hidden lg:block">
-          <DesktopTopBar balance={balance} phone={phone} title="OPERATOR CONSOLE" />
+    <AppProviders>
+      <div className="min-h-screen bg-paper lg:flex">
+        <div className="hidden lg:sticky lg:top-0 lg:block lg:h-screen lg:shrink-0">
+          <DesktopSidebar balance={balance} phone={phone} />
         </div>
 
-        <main
-          id="main"
-          className="flex-1 pb-tabbar lg:bg-grid-paper lg:pb-0"
-        >
-          {/* Mobile: phone-width column · Desktop: full console width */}
-          <div className="mx-auto w-full max-w-lg lg:max-w-[1400px]">
-            {children}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <AppTopBar balance={balance} phone={phone} />
+          <div className="hidden lg:block">
+            <DesktopTopBar
+              balance={balance}
+              phone={phone}
+              title="OPERATOR CONSOLE"
+            />
           </div>
-        </main>
-      </div>
 
-      <BottomTabBar />
-      <WhatsAppFab />
-    </div>
+          <main
+            id="main"
+            className="flex-1 pb-tabbar lg:bg-grid-paper lg:pb-0"
+          >
+            <div className="mx-auto w-full max-w-lg lg:max-w-[1400px]">
+              {children}
+            </div>
+          </main>
+        </div>
+
+        <BottomTabBar />
+        <WhatsAppFab />
+      </div>
+    </AppProviders>
   );
 }

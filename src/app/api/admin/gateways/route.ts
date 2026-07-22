@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminGate } from "@/lib/admin";
 import { prisma } from "@/lib/db";
+import { cached, CacheKeys, CacheTags, invalidate } from "@/lib/cache";
 
 const GATEWAY_KEYS = [
   "gateway.paystack",
@@ -35,35 +36,49 @@ export async function GET() {
   const { error } = await adminGate();
   if (error) return error;
 
-  const rows = await prisma.setting.findMany({
-    where: { key: { in: [...GATEWAY_KEYS] } },
+  const data = await cached(
+    CacheKeys.adminGateways(),
+    async () => {
+      const rows = await prisma.setting.findMany({
+        where: { key: { in: [...GATEWAY_KEYS] } },
+      });
+      const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+
+      const envHints = {
+        paystack: Boolean(process.env.PAYSTACK_SECRET_KEY),
+        flutterwave: Boolean(process.env.FLUTTERWAVE_SECRET_KEY),
+        monnify: Boolean(process.env.MONNIFY_API_KEY),
+      };
+
+      const gateways = GATEWAY_KEYS.map((key) => {
+        let cfg = { ...DEFAULTS[key] } as Record<string, unknown>;
+        try {
+          if (map[key]) cfg = { ...cfg, ...JSON.parse(map[key]) };
+        } catch {
+          /* keep default */
+        }
+        const code = key.split(".")[1];
+        return {
+          key,
+          code,
+          ...cfg,
+          envConfigured: envHints[code as keyof typeof envHints] || false,
+          paymentMode: process.env.PAYMENT_MODE || "simulate",
+        };
+      });
+
+      return {
+        gateways,
+        paymentMode: process.env.PAYMENT_MODE || "simulate",
+        cachedAt: new Date().toISOString(),
+      };
+    },
+    { ttl: 60, tags: [CacheTags.admin] }
+  );
+
+  return NextResponse.json(data, {
+    headers: { "X-Cache-Layer": "upstash" },
   });
-  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-
-  const envHints = {
-    paystack: Boolean(process.env.PAYSTACK_SECRET_KEY),
-    flutterwave: Boolean(process.env.FLUTTERWAVE_SECRET_KEY),
-    monnify: Boolean(process.env.MONNIFY_API_KEY),
-  };
-
-  const gateways = GATEWAY_KEYS.map((key) => {
-    let cfg = { ...DEFAULTS[key] } as Record<string, unknown>;
-    try {
-      if (map[key]) cfg = { ...cfg, ...JSON.parse(map[key]) };
-    } catch {
-      /* keep default */
-    }
-    const code = key.split(".")[1];
-    return {
-      key,
-      code,
-      ...cfg,
-      envConfigured: envHints[code as keyof typeof envHints] || false,
-      paymentMode: process.env.PAYMENT_MODE || "simulate",
-    };
-  });
-
-  return NextResponse.json({ gateways, paymentMode: process.env.PAYMENT_MODE || "simulate" });
 }
 
 export async function PATCH(req: Request) {
@@ -106,6 +121,9 @@ export async function PATCH(req: Request) {
       after: JSON.stringify(next),
     },
   });
+
+  await invalidate(CacheKeys.adminGateways());
+  await invalidate([CacheTags.admin], true);
 
   return NextResponse.json({ ok: true, gateway: { key, ...next } });
 }

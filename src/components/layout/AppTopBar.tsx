@@ -3,6 +3,7 @@
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { MobileAppMenu } from "@/components/layout/MobileAppMenu";
 import { useLocalClock } from "@/hooks/useLocalClock";
+import { RealtimeDot } from "@/components/realtime/RealtimeProvider";
 
 export function AppTopBar({ balance, phone }: { balance: number; phone: string }) {
   const clock = useLocalClock();
@@ -13,7 +14,8 @@ export function AppTopBar({ balance, phone }: { balance: number; phone: string }
         <div className="flex min-w-0 items-center gap-2">
           <MobileAppMenu balance={balance} phone={phone} />
           <div className="min-w-0">
-            <p className="font-mono-num truncate text-[10px] tracking-widest text-amber">
+            <p className="font-mono-num flex items-center gap-1.5 truncate text-[10px] tracking-widest text-amber">
+              <RealtimeDot />
               <span className="uppercase">{clock.place || "LOCAL"}</span>{" "}
               {clock.time || "—"}
               {clock.zoneAbbr ? ` ${clock.zoneAbbr}` : ""}

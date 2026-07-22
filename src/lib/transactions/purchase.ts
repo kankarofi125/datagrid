@@ -4,6 +4,8 @@ import { detectNetwork, toLocalPhone } from "@/lib/phone";
 import { debitWallet, refundToWallet, WalletError } from "@/lib/wallet/service";
 import { vtuRouter } from "@/lib/vtu/router";
 import { verifyPin } from "@/lib/auth/pin";
+import { invalidate, CacheKeys, CacheTags } from "@/lib/cache";
+import { publishRealtime, userChannel, adminChannel } from "@/lib/realtime";
 import {
   awardPurchaseCommission,
   trackVolumeAndMaybePromote,
@@ -252,6 +254,29 @@ export async function purchaseWithWallet(input: PurchaseInput) {
       body: `${planName || formatService(input.service)} to ${local} · ${orderRef}`,
     },
   });
+
+  // Cache bust + realtime fan-out
+  try {
+    await invalidate([
+      CacheKeys.wallet(input.userId),
+      CacheKeys.notifications(input.userId),
+      CacheKeys.analytics(7),
+      CacheKeys.analytics(14),
+      CacheKeys.analytics(30),
+    ]);
+    await invalidate([CacheTags.analytics, CacheTags.admin], true);
+    await publishRealtime(userChannel(input.userId), "tx:delivered", {
+      orderRef,
+      service: input.service,
+      amount: Number(delivered.amount),
+    });
+    await publishRealtime(adminChannel(), "tx:delivered", {
+      orderRef,
+      service: input.service,
+    });
+  } catch {
+    /* non-fatal */
+  }
 
   return {
     ok: true as const,

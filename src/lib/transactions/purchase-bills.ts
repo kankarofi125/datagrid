@@ -243,6 +243,28 @@ async function runWalletPurchase(opts: {
     },
   });
 
+  try {
+    const { invalidate, CacheKeys, CacheTags } = await import("@/lib/cache");
+    const { publishRealtime, userChannel, adminChannel } = await import(
+      "@/lib/realtime"
+    );
+    await invalidate([
+      CacheKeys.wallet(opts.userId),
+      CacheKeys.notifications(opts.userId),
+      CacheKeys.analytics(7),
+      CacheKeys.analytics(14),
+      CacheKeys.analytics(30),
+    ]);
+    await invalidate([CacheTags.analytics, CacheTags.admin], true);
+    await publishRealtime(userChannel(opts.userId), "tx:delivered", {
+      orderRef,
+      service: opts.service,
+    });
+    await publishRealtime(adminChannel(), "tx:delivered", { orderRef });
+  } catch {
+    /* non-fatal */
+  }
+
   return {
     ok: true as const,
     transaction: serializeTx(delivered),
