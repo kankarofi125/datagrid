@@ -236,14 +236,22 @@ async function main() {
   const userPhone = "+2348030000000";
   const pinHash = await bcrypt.hash("1234", 10);
 
+  const adminPasswordHash = await bcrypt.hash("admin1234", 10);
   const admin = await prisma.user.upsert({
     where: { phone: adminPhone },
-    update: {},
+    update: {
+      username: "admin",
+      passwordHash: adminPasswordHash,
+      role: UserRole.ADMIN,
+      name: "DataGrid Admin",
+    },
     create: {
       phone: adminPhone,
       phoneLocal: "08000000001",
       name: "DataGrid Admin",
       role: UserRole.ADMIN,
+      username: "admin",
+      passwordHash: adminPasswordHash,
       referralCode: "DGADMIN",
       pinHash,
     },

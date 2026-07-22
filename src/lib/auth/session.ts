@@ -5,6 +5,8 @@ export type SessionData = {
   userId?: string;
   phone?: string;
   role?: string;
+  /** Present when logged in via /auth/admin (username/password) */
+  adminUsername?: string;
   isLoggedIn: boolean;
 };
 
