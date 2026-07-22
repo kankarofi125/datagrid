@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { adminGate } from "@/lib/admin";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
-import { SimulatorProvider } from "@/lib/vtu/simulator";
 
 export async function GET() {
   const { error } = await adminGate();
@@ -82,24 +81,9 @@ export async function POST(req: Request) {
   const action = String(body.action || "health");
 
   if (action === "health") {
-    const t0 = Date.now();
-    const status = await SimulatorProvider.status();
-    const provider = await prisma.provider.findUnique({ where: { code: "SIMULATOR" } });
-    if (provider) {
-      await prisma.provider.update({
-        where: { id: provider.id },
-        data: { lastHealth: new Date(), successRate: status.ok ? 100 : 0 },
-      });
-      await prisma.providerLog.create({
-        data: {
-          providerId: provider.id,
-          action: "status",
-          success: status.ok,
-          latencyMs: Date.now() - t0,
-        },
-      });
-    }
-    return NextResponse.json({ ok: true, status });
+    const { runProviderHealthChecks } = await import("@/lib/provider-health");
+    const result = await runProviderHealthChecks();
+    return NextResponse.json({ ok: true, ...result });
   }
 
   if (action === "simulate_failure") {

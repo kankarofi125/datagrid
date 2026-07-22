@@ -8,9 +8,21 @@ export type RealtimeMessage = {
   at: string;
 };
 
+type Envelope = {
+  type: string;
+  data?: unknown;
+  payload?: Record<string, unknown>;
+  at?: string;
+};
+
+function resolveChannel(channel: string): string {
+  // "me" is resolved server-side on SSE; for WS we keep as-is until client knows userId
+  return channel;
+}
+
 /**
- * Server-Sent Events client (Vercel-friendly "websocket" alternative).
- * Connects to /api/realtime/stream?channel=…
+ * Prefer dedicated WebSocket gateway (Fly/Railway) when
+ * NEXT_PUBLIC_REALTIME_WS_URL is set; otherwise SSE on Vercel.
  */
 export function useRealtime(
   channel: string | null | undefined,
@@ -19,30 +31,103 @@ export function useRealtime(
   const [connected, setConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<RealtimeMessage | null>(null);
   const [seq, setSeq] = useState(0);
+  const [transport, setTransport] = useState<"ws" | "sse" | "none">("none");
   const handler = useRef(onEvent);
   handler.current = onEvent;
 
   useEffect(() => {
     if (!channel || typeof window === "undefined") return;
 
+    const wsBase = process.env.NEXT_PUBLIC_REALTIME_WS_URL;
+    let cleaned = false;
+
+    const emitEvent = (msg: RealtimeMessage) => {
+      setLastEvent(msg);
+      handler.current?.(msg);
+    };
+
+    // —— WebSocket path ——
+    if (wsBase) {
+      setTransport("ws");
+      const ch = resolveChannel(channel);
+      const url = `${wsBase.replace(/\/$/, "")}/?channel=${encodeURIComponent(ch)}`;
+      let ws: WebSocket | null = null;
+      let retry: ReturnType<typeof setTimeout> | undefined;
+      let pingTimer: ReturnType<typeof setInterval> | undefined;
+
+      const connect = () => {
+        if (cleaned) return;
+        ws = new WebSocket(url);
+
+        ws.onopen = () => {
+          setConnected(true);
+          pingTimer = setInterval(() => {
+            if (ws?.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: "ping" }));
+            }
+          }, 20000);
+        };
+
+        ws.onmessage = (ev) => {
+          try {
+            const msg = JSON.parse(String(ev.data)) as Envelope;
+            if (msg.type === "ready" || msg.type === "pong" || msg.type === "ping") {
+              setConnected(true);
+              return;
+            }
+            if (msg.type === "event" && msg.data && typeof msg.data === "object") {
+              const data = msg.data as RealtimeMessage;
+              if (data.type) emitEvent(data);
+              return;
+            }
+            // bare RealtimeMessage shape
+            if (msg.at && msg.type) {
+              emitEvent({
+                type: msg.type,
+                payload: msg.payload,
+                at: msg.at,
+              });
+            }
+          } catch {
+            /* ignore */
+          }
+        };
+
+        ws.onerror = () => setConnected(false);
+        ws.onclose = () => {
+          setConnected(false);
+          if (pingTimer) clearInterval(pingTimer);
+          if (!cleaned) retry = setTimeout(connect, 2500);
+        };
+      };
+
+      connect();
+
+      return () => {
+        cleaned = true;
+        if (retry) clearTimeout(retry);
+        if (pingTimer) clearInterval(pingTimer);
+        ws?.close();
+        setConnected(false);
+      };
+    }
+
+    // —— SSE fallback (Vercel) ——
+    setTransport("sse");
     const url = `/api/realtime/stream?channel=${encodeURIComponent(channel)}`;
     const es = new EventSource(url);
 
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
-
     es.addEventListener("ready", () => setConnected(true));
-
     es.addEventListener("event", (e) => {
       try {
         const data = JSON.parse((e as MessageEvent).data) as RealtimeMessage;
-        setLastEvent(data);
-        handler.current?.(data);
+        emitEvent(data);
       } catch {
         /* ignore */
       }
     });
-
     es.addEventListener("seq", (e) => {
       try {
         const data = JSON.parse((e as MessageEvent).data) as { seq: number };
@@ -51,7 +136,6 @@ export function useRealtime(
         /* ignore */
       }
     });
-
     es.addEventListener("ping", () => setConnected(true));
 
     return () => {
@@ -60,10 +144,10 @@ export function useRealtime(
     };
   }, [channel]);
 
-  return { connected, lastEvent, seq };
+  return { connected, lastEvent, seq, transport };
 }
 
-/** Refetch callback when realtime seq advances or matching event types arrive */
+/** Refetch when matching realtime events arrive */
 export function useRealtimeRefresh(
   channel: string | null | undefined,
   refresh: () => void,

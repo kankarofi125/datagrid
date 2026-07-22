@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
+import { authorizeCron } from "@/lib/cron-auth";
 import { runDueSchedules } from "@/lib/schedules";
 
 /**
- * Cron endpoint — call with header x-cron-secret or in simulate mode without secret.
- * In production set CRON_SECRET.
+ * Manual / legacy cron endpoint.
+ * Prefer /api/cron/schedules (Vercel Cron GET).
  */
 export async function POST(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  const header = req.headers.get("x-cron-secret");
-  const isDev = process.env.NODE_ENV !== "production" || process.env.PAYMENT_MODE === "simulate";
-
-  if (secret && header !== secret && !isDev) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = authorizeCron(req);
+  if (denied) return denied;
 
   const results = await runDueSchedules(50);
   return NextResponse.json({
@@ -20,4 +16,8 @@ export async function POST(req: Request) {
     processed: results.length,
     results,
   });
+}
+
+export async function GET(req: Request) {
+  return POST(req);
 }

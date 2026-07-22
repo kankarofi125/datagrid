@@ -1,0 +1,11 @@
+# Railway: create a new service from this directory (services/realtime-ws)
+# Set env: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, REALTIME_WS_SECRET
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"

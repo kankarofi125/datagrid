@@ -10,29 +10,50 @@ const channelKey = (channel: string) => `rt:ch:${channel}`;
 
 /**
  * Publish an event onto a Redis list channel (works with REST).
- * Subscribers poll via SSE /api/realtime/stream?channel=…
+ * Subscribers: SSE /api/realtime/stream OR Fly/Railway WebSocket service.
+ * Also fans out to the WS service if REALTIME_WS_INTERNAL_URL is set.
  */
 export async function publishRealtime(
   channel: string,
   type: string,
   payload?: Record<string, unknown>
 ) {
-  const redis = getRedis();
-  if (!redis) return;
   const event: RealtimeEvent = {
     type,
     payload,
     at: new Date().toISOString(),
   };
-  try {
-    const key = channelKey(channel);
-    await redis.lpush(key, JSON.stringify(event));
-    await redis.ltrim(key, 0, 99);
-    await redis.expire(key, 60 * 60);
-    // bump sequence so clients can detect new data without full scan
-    await redis.incr(`rt:seq:${channel}`);
-  } catch (e) {
-    console.warn("[realtime] publish failed", channel, e);
+
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const key = channelKey(channel);
+      await redis.lpush(key, JSON.stringify(event));
+      await redis.ltrim(key, 0, 99);
+      await redis.expire(key, 60 * 60);
+      await redis.incr(`rt:seq:${channel}`);
+    } catch (e) {
+      console.warn("[realtime] redis publish failed", channel, e);
+    }
+  }
+
+  // Push immediately to dedicated WebSocket service (Fly/Railway)
+  const wsInternal = process.env.REALTIME_WS_INTERNAL_URL;
+  const secret =
+    process.env.REALTIME_WS_SECRET || process.env.CRON_SECRET || "";
+  if (wsInternal) {
+    try {
+      await fetch(`${wsInternal.replace(/\/$/, "")}/publish`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-realtime-secret": secret,
+        },
+        body: JSON.stringify({ channel, event }),
+      });
+    } catch (e) {
+      console.warn("[realtime] ws fanout failed", e);
+    }
   }
 }
 
