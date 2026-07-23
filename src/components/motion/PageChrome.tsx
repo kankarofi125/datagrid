@@ -44,7 +44,7 @@ export function MotionPageHeader({
   return (
     <div
       className={cn(
-        "mb-8 flex flex-col gap-4 lg:mb-10 lg:flex-row lg:items-end lg:justify-between",
+        "mb-7 flex flex-col gap-4 lg:mb-8 lg:flex-row lg:items-end lg:justify-between",
         className
       )}
     >
@@ -57,7 +57,7 @@ export function MotionPageHeader({
           </HeroEnter>
         )}
         <HeroEnter delay={70}>
-          <h1 className="font-display mt-1.5 text-3xl text-ink lg:text-5xl xl:text-6xl">
+          <h1 className="font-display mt-1.5 text-3xl text-ink lg:text-4xl xl:text-5xl">
             {title}
           </h1>
         </HeroEnter>

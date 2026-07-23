@@ -82,7 +82,7 @@ export async function GET(req: Request) {
           } else {
             send("ping", { t: Date.now(), redis: redisEnabled() });
           }
-        } catch (e) {
+        } catch {
           send("error", { message: "poll failed" });
         }
       };

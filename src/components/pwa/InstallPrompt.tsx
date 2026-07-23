@@ -19,6 +19,8 @@ export function InstallPrompt() {
     if (typeof window === "undefined") return;
     const visits = Number(localStorage.getItem("dg_visits") || "0") + 1;
     localStorage.setItem("dg_visits", String(visits));
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    let frame = 0;
 
     const onBip = (e: Event) => {
       e.preventDefault();
@@ -27,13 +29,20 @@ export function InstallPrompt() {
     };
     window.addEventListener("beforeinstallprompt", onBip);
 
-    // iOS / already installed: soft hint on 2nd visit
-    if (visits >= 2 && !window.matchMedia("(display-mode: standalone)").matches) {
+    // iOS does not fire beforeinstallprompt, so show a soft install hint there only.
+    if (
+      isIos &&
+      visits >= 2 &&
+      !window.matchMedia("(display-mode: standalone)").matches
+    ) {
       const dismissed = localStorage.getItem("dg_install_dismissed");
-      if (!dismissed) setShow(true);
+      if (!dismissed) frame = requestAnimationFrame(() => setShow(true));
     }
 
-    return () => window.removeEventListener("beforeinstallprompt", onBip);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBip);
+      cancelAnimationFrame(frame);
+    };
   }, []);
 
   if (!show) return null;
@@ -43,20 +52,38 @@ export function InstallPrompt() {
 
   return (
     <div
-      className="fixed inset-x-3 bottom-20 z-50 rounded-xl border border-line bg-green-deep p-4 text-paper shadow-xl lg:bottom-6 lg:left-auto lg:right-8 lg:max-w-sm"
+      className="fixed inset-x-3 bottom-24 z-50 rounded-2xl border border-white/10 bg-green-deep p-3.5 text-paper shadow-2xl lg:bottom-6 lg:left-auto lg:right-8 lg:max-w-[340px] lg:p-4"
       role="dialog"
       aria-label="Install DataGrid"
     >
-      <p className="font-mono-num text-[10px] tracking-widest text-amber">PWA · 2ND VISIT</p>
-      <p className="mt-1 font-semibold">Install DataGrid</p>
-      <p className="mt-1 text-sm text-paper/70">
-        Home-screen app shell. Faster on 2G/3G. Works offline for cached pages.
-      </p>
-      <div className="mt-3 flex gap-2">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber font-display text-xs text-[#2c1b02]">
+          DG
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">Install DataGrid</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-paper/65">
+            Faster access and offline receipts.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setShow(false);
+            localStorage.setItem("dg_install_dismissed", "1");
+          }}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-paper/45 hover:bg-white/5 hover:text-paper"
+          aria-label="Dismiss install prompt"
+        >
+          ×
+        </button>
+      </div>
+      <div className="mt-3 flex gap-2 pl-[52px]">
         {deferred && (
           <Button
             size="sm"
             variant="amber"
+            className="flex-1"
             onClick={async () => {
               await deferred.prompt();
               setShow(false);
@@ -69,7 +96,7 @@ export function InstallPrompt() {
         <Button
           size="sm"
           variant="ghost"
-          className="border-white/20 text-paper"
+          className="flex-1 border-white/20 text-paper"
           onClick={() => {
             setShow(false);
             localStorage.setItem("dg_install_dismissed", "1");

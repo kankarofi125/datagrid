@@ -31,14 +31,21 @@ export function useRealtime(
   const [connected, setConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<RealtimeMessage | null>(null);
   const [seq, setSeq] = useState(0);
-  const [transport, setTransport] = useState<"ws" | "sse" | "none">("none");
   const handler = useRef(onEvent);
-  handler.current = onEvent;
+  const wsBase = process.env.NEXT_PUBLIC_REALTIME_WS_URL;
+  const transport: "ws" | "sse" | "none" = channel
+    ? wsBase
+      ? "ws"
+      : "sse"
+    : "none";
+
+  useEffect(() => {
+    handler.current = onEvent;
+  }, [onEvent]);
 
   useEffect(() => {
     if (!channel || typeof window === "undefined") return;
 
-    const wsBase = process.env.NEXT_PUBLIC_REALTIME_WS_URL;
     let cleaned = false;
 
     const emitEvent = (msg: RealtimeMessage) => {
@@ -48,7 +55,6 @@ export function useRealtime(
 
     // —— WebSocket path ——
     if (wsBase) {
-      setTransport("ws");
       const ch = resolveChannel(channel);
       const url = `${wsBase.replace(/\/$/, "")}/?channel=${encodeURIComponent(ch)}`;
       let ws: WebSocket | null = null;
@@ -113,7 +119,6 @@ export function useRealtime(
     }
 
     // —— SSE fallback (Vercel) ——
-    setTransport("sse");
     const url = `/api/realtime/stream?channel=${encodeURIComponent(channel)}`;
     const es = new EventSource(url);
 
@@ -142,7 +147,7 @@ export function useRealtime(
       es.close();
       setConnected(false);
     };
-  }, [channel]);
+  }, [channel, wsBase]);
 
   return { connected, lastEvent, seq, transport };
 }
@@ -154,7 +159,10 @@ export function useRealtimeRefresh(
   types?: string[]
 ) {
   const refreshRef = useRef(refresh);
-  refreshRef.current = refresh;
+
+  useEffect(() => {
+    refreshRef.current = refresh;
+  }, [refresh]);
 
   const onEvent = useCallback(
     (msg: RealtimeMessage) => {

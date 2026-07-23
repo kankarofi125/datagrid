@@ -9,7 +9,10 @@ export function useLowData() {
   const [lowData, setLowData] = useState(false);
 
   useEffect(() => {
-    setLowData(localStorage.getItem(KEY) === "1");
+    const frame = requestAnimationFrame(() => {
+      setLowData(localStorage.getItem(KEY) === "1");
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   function toggle(on?: boolean) {

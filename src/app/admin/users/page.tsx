@@ -2,8 +2,7 @@
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
-import { Reveal } from "@/components/motion/Reveal";
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { formatNaira } from "@/lib/money";
@@ -27,17 +26,17 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
 
-  function load(query = q) {
+  const load = useCallback((query: string) => {
     fetch(`/api/admin/users?q=${encodeURIComponent(query)}`)
       .then((r) => r.json())
       .then((d) => setUsers(d.users || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }
+  }, []);
 
   useEffect(() => {
     load("");
-  }, []);
+  }, [load]);
 
   function patch(id: string, body: Record<string, unknown>) {
     start(async () => {
@@ -46,7 +45,7 @@ export default function AdminUsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...body }),
       });
-      load();
+      load(q);
     });
   }
 
@@ -64,7 +63,7 @@ export default function AdminUsersPage() {
           onChange={(e) => setQ(e.target.value)}
           mono
         />
-        <Button onClick={() => load()} disabled={pending}>
+        <Button onClick={() => load(q)} disabled={pending}>
           Search
         </Button>
       </div>

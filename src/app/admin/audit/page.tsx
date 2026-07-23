@@ -2,7 +2,6 @@
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
-import { Reveal } from "@/components/motion/Reveal";
 import { useEffect, useState } from "react";
 
 type Log = {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { formatNaira } from "@/lib/money";
 import { DisputeForm } from "@/components/support/DisputeForm";
-import { MotionMobileHeader, MotionPageHeader } from "@/components/motion/PageChrome";
+import { MotionPageHeader } from "@/components/motion/PageChrome";
 import { Reveal, HeroEnter } from "@/components/motion/Reveal";
 import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 

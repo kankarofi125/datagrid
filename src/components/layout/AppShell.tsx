@@ -25,7 +25,7 @@ export function AppShell({
     <AppProviders>
       <div className="min-h-screen bg-paper lg:flex">
         <div className="hidden lg:sticky lg:top-0 lg:block lg:h-screen lg:shrink-0">
-          <DesktopSidebar balance={balance} phone={phone} />
+          <DesktopSidebar />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -40,9 +40,9 @@ export function AppShell({
 
           <main
             id="main"
-            className="flex-1 pb-tabbar lg:bg-grid-paper lg:pb-0"
+            className="flex-1 bg-paper pb-tabbar lg:bg-canvas lg:pb-0"
           >
-            <div className="mx-auto w-full max-w-lg lg:max-w-[1400px]">
+            <div className="mx-auto w-full max-w-lg lg:max-w-[1440px]">
               {children}
             </div>
           </main>

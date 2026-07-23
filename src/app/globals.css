@@ -1,13 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f3f4ec;
-  --ink: #0b231a;
-  --green: #008751;
-  --green-deep: #04291c;
-  --amber: #ffb703;
+  --canvas: #e9e5da;
+  --paper: #f5f3ec;
+  --card: #ffffff;
+  --ink: #0e211a;
+  --ink-muted: #66756d;
+  --green: #168653;
+  --green-deep: #0a2e22;
+  --green-deep-2: #123b2a;
+  --amber: #f2a63d;
   --red: #e5484d;
-  --line: rgba(11, 35, 26, 0.14);
+  --line: rgba(14, 33, 26, 0.1);
   --mtn: #ffcc00;
   --glo: #3dae2b;
   --airtel: #e4002b;
@@ -16,12 +20,14 @@
   --foreground: var(--ink);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-press: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --shadow-card: 0 1px 0 rgba(11, 35, 26, 0.04), 0 12px 32px -16px rgba(11, 35, 26, 0.18);
-  --shadow-lift: 0 2px 0 rgba(11, 35, 26, 0.06), 0 20px 40px -20px rgba(11, 35, 26, 0.28);
+  --shadow-card: 0 1px 0 rgba(14, 33, 26, 0.03), 0 16px 38px -28px rgba(14, 33, 26, 0.3);
+  --shadow-lift: 0 2px 0 rgba(14, 33, 26, 0.04), 0 24px 48px -26px rgba(14, 33, 26, 0.34);
 }
 
 @theme inline {
+  --color-canvas: var(--canvas);
   --color-paper: var(--paper);
+  --color-card: var(--card);
   --color-ink: var(--ink);
   --color-green: var(--green);
   --color-green-deep: var(--green-deep);
@@ -48,14 +54,27 @@ body {
   color: var(--ink);
   font-family: var(--font-instrument), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(242, 166, 61, 0.38);
+  color: var(--ink);
+}
+
+button,
+a {
+  touch-action: manipulation;
 }
 
 /* Blueprint grid — the "grid" in DataGrid */
 .bg-grid {
   background-color: var(--green-deep);
   background-image:
-    linear-gradient(rgba(243, 244, 236, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(243, 244, 236, 0.045) 1px, transparent 1px);
+    linear-gradient(rgba(245, 243, 236, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 243, 236, 0.045) 1px, transparent 1px),
+    linear-gradient(180deg, var(--green-deep-2), var(--green-deep));
   background-size: 40px 40px;
 }
 
@@ -81,17 +100,24 @@ body {
 
 /* ── Surface system (desktop cards) ───────────── */
 .surface {
-  background: var(--paper);
+  background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   box-shadow: var(--shadow-card);
 }
 
 .surface-deep {
   background: var(--green-deep);
-  border: 1px solid rgba(243, 244, 236, 0.08);
-  border-radius: 0.75rem;
+  border: 1px solid rgba(245, 243, 236, 0.08);
+  border-radius: 1rem;
   color: var(--paper);
+}
+
+.wallet-card {
+  background: linear-gradient(180deg, var(--green-deep-2), var(--green-deep));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 24px 52px -32px rgba(10, 46, 34, 0.8);
 }
 
 .surface-interactive {
@@ -271,8 +297,8 @@ body {
 
 /* Focus rings — thin green (never amber/gold on form controls) */
 :focus-visible {
-  outline: 1px solid var(--green);
-  outline-offset: 2px;
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
 }
 
 input:focus-visible,
@@ -283,10 +309,13 @@ select:focus-visible {
 
 /* Button press */
 .pressable {
-  transition: transform 0.12s var(--ease-press);
+  transition:
+    transform 0.14s var(--ease-press),
+    filter 0.14s ease;
 }
 .pressable:active {
   transform: scale(0.97);
+  filter: saturate(0.9);
 }
 
 /* Link underline draw */
@@ -343,7 +372,7 @@ select:focus-visible {
 }
 
 .pb-tabbar {
-  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 @media (min-width: 1024px) {

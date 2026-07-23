@@ -35,9 +35,11 @@ export function Sheet({ open, onClose, title, children, className }: Props) {
 
   useEffect(() => {
     if (!open) {
-      setOffset(0);
-      setDraggingUi(false);
-      return;
+      const frame = requestAnimationFrame(() => {
+        setOffset(0);
+        setDraggingUi(false);
+      });
+      return () => cancelAnimationFrame(frame);
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();

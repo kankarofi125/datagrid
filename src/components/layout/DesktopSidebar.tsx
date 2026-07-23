@@ -3,89 +3,101 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { formatNaira } from "@/lib/money";
 import { APP_NAV } from "@/components/layout/app-nav";
 
-export function DesktopSidebar({
-  balance,
-  phone,
-}: {
-  balance: number;
-  phone: string;
-}) {
+const GROUPS = [
+  { label: "Overview", items: APP_NAV.slice(0, 1) },
+  { label: "Buy services", items: APP_NAV.slice(1, 7) },
+  { label: "Manage", items: APP_NAV.slice(7) },
+];
+
+export function DesktopSidebar() {
   const path = usePathname();
 
   return (
-    <aside className="flex h-full w-[260px] shrink-0 flex-col border-r border-white/10 bg-green-deep text-paper">
-      <div className="border-b border-white/10 px-5 py-5">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded bg-amber font-display text-sm text-ink">
+    <aside className="flex h-full w-[238px] shrink-0 flex-col border-r border-white/8 bg-green-deep text-paper">
+      <div className="px-5 pb-4 pt-5">
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber font-display text-sm text-[#2c1b02] shadow-[0_10px_24px_-14px_rgba(242,166,61,.85)]">
             DG
           </span>
           <div>
             <p className="font-display text-lg tracking-wide">DATAGRID</p>
-            <p className="font-mono-num text-[10px] tracking-widest text-paper/45">
-              CONTROL ROOM
+            <p className="font-mono-num mt-0.5 text-[8px] tracking-[0.18em] text-paper/35">
+              OPERATOR CONSOLE
             </p>
           </div>
         </Link>
       </div>
 
-      <div className="border-b border-white/10 px-5 py-4">
-        <p className="font-mono-num text-[10px] tracking-widest text-amber">WALLET</p>
-        <p className="font-mono-num mt-1 text-2xl font-semibold tabular-nums">
-          {formatNaira(balance)}
-        </p>
-        <p className="mt-1 truncate text-xs text-paper/50">{phone}</p>
-        <Link
-          href="/wallet"
-          className="mt-3 inline-flex font-mono-num text-[10px] tracking-wide text-amber hover:underline"
-        >
-          FUND →
-        </Link>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Desktop primary">
-        <ul className="space-y-0.5">
-          {APP_NAV.map((item) => {
-            const active =
-              path === item.href ||
-              (item.href !== "/dashboard" && path.startsWith(item.href));
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition",
-                    active
-                      ? "bg-white/10 text-amber"
-                      : "text-paper/70 hover:bg-white/5 hover:text-paper"
-                  )}
-                >
-                  <span className="font-mono-num w-5 text-[10px] text-paper/35">
-                    {item.mono}
-                  </span>
-                  <span className="font-medium">{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      <nav className="flex-1 overflow-y-auto px-3 pb-4 pt-2" aria-label="Desktop primary">
+        {GROUPS.map((group, groupIndex) => (
+          <div
+            key={group.label}
+            className={cn(groupIndex > 0 && "mt-5 border-t border-white/8 pt-4")}
+          >
+            <p className="mb-1.5 px-3 font-mono-num text-[8px] font-semibold uppercase tracking-[0.18em] text-paper/28">
+              {group.label}
+            </p>
+            <ul className="space-y-0.5">
+              {group.items.map((item) => {
+                const active =
+                  path === item.href ||
+                  (item.href !== "/dashboard" && path.startsWith(item.href));
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "relative flex min-h-9 items-center gap-3 rounded-xl px-3 text-[13px] transition",
+                        active
+                          ? "bg-white/[0.09] font-semibold text-paper"
+                          : "text-paper/58 hover:bg-white/[0.045] hover:text-paper"
+                      )}
+                    >
+                      {active && (
+                        <span className="absolute left-0 h-4 w-0.5 rounded-r-full bg-amber" />
+                      )}
+                      <span
+                        className={cn(
+                          "font-mono-num w-5 text-[8px]",
+                          active ? "text-amber" : "text-paper/22"
+                        )}
+                      >
+                        {item.mono}
+                      </span>
+                      <span>{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
-      <div className="space-y-2 border-t border-white/10 px-5 py-4">
+      <div className="border-t border-white/8 p-4">
         <Link
-          href="/admin"
-          className="font-mono-num block text-[10px] tracking-wide text-amber/80 hover:text-amber"
+          href="/support"
+          className="flex min-h-10 items-center justify-between rounded-xl bg-white/[0.055] px-3 text-xs font-semibold text-paper/70 transition hover:bg-white/[0.09] hover:text-paper"
         >
-          ADMIN PANEL →
+          Help & support
+          <span className="text-amber" aria-hidden>↗</span>
         </Link>
-        <Link
-          href="/"
-          className="font-mono-num block text-[10px] tracking-wide text-paper/40 hover:text-paper/70"
-        >
-          ← MARKETING SITE
-        </Link>
+        <div className="mt-3 flex items-center justify-between px-1">
+          <Link
+            href="/admin"
+            className="font-mono-num text-[8px] tracking-wider text-amber/70 hover:text-amber"
+          >
+            ADMIN
+          </Link>
+          <Link
+            href="/"
+            className="font-mono-num text-[8px] tracking-wider text-paper/28 hover:text-paper/60"
+          >
+            DATAGRID.NG ↗
+          </Link>
+        </div>
       </div>
     </aside>
   );

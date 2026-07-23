@@ -59,11 +59,6 @@ export default function CablePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (biller?.packages[0]) setPackageCode(biller.packages[0].code);
-    setCustomerName(null);
-  }, [billerCode]); // eslint-disable-line react-hooks/exhaustive-deps
-
   async function validateIUC() {
     setError(null);
     setCustomerName(null);
@@ -151,7 +146,11 @@ export default function CablePage() {
           <button
             key={b.code}
             type="button"
-            onClick={() => setBillerCode(b.code)}
+            onClick={() => {
+              setBillerCode(b.code);
+              setPackageCode(b.packages[0]?.code || "");
+              setCustomerName(null);
+            }}
             className={cn(
               "rounded-lg border px-4 py-2 text-sm font-semibold",
               billerCode === b.code

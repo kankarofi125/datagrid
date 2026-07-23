@@ -45,7 +45,8 @@ export default function AdminTransactionsPage() {
   }, [q, status, service]);
 
   useEffect(() => {
-    load(true);
+    const frame = requestAnimationFrame(() => load(true));
+    return () => cancelAnimationFrame(frame);
   }, [load]);
 
   const filters = (

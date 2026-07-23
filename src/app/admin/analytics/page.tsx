@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import {
   BarChart,
@@ -46,18 +46,20 @@ export default function AdminAnalyticsPage() {
   const [days, setDays] = useState(30);
   const [data, setData] = useState<Analytics | null>(null);
 
-  function load() {
+  const load = useCallback(() => {
     fetch(`/api/admin/analytics?days=${days}`)
       .then((r) => r.json())
       .then(setData)
       .catch(() => {});
-  }
+  }, [days]);
 
   useEffect(() => {
-    setData(null);
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [days]);
+    const frame = requestAnimationFrame(() => {
+      setData(null);
+      load();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [load]);
 
   useRealtimeRefresh("admin:ops", load, ["tx:delivered", "invalidate"]);
 

@@ -55,7 +55,6 @@ export function useBuyData() {
   const local = toLocalPhone(phone);
 
   useEffect(() => {
-    setLoading(true);
     Promise.all([
       fetch("/api/catalog/plans").then((r) => r.json()),
       fetch("/api/wallet").then((r) => r.json()),

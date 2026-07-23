@@ -73,7 +73,8 @@ export default function SchedulesPage() {
   }
 
   useEffect(() => {
-    load(true);
+    const frame = requestAnimationFrame(() => load(true));
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const filteredPlans = network

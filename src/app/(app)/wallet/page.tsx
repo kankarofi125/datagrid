@@ -59,7 +59,10 @@ export default function WalletPage() {
   }, []);
 
   useEffect(() => {
-    refresh(true);
+    const frame = requestAnimationFrame(() => {
+      void refresh(true);
+    });
+    return () => cancelAnimationFrame(frame);
   }, [refresh]);
 
   function fund() {

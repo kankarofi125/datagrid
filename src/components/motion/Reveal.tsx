@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 type Props = {
   children: ReactNode;
@@ -26,17 +27,10 @@ export function Reveal({
 }: Props) {
   const ref = useRef<HTMLElement | null>(null);
   const [visible, setVisible] = useState(false);
-  const [reduced, setReduced] = useState(false);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
-    setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  }, []);
-
-  useEffect(() => {
-    if (reduced) {
-      setVisible(true);
-      return;
-    }
+    if (reduced) return;
     const el = ref.current;
     if (!el) return;
 
@@ -87,20 +81,17 @@ export function HeroEnter({
   delay?: number;
 }) {
   const [on, setOn] = useState(false);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      setOn(true);
-      return;
-    }
+    if (reduced) return;
     const t = requestAnimationFrame(() => setOn(true));
     return () => cancelAnimationFrame(t);
-  }, []);
+  }, [reduced]);
 
   return (
     <div
-      className={cn("hero-enter", on && "hero-enter-on", className)}
+      className={cn("hero-enter", (on || reduced) && "hero-enter-on", className)}
       style={{ "--hero-delay": `${delay}ms` } as CSSProperties}
     >
       {children}

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { Sheet } from "@/components/ui/Sheet";
 import { PinPad } from "@/components/buy/PinPad";

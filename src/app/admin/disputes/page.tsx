@@ -2,7 +2,6 @@
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
-import { Reveal } from "@/components/motion/Reveal";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";

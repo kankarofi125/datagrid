@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 /**
  * Scroll-scrubbed phone story:
@@ -53,16 +54,12 @@ export function ScrollPhoneStory({ className }: { className?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [progress, setProgress] = useState(0);
   const [videoReady, setVideoReady] = useState(false);
-  const [reduced, setReduced] = useState(false);
+  const reduced = useReducedMotion();
 
   const frameIndex = useMemo(() => {
     const max = KEYFRAMES.length - 1;
     return Math.min(max, Math.max(0, Math.round(progress * max)));
   }, [progress]);
-
-  useEffect(() => {
-    setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  }, []);
 
   useEffect(() => {
     const el = sectionRef.current;
