@@ -18,7 +18,14 @@ export async function POST(req: Request) {
     if (!username || !password) {
       return NextResponse.json(
         { error: "Username and password required" },
-        { status: 400 }
+        { status: 400, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    if (username.length > 64 || password.length > 256) {
+      return NextResponse.json(
+        { error: "Invalid credentials" },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
       );
     }
 
@@ -31,12 +38,18 @@ export async function POST(req: Request) {
     });
 
     if (!user?.passwordHash) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Invalid credentials" },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Invalid credentials" },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     await prisma.user.update({
@@ -64,17 +77,23 @@ export async function POST(req: Request) {
     session.isLoggedIn = true;
     await session.save();
 
-    return NextResponse.json({
-      ok: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        role: user.role,
+    return NextResponse.json(
+      {
+        ok: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+        },
       },
-    });
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (err) {
     console.error("[auth/admin/login]", err);
-    return NextResponse.json({ error: "Login failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Login failed" },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
   }
 }
