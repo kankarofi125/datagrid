@@ -1,13 +1,7 @@
-/** ERP navigation — shared mobile + desktop */
-export type AdminNavItem = {
-  href: string;
-  label: string;
-  mono: string;
-  group: string;
-  exact?: boolean;
-};
+import type { ShellNavItem } from "@/components/layout/shell-nav";
 
-export const ADMIN_NAV: AdminNavItem[] = [
+/** ERP navigation — shared mobile + desktop */
+export const ADMIN_NAV = [
   { href: "/admin", label: "Command", mono: "01", exact: true, group: "Overview" },
   { href: "/admin/analytics", label: "Analytics", mono: "02", group: "Overview" },
   { href: "/admin/users", label: "Users", mono: "03", group: "People" },
@@ -21,4 +15,4 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin/integrations", label: "Integrations", mono: "11", group: "Integrations" },
   { href: "/admin/settings", label: "System settings", mono: "12", group: "System" },
   { href: "/admin/audit", label: "Audit log", mono: "13", group: "System" },
-];
+] satisfies readonly ShellNavItem[];

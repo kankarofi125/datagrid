@@ -130,29 +130,29 @@ export default function AgentPage() {
             createKey();
           }}
         >
-        <CardHeading kicker="Agent tools" title="Create API key" />
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-          <Input
-            label="Label"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="sm:flex-1"
-          />
-          <div className="flex items-end">
-            <Button type="submit" disabled={pending}>
-              Generate key
-            </Button>
+          <CardHeading kicker="Agent tools" title="Create API key" />
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+            <Input
+              label="Label"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="sm:flex-1"
+            />
+            <div className="flex items-end">
+              <Button type="submit" disabled={pending}>
+                Generate key
+              </Button>
+            </div>
           </div>
-        </div>
-        {rawKey && (
-          <div className="mt-4 rounded-lg border border-amber bg-amber/10 p-3">
-            <p className="font-mono-num text-[10px] text-ink/60">
-              COPY NOW — SHOWN ONCE
-            </p>
-            <p className="font-mono-num mt-1 break-all text-sm font-semibold">{rawKey}</p>
-          </div>
-        )}
-        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+          {rawKey && (
+            <div className="mt-4 rounded-lg border border-amber bg-amber/10 p-3">
+              <p className="font-mono-num text-[10px] text-ink/60">
+                COPY NOW — SHOWN ONCE
+              </p>
+              <p className="font-mono-num mt-1 break-all text-sm font-semibold">{rawKey}</p>
+            </div>
+          )}
+          {error && <p className="mt-2 text-sm text-danger">{error}</p>}
         </form>
       </Card>
 

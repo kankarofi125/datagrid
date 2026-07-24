@@ -77,16 +77,16 @@ export default function AdminSettingsPage() {
             save();
           }}
         >
-        {field("referral.signup_bonus_ngn", "Referral signup bonus (₦)")}
-        {field("referral.purchase_pct_bps", "Purchase commission (bps, 50 = 0.5%)")}
-        {field("referral.window_months", "Referral window (months)")}
-        {field("agent.volume_threshold_ngn", "Agent volume threshold (₦)")}
-        {field("support.whatsapp", "WhatsApp (234…)")}
-        {field("brand.cac_rc", "CAC RC")}
-        <Button type="submit" fullWidth disabled={pending}>
-          Save
-        </Button>
-        {msg && <p className="text-sm text-green">{msg}</p>}
+          {field("referral.signup_bonus_ngn", "Referral signup bonus (₦)")}
+          {field("referral.purchase_pct_bps", "Purchase commission (bps, 50 = 0.5%)")}
+          {field("referral.window_months", "Referral window (months)")}
+          {field("agent.volume_threshold_ngn", "Agent volume threshold (₦)")}
+          {field("support.whatsapp", "WhatsApp (234…)")}
+          {field("brand.cac_rc", "CAC RC")}
+          <Button type="submit" fullWidth disabled={pending}>
+            Save
+          </Button>
+          {msg && <p className="text-sm text-green">{msg}</p>}
         </form>
       </Card>
     </div>

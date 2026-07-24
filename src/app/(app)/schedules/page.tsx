@@ -154,32 +154,32 @@ export default function SchedulesPage() {
           create();
         }}
       >
-      <p className="font-mono-num text-[10px] tracking-widest text-ink/45">
-        NEW SCHEDULE · e.g. 1GB every Friday 6pm
-      </p>
-      <div className="flex gap-2">
-        {(["DATA", "AIRTIME"] as const).map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setService(s)}
-            className={cn(
-              "font-mono-num flex-1 rounded py-2 text-xs",
-              service === s ? "bg-green text-white" : "border border-line"
-            )}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-      <PhoneInput label="Phone" value={phone} onChange={setPhone} />
-      {network && (
-        <p className="text-xs text-ink/50">
-          Network: {NETWORK_LABELS[network]}
+        <p className="font-mono-num text-[10px] tracking-widest text-ink/45">
+          NEW SCHEDULE · e.g. 1GB every Friday 6pm
         </p>
-      )}
-      {service === "DATA" ? (
-        <Select
+        <div className="flex gap-2">
+          {(["DATA", "AIRTIME"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setService(s)}
+              className={cn(
+                "font-mono-num flex-1 rounded py-2 text-xs",
+                service === s ? "bg-green text-white" : "border border-line"
+              )}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <PhoneInput label="Phone" value={phone} onChange={setPhone} />
+        {network && (
+          <p className="text-xs text-ink/50">
+            Network: {NETWORK_LABELS[network]}
+          </p>
+        )}
+        {service === "DATA" ? (
+          <Select
             label="Plan"
             value={planId}
             onChange={(e) => setPlanId(e.target.value)}
@@ -191,46 +191,46 @@ export default function SchedulesPage() {
               </option>
             ))}
           </Select>
-      ) : (
-        <Input
-          label="Amount"
-          mono
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-      )}
-      <div className="flex gap-2">
-        {(["DAILY", "WEEKLY", "MONTHLY"] as const).map((f) => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setFrequency(f)}
-            className={cn(
-              "font-mono-num flex-1 rounded py-2 text-[10px]",
-              frequency === f ? "bg-green-deep text-paper" : "border border-line"
-            )}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
-      {frequency === "WEEKLY" && (
-        <div className="flex flex-wrap gap-1">
-          {DAYS.map((d, i) => (
+        ) : (
+          <Input
+            label="Amount"
+            mono
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+        )}
+        <div className="flex gap-2">
+          {(["DAILY", "WEEKLY", "MONTHLY"] as const).map((f) => (
             <button
-              key={d}
+              key={f}
               type="button"
-              onClick={() => setDayOfWeek(i)}
+              onClick={() => setFrequency(f)}
               className={cn(
-                "font-mono-num rounded px-2 py-1 text-xs",
-                dayOfWeek === i ? "bg-amber text-ink" : "border border-line"
+                "font-mono-num flex-1 rounded py-2 text-[10px]",
+                frequency === f ? "bg-green-deep text-paper" : "border border-line"
               )}
             >
-              {d}
+              {f}
             </button>
           ))}
         </div>
-      )}
+        {frequency === "WEEKLY" && (
+          <div className="flex flex-wrap gap-1">
+            {DAYS.map((d, i) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setDayOfWeek(i)}
+                className={cn(
+                  "font-mono-num rounded px-2 py-1 text-xs",
+                  dayOfWeek === i ? "bg-amber text-ink" : "border border-line"
+                )}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        )}
         <Input
           label="Hour (WAT)"
           type="number"
@@ -240,11 +240,11 @@ export default function SchedulesPage() {
           onChange={(e) => setHourWat(Number(e.target.value))}
           mono
         />
-      {error && <p className="text-sm text-danger">{error}</p>}
-      {msg && <p className="text-sm text-green">{msg}</p>}
-      <Button type="submit" fullWidth disabled={pending}>
-        Create schedule
-      </Button>
+        {error && <p className="text-sm text-danger">{error}</p>}
+        {msg && <p className="text-sm text-green">{msg}</p>}
+        <Button type="submit" fullWidth disabled={pending}>
+          Create schedule
+        </Button>
       </form>
     </Card>
   );

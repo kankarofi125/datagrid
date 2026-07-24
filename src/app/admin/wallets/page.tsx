@@ -86,12 +86,13 @@ export default function AdminWalletsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader kicker="DUAL APPROVAL" title="WALLET CREDITS." description="Manual credits require two admins: one requests, another approves. Dev may force
-          with same admin only when dual-approval blocks." />
+      <AdminPageHeader
+        kicker="DUAL APPROVAL"
+        title="WALLET CREDITS."
+        description="Manual credits require two admins: one requests, another approves. Dev may force with the same admin only when dual approval blocks."
+      />
 
-      <Card
-        className="max-w-md p-5"
-      >
+      <Card className="max-w-md p-5">
         <form
           className="space-y-3"
           onSubmit={(event) => {
@@ -99,23 +100,23 @@ export default function AdminWalletsPage() {
             create();
           }}
         >
-        <PhoneInput label="User phone" value={phone} onChange={setPhone} />
-        <Input
-          label="Amount"
-          mono
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-        <Input
-          label="Reason"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
-        <Button type="submit" fullWidth disabled={pending}>
-          Create credit request
-        </Button>
-        {msg && <p className="text-sm text-green">{msg}</p>}
-        {error && <p className="text-sm text-danger">{error}</p>}
+          <PhoneInput label="User phone" value={phone} onChange={setPhone} />
+          <Input
+            label="Amount"
+            mono
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+          <Input
+            label="Reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <Button type="submit" fullWidth disabled={pending}>
+            Create credit request
+          </Button>
+          {msg && <p className="text-sm text-green">{msg}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
         </form>
       </Card>
 

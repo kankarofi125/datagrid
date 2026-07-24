@@ -98,48 +98,48 @@ export default function AdminProvidersPage() {
       />
 
       <Reveal delay={120}>
-      <ul className="space-y-3">
-        {providers.map((p) => (
-          <Card
-            as="li"
-            key={p.id}
-            className="surface-interactive flex flex-wrap items-center justify-between gap-3 p-4"
-          >
-            <div>
-              <p className="font-semibold">
-                {p.name}{" "}
-                <span className="font-mono-num text-xs text-ink/45">{p.code}</span>
-              </p>
-              <p className="font-mono-num text-xs text-ink/50">
-                {p.role} · priority {p.priority} · success {p.successRate}%
-                {p.lastHealth
-                  ? ` · health ${new Date(p.lastHealth).toLocaleString("en-NG")}`
-                  : ""}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={p.isActive ? "primary" : "ghost"}
-                onClick={() => patch(p.id, { isActive: !p.isActive })}
-              >
-                {p.isActive ? "Active" : "Inactive"}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() =>
-                  patch(p.id, {
-                    role: p.role === "PRIMARY" ? "FALLBACK" : "PRIMARY",
-                  })
-                }
-              >
-                Make {p.role === "PRIMARY" ? "fallback" : "primary"}
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </ul>
+        <ul className="space-y-3">
+          {providers.map((p) => (
+            <Card
+              as="li"
+              key={p.id}
+              className="surface-interactive flex flex-wrap items-center justify-between gap-3 p-4"
+            >
+              <div>
+                <p className="font-semibold">
+                  {p.name}{" "}
+                  <span className="font-mono-num text-xs text-ink/45">{p.code}</span>
+                </p>
+                <p className="font-mono-num text-xs text-ink/50">
+                  {p.role} · priority {p.priority} · success {p.successRate}%
+                  {p.lastHealth
+                    ? ` · health ${new Date(p.lastHealth).toLocaleString("en-NG")}`
+                    : ""}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={p.isActive ? "primary" : "ghost"}
+                  onClick={() => patch(p.id, { isActive: !p.isActive })}
+                >
+                  {p.isActive ? "Active" : "Inactive"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    patch(p.id, {
+                      role: p.role === "PRIMARY" ? "FALLBACK" : "PRIMARY",
+                    })
+                  }
+                >
+                  Make {p.role === "PRIMARY" ? "fallback" : "primary"}
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </ul>
       </Reveal>
 
       <Reveal delay={200}>
