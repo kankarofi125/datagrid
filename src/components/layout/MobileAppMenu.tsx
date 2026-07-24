@@ -27,7 +27,7 @@ export function MobileAppMenu({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-9 w-9 items-center justify-center rounded-md border border-white/15 bg-black/25 text-paper"
+        className="flex h-8.5 w-8.5 items-center justify-center rounded-[10px] border border-white/15 bg-black/25 text-paper"
         aria-label="Open menu — all services"
         aria-expanded={open}
       >

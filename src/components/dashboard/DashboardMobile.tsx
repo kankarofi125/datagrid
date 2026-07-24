@@ -176,7 +176,6 @@ function SectionHeading({
 }
 
 export function DashboardMobile({
-  name,
   balance,
   lastTx,
   networks,
@@ -186,93 +185,66 @@ export function DashboardMobile({
   lastTx: Tx[];
   networks: Net[];
 }) {
-  const first = name.split(" ")[0] || "Operator";
   const networkRows = networks.length ? networks : FALLBACK_NETWORKS;
   const operational = networkRows.filter((n) => n.status === "OPERATIONAL").length;
   const recentSpend = lastTx.reduce((sum, transaction) => sum + transaction.amount, 0);
 
   return (
-    <div className="px-4 pb-8 pt-5 sm:px-5">
-      <header className="mb-4">
-        <p className="font-mono-num text-[10px] uppercase tracking-[0.16em] text-ink/40">
-          Welcome back
-        </p>
-        <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em] text-ink">
-          {first}, what are we buying?
-        </h1>
-      </header>
-
-      <section className="wallet-card mb-5 overflow-hidden rounded-[22px] text-paper">
-        <div className="bg-grid bg-grid-live p-5">
-          <div className="flex items-start justify-between gap-3">
+    <div className="px-3.5 pb-6 pt-3.5 sm:px-5 sm:pt-5">
+      <section className="wallet-card mb-4 overflow-hidden rounded-[18px] text-paper">
+        <div className="p-4">
+          <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="font-mono-num text-[10px] font-semibold tracking-[0.16em] text-amber/90">
+              <p className="font-mono-num text-[9px] font-semibold tracking-[0.15em] text-amber/90">
                 MAIN WALLET
               </p>
-              <p className="font-mono-num mt-2 text-[32px] font-semibold leading-none tracking-[-0.04em] tabular-nums">
+              <p className="font-mono-num mt-1.5 text-[27px] font-semibold leading-none tracking-[-0.04em] tabular-nums">
                 {formatNaira(balance)}
               </p>
             </div>
-            <span className="rounded-full border border-white/10 bg-white/[0.07] px-2.5 py-1 font-mono-num text-[9px] tracking-wider text-paper/65">
-              NGN
+            <Link
+              href="/wallet"
+              className="pressable flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-amber px-3.5 text-[13px] font-bold text-[#2c1b02] shadow-[0_10px_24px_-14px_rgba(242,166,61,.9)]"
+            >
+              <span className="text-base font-normal leading-none" aria-hidden>+</span>
+              Fund
+            </Link>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2 border-t border-white/10 pt-2.5 font-mono-num text-[8px] uppercase tracking-[0.09em] text-paper/45">
+            <span>
+              Spent <strong className="ml-1 font-semibold text-paper/80">{formatNaira(recentSpend, { compact: true })}</strong>
+            </span>
+            <span className="h-1 w-1 rounded-full bg-paper/20" />
+            <span>
+              Orders <strong className="ml-1 font-semibold text-paper/80">{lastTx.length}</strong>
+            </span>
+            <span className="h-1 w-1 rounded-full bg-paper/20" />
+            <span>
+              Live <strong className="ml-1 font-semibold text-paper/80">{operational}/{networkRows.length}</strong>
             </span>
           </div>
-
-          <div className="mt-5 grid grid-cols-3 border-y border-white/10 py-3.5">
-            <div className="pr-2">
-              <p className="font-mono-num text-[8px] uppercase tracking-wider text-paper/45">
-                Recent spend
-              </p>
-              <p className="font-mono-num mt-1 truncate text-[13px] font-semibold tabular-nums">
-                {formatNaira(recentSpend, { compact: true })}
-              </p>
-            </div>
-            <div className="border-x border-white/10 px-3">
-              <p className="font-mono-num text-[8px] uppercase tracking-wider text-paper/45">
-                Orders
-              </p>
-              <p className="font-mono-num mt-1 text-[13px] font-semibold tabular-nums">
-                {lastTx.length}
-              </p>
-            </div>
-            <div className="pl-3">
-              <p className="font-mono-num text-[8px] uppercase tracking-wider text-paper/45">
-                Networks
-              </p>
-              <p className="font-mono-num mt-1 text-[13px] font-semibold tabular-nums">
-                {operational}/{networkRows.length}
-              </p>
-            </div>
-          </div>
-
-          <Link
-            href="/wallet"
-            className="pressable mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-amber px-4 text-[15px] font-bold text-[#2c1b02] shadow-[0_10px_24px_-14px_rgba(242,166,61,.9)]"
-          >
-            <span className="text-xl font-normal leading-none" aria-hidden>+</span>
-            Fund wallet
-          </Link>
         </div>
       </section>
 
-      <nav className="mb-6 grid grid-cols-4 gap-2" aria-label="Quick actions">
+      <nav className="mb-5 grid grid-cols-4 gap-1.5" aria-label="Quick actions">
         {QUICK_ACTIONS.map((action) => (
           <Link
             key={action.href}
             href={action.href}
-            className="pressable flex min-h-[76px] flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-white px-1 text-center shadow-[0_8px_24px_-22px_rgba(14,33,26,.65)]"
+            className="pressable flex min-h-[66px] flex-col items-center justify-center gap-1.5 rounded-[14px] border border-line bg-white px-1 text-center shadow-[0_8px_24px_-22px_rgba(14,33,26,.65)]"
           >
-            <DashboardIcon name={action.icon} className="h-[19px] w-[19px] text-green-deep" />
-            <span className="text-xs font-semibold text-ink">{action.label}</span>
+            <DashboardIcon name={action.icon} className="h-[18px] w-[18px] text-green-deep" />
+            <span className="text-[11px] font-semibold text-ink">{action.label}</span>
           </Link>
         ))}
       </nav>
 
-      <section className="mb-6">
+      <section className="mb-5">
         <SectionHeading href="/history">Buy again</SectionHeading>
         {lastTx.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-ink/20 bg-white/45 px-5 py-5 text-center">
-            <p className="text-sm font-medium text-ink/65">Your quick reorders will appear here.</p>
+          <div className="rounded-[14px] border border-dashed border-ink/20 bg-white/45 px-4 py-4 text-center">
+            <p className="text-[13px] font-medium text-ink/65">Your quick reorders will appear here.</p>
             <Link
               href="/buy/data"
               className="mt-2 inline-flex min-h-8 items-center text-xs font-bold text-green"
@@ -306,34 +278,34 @@ export function DashboardMobile({
         )}
       </section>
 
-      <section className="mb-6">
+      <section className="mb-5">
         <SectionHeading>Services</SectionHeading>
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-2">
           {DASHBOARD_SERVICES.map((service, index) => (
             <Link
               key={service.href}
               href={service.href}
               className={cn(
-                "pressable relative min-h-[148px] overflow-hidden rounded-[18px] border p-4 shadow-[0_12px_30px_-26px_rgba(14,33,26,.8)]",
+                "pressable relative min-h-[124px] overflow-hidden rounded-[16px] border p-3.5 shadow-[0_12px_30px_-26px_rgba(14,33,26,.8)]",
                 index === 0
                   ? "border-green-deep bg-green-deep text-paper"
                   : "border-line bg-white text-ink"
               )}
             >
               {index === 0 && (
-                <span className="absolute right-3 top-3 rounded-md bg-amber px-2 py-1 font-mono-num text-[8px] font-bold uppercase tracking-wide text-[#2c1b02]">
+                <span className="absolute right-2.5 top-2.5 rounded-md bg-amber px-1.5 py-0.5 font-mono-num text-[7px] font-bold uppercase tracking-wide text-[#2c1b02]">
                   Most used
                 </span>
               )}
               <span
                 className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-[11px]",
+                  "flex h-8 w-8 items-center justify-center rounded-[10px]",
                   service.iconClass
                 )}
               >
-                <DashboardIcon name={service.icon} className="h-[18px] w-[18px]" />
+                <DashboardIcon name={service.icon} className="h-4 w-4" />
               </span>
-              <div className="mt-6">
+              <div className="mt-4">
                 <p
                   className={cn(
                     "font-mono-num text-[9px] font-semibold tracking-[0.14em]",
@@ -342,8 +314,8 @@ export function DashboardMobile({
                 >
                   {service.mono}
                 </p>
-                <p className="mt-1 text-[15px] font-bold">{service.label}</p>
-                <p className={cn("mt-0.5 text-xs", index === 0 ? "text-paper/55" : "text-ink/48")}>
+                <p className="mt-0.5 text-[14px] font-bold">{service.label}</p>
+                <p className={cn("mt-0.5 text-[11px]", index === 0 ? "text-paper/55" : "text-ink/48")}>
                   {service.blurb}
                 </p>
               </div>
@@ -352,7 +324,7 @@ export function DashboardMobile({
         </div>
       </section>
 
-      <section className="mb-6 rounded-[18px] border border-line bg-white p-4 shadow-[0_12px_32px_-28px_rgba(14,33,26,.8)]">
+      <section className="mb-5 rounded-[16px] border border-line bg-white p-3.5 shadow-[0_12px_32px_-28px_rgba(14,33,26,.8)]">
         <div className="mb-2 flex items-center justify-between gap-3">
           <h2 className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/45">
             Network status
@@ -366,7 +338,7 @@ export function DashboardMobile({
           {networkRows.map((network) => (
             <li
               key={network.code}
-              className="flex min-h-10 items-center justify-between border-t border-line first:border-t-0"
+              className="flex min-h-9 items-center justify-between border-t border-line first:border-t-0"
             >
               <span className="flex items-center gap-2.5 text-[13px] font-semibold">
                 <span
@@ -388,21 +360,21 @@ export function DashboardMobile({
         </ul>
       </section>
 
-      <section className="mb-4">
+      <section className="mb-3.5">
         <SectionHeading>Account</SectionHeading>
-        <div className="overflow-hidden rounded-[18px] border border-line bg-white shadow-[0_12px_32px_-28px_rgba(14,33,26,.8)]">
+        <div className="overflow-hidden rounded-[16px] border border-line bg-white shadow-[0_12px_32px_-28px_rgba(14,33,26,.8)]">
           {ACCOUNT_LINKS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="flex min-h-[66px] items-center gap-3.5 border-t border-line px-4 first:border-t-0"
+              className="flex min-h-[58px] items-center gap-3 border-t border-line px-3.5 first:border-t-0"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-paper text-green-deep">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-paper text-green-deep">
                 <DashboardIcon name={item.icon} className="h-[17px] w-[17px]" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[13px] font-semibold text-ink">{item.label}</span>
-                <span className="mt-0.5 block truncate text-[11px] text-ink/40">
+                <span className="block truncate text-[10px] text-ink/40">
                   {item.description}
                 </span>
               </span>
@@ -415,13 +387,13 @@ export function DashboardMobile({
       <div className="grid grid-cols-2 gap-2.5">
         <Link
           href="/agent"
-          className="flex min-h-11 items-center justify-center rounded-xl border border-line bg-white text-xs font-semibold text-ink/65"
+          className="flex min-h-10 items-center justify-center rounded-xl border border-line bg-white text-[11px] font-semibold text-ink/65"
         >
           Agent & API
         </Link>
         <Link
           href="/settings"
-          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line bg-white text-xs font-semibold text-ink/65"
+          className="flex min-h-10 items-center justify-center gap-2 rounded-xl border border-line bg-white text-[11px] font-semibold text-ink/65"
         >
           <DashboardIcon name="settings" className="h-4 w-4" />
           Settings

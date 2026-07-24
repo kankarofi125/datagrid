@@ -37,7 +37,7 @@ export function Button({
         "pressable inline-flex items-center justify-center gap-2 font-semibold transition-[transform,box-shadow,background-color] duration-150 disabled:opacity-50 disabled:pointer-events-none",
         size === "sm" && "h-9 px-3 text-sm rounded-lg",
         size === "md" && "h-11 px-4 text-[15px] rounded-xl",
-        size === "lg" && "h-12 px-5 text-base rounded-xl",
+        size === "lg" && "h-11 px-4 text-[15px] rounded-xl sm:h-12 sm:px-5 sm:text-base",
         fullWidth && "w-full",
         variants[variant],
         className

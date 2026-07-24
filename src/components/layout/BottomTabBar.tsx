@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 
@@ -21,24 +22,26 @@ export function BottomTabBar() {
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       aria-label="Primary mobile"
     >
-      <ul className="mx-auto flex min-h-[65px] max-w-lg items-end justify-between px-1.5 pt-1">
+      <ul className="mx-auto flex min-h-[61px] max-w-lg items-end justify-between px-1.5 pt-1">
         {tabs.map((tab) => {
           const active =
             path === tab.href ||
             (tab.href !== "/dashboard" && path.startsWith(tab.href));
           if (tab.fab) {
             return (
-              <li key={tab.href} className="relative -mt-5 flex flex-1 justify-center">
+              <li key={tab.href} className="relative -mt-4 flex flex-1 justify-center">
                 <Link
                   href={tab.href}
                   className={cn(
-                    "pressable flex h-[58px] w-[58px] flex-col items-center justify-center rounded-full border-[4px] border-white bg-green-deep text-white shadow-[0_12px_24px_-10px_rgba(10,46,34,.72)]",
+                    "pressable relative flex h-[54px] w-[54px] flex-col items-center justify-center rounded-full border-[4px] border-white bg-green-deep text-white shadow-[0_12px_24px_-10px_rgba(10,46,34,.72)]",
                     active && "ring-2 ring-amber/55 ring-offset-1 ring-offset-white"
                   )}
                   aria-label="Wallet"
+                  aria-current={active ? "page" : undefined}
                 >
                   <tab.icon active />
                   <span className="font-mono-num mt-0.5 text-[8px] font-semibold tracking-wider text-amber">WALLET</span>
+                  <NavPendingIndicator fab />
                 </Link>
               </li>
             );
@@ -48,18 +51,37 @@ export function BottomTabBar() {
               <Link
                 href={tab.href}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 py-2 text-[10px] tracking-wide",
+                  "relative flex min-h-[54px] flex-col items-center justify-center gap-0.5 py-1.5 text-[9px] tracking-wide",
                   active ? "text-green" : "text-ink/40"
                 )}
+                aria-current={active ? "page" : undefined}
               >
                 <tab.icon active={active} />
                 <span className="font-mono-num uppercase">{tab.label}</span>
+                <NavPendingIndicator />
               </Link>
             </li>
           );
         })}
       </ul>
     </nav>
+  );
+}
+
+function NavPendingIndicator({ fab = false }: { fab?: boolean }) {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+
+  return (
+    <span
+      className={cn(
+        "absolute animate-spin rounded-full border-2",
+        fab
+          ? "inset-[-5px] border-amber/25 border-t-amber"
+          : "bottom-0 h-2.5 w-2.5 border-green/20 border-t-green"
+      )}
+      aria-hidden
+    />
   );
 }
 

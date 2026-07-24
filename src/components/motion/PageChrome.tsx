@@ -17,7 +17,7 @@ export function PageShell({
   return (
     <div
       className={cn(
-        "w-full px-4 py-6 sm:px-6",
+        "w-full px-3.5 py-4 sm:px-6 sm:py-6",
         wide ? "lg:px-8 lg:py-8 xl:px-10" : "lg:px-8 lg:py-8 xl:px-10",
         className
       )}
@@ -44,7 +44,7 @@ export function MotionPageHeader({
   return (
     <div
       className={cn(
-        "mb-7 flex flex-col gap-4 lg:mb-8 lg:flex-row lg:items-end lg:justify-between",
+        "mb-5 flex flex-col gap-3 lg:mb-8 lg:flex-row lg:items-end lg:justify-between lg:gap-4",
         className
       )}
     >
@@ -57,13 +57,13 @@ export function MotionPageHeader({
           </HeroEnter>
         )}
         <HeroEnter delay={70}>
-          <h1 className="font-display mt-1.5 text-3xl text-ink lg:text-4xl xl:text-5xl">
+          <h1 className="font-display mt-1.5 text-[28px] text-ink lg:text-4xl xl:text-5xl">
             {title}
           </h1>
         </HeroEnter>
         {description && (
           <HeroEnter delay={140}>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60 lg:text-base">
+            <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-ink/60 lg:mt-3 lg:text-base">
               {description}
             </p>
           </HeroEnter>
@@ -101,7 +101,7 @@ export function MotionMobileHeader({
           </HeroEnter>
         )}
         <HeroEnter delay={60}>
-          <h1 className="font-display mt-1 text-3xl text-ink">{title}</h1>
+          <h1 className="font-display mt-1 text-[26px] text-ink">{title}</h1>
         </HeroEnter>
       </div>
       {trailing && (
@@ -143,7 +143,7 @@ export function MotionStack({
   start?: number;
 }) {
   return (
-    <div className={cn("space-y-5", className)}>
+    <div className={cn("space-y-4 lg:space-y-5", className)}>
       {children.map((child, i) => (
         <Reveal key={i} delay={start + i * step}>
           {child}

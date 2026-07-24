@@ -26,7 +26,7 @@ export function Input({
       {label && (
         <label
           htmlFor={inputId}
-          className="font-mono-num flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-ink/70"
+          className="font-mono-num flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-ink/70 sm:text-[11px]"
         >
           <span className="inline-block h-3 w-0.5 rounded-full bg-green" aria-hidden />
           {label}
@@ -35,7 +35,7 @@ export function Input({
       <input
         id={inputId}
         className={cn(
-          "h-11 w-full rounded-xl border border-line bg-white px-3.5 text-base text-ink shadow-[0_1px_0_rgba(14,33,26,.02)]",
+          "h-11 w-full rounded-xl border border-line bg-white px-3 text-[15px] text-ink shadow-[0_1px_0_rgba(14,33,26,.02)] sm:px-3.5 sm:text-base",
           "placeholder:text-ink/30",
           "outline-none ring-0",
           "focus:border-green focus:outline-none focus:ring-2 focus:ring-green/10",

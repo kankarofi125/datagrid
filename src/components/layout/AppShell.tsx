@@ -23,7 +23,7 @@ export function AppShell({
 }) {
   return (
     <AppProviders>
-      <div className="min-h-screen bg-paper lg:flex">
+      <div className="customer-app min-h-screen bg-paper lg:flex">
         <div className="hidden lg:sticky lg:top-0 lg:block lg:h-screen lg:shrink-0">
           <DesktopSidebar />
         </div>

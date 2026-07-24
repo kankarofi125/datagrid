@@ -17,7 +17,7 @@ export function MobileOnly({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={cn("lg:hidden", className)}>{children}</div>;
+  return <div className={cn("mobile-density lg:hidden", className)}>{children}</div>;
 }
 
 export function DesktopOnly({

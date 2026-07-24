@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 type Props = {
   children: ReactNode;
@@ -15,8 +15,8 @@ type Props = {
 };
 
 /**
- * Scroll reveal: small y-shift + clip-path wipe (control-room, not AOS fade).
- * Respects prefers-reduced-motion.
+ * Shared Framer Motion reveal. Subtle movement keeps dense transactional
+ * screens responsive and respects the user's reduced-motion preference.
  */
 export function Reveal({
   children,
@@ -25,48 +25,28 @@ export function Reveal({
   once = true,
   as: Tag = "div",
 }: Props) {
-  const ref = useRef<HTMLElement | null>(null);
-  const [visible, setVisible] = useState(false);
   const reduced = useReducedMotion();
-
-  useEffect(() => {
-    if (reduced) return;
-    const el = ref.current;
-    if (!el) return;
-
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          if (once) io.disconnect();
-        } else if (!once) {
-          setVisible(false);
-        }
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [once, reduced]);
-
-  const style = {
-    "--reveal-delay": `${delay}ms`,
-  } as CSSProperties;
+  const MotionTag = {
+    div: motion.div,
+    section: motion.section,
+    li: motion.li,
+    article: motion.article,
+  }[Tag];
 
   return (
-    <Tag
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ref={ref as any}
-      style={style}
-      className={cn(
-        "reveal-base",
-        visible && "reveal-in",
-        reduced && "reveal-in",
-        className
-      )}
+    <MotionTag
+      initial={reduced ? false : { opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once, amount: 0.12, margin: "0px 0px -5% 0px" }}
+      transition={{
+        duration: reduced ? 0 : 0.42,
+        delay: reduced ? 0 : delay / 1000,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+      className={className}
     >
       {children}
-    </Tag>
+    </MotionTag>
   );
 }
 
@@ -80,21 +60,20 @@ export function HeroEnter({
   className?: string;
   delay?: number;
 }) {
-  const [on, setOn] = useState(false);
   const reduced = useReducedMotion();
 
-  useEffect(() => {
-    if (reduced) return;
-    const t = requestAnimationFrame(() => setOn(true));
-    return () => cancelAnimationFrame(t);
-  }, [reduced]);
-
   return (
-    <div
-      className={cn("hero-enter", (on || reduced) && "hero-enter-on", className)}
-      style={{ "--hero-delay": `${delay}ms` } as CSSProperties}
+    <motion.div
+      initial={reduced ? false : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: reduced ? 0 : 0.38,
+        delay: reduced ? 0 : delay / 1000,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+      className={cn(className)}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }

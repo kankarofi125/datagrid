@@ -6,12 +6,18 @@ import { LowDataToggle } from "@/components/settings/LowDataToggle";
 import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Responsive";
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
+import type { User } from "@prisma/client";
 
 export default async function SettingsPage() {
   const session = await getSession();
-  const user = session.userId
-    ? await prisma.user.findUnique({ where: { id: session.userId } })
-    : null;
+  let user: User | null = null;
+  if (session.userId) {
+    try {
+      user = await prisma.user.findUnique({ where: { id: session.userId } });
+    } catch {
+      // Keep account controls usable during a temporary profile-data outage.
+    }
+  }
 
   const profile = (
     <dl className="surface space-y-3 p-4 text-sm lg:p-6">

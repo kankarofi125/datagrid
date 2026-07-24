@@ -144,13 +144,13 @@ export function Sheet({ open, onClose, title, children, className }: Props) {
           </p>
         </div>
 
-        <div className="px-5 pb-5 pt-2 sm:p-5">
+        <div className="px-4 pb-4 pt-1.5 sm:p-5">
           {title && (
             <div
               data-drag-handle
-              className="mb-4 flex items-center justify-between gap-3"
+              className="mb-3 flex items-center justify-between gap-3 sm:mb-4"
             >
-              <h2 className="font-display text-2xl text-ink">{title}</h2>
+              <h2 className="font-display text-[22px] text-ink sm:text-2xl">{title}</h2>
               <button
                 type="button"
                 onClick={onClose}

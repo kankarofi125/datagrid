@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Responsive";
@@ -8,7 +8,7 @@ import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
-import { SkeletonPage } from "@/components/ui/Skeleton";
+import { LoadFailure, SkeletonPage } from "@/components/ui/Skeleton";
 
 type RefData = {
   referralCode: string;
@@ -30,13 +30,21 @@ type RefData = {
 export default function ReferralsPage() {
   const [data, setData] = useState<RefData | null>(null);
   const [copied, setCopied] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const load = useCallback(() => {
+    fetch("/api/referrals")
+      .then((response) => {
+        if (!response.ok) throw new Error("Referral request failed");
+        return response.json();
+      })
+      .then(setData)
+      .catch(() => setLoadError(true));
+  }, []);
 
   useEffect(() => {
-    fetch("/api/referrals")
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => {});
-  }, []);
+    load();
+  }, [load]);
 
   async function copyLink() {
     if (!data) return;
@@ -47,6 +55,19 @@ export default function ReferralsPage() {
     } catch {
       /* ignore */
     }
+  }
+
+  if (loadError) {
+    return (
+      <LoadFailure
+        title="Referrals are unavailable"
+        message="Your referral data couldn’t be reached. Nothing has been changed."
+        onRetry={() => {
+          setLoadError(false);
+          load();
+        }}
+      />
+    );
   }
 
   if (!data) {

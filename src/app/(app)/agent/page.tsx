@@ -8,7 +8,7 @@ import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Respons
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
 import { formatNaira } from "@/lib/money";
-import { SkeletonPage } from "@/components/ui/Skeleton";
+import { LoadFailure, SkeletonPage } from "@/components/ui/Skeleton";
 
 type KeyRow = {
   id: string;
@@ -28,25 +28,32 @@ export default function AgentPage() {
   const [pending, start] = useTransition();
   const [volume, setVolume] = useState(0);
   const [threshold, setThreshold] = useState(500000);
+  const [loadError, setLoadError] = useState(false);
 
-  function load() {
-    fetch("/api/referrals")
-      .then((r) => r.json())
-      .then((d) => {
-        setAllowed(Boolean(d.isAgent));
-        setVolume(d.lifetimeVolume || 0);
-        setThreshold(d.agentThreshold || 500000);
-      });
-    fetch("/api/agent/keys")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.keys) setKeys(d.keys);
-        if (d.error) setAllowed(false);
-      });
+  async function load() {
+    try {
+      const [referralResponse, keysResponse] = await Promise.all([
+        fetch("/api/referrals"),
+        fetch("/api/agent/keys"),
+      ]);
+      if (!referralResponse.ok) throw new Error("Agent status request failed");
+
+      const referralData = await referralResponse.json();
+      const keyData = await keysResponse.json();
+      setAllowed(Boolean(referralData.isAgent));
+      setVolume(referralData.lifetimeVolume || 0);
+      setThreshold(referralData.agentThreshold || 500000);
+      if (keyData.keys) setKeys(keyData.keys);
+    } catch {
+      setLoadError(true);
+    }
   }
 
   useEffect(() => {
-    load();
+    const frame = requestAnimationFrame(() => {
+      void load();
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   function createKey() {
@@ -73,6 +80,19 @@ export default function AgentPage() {
       await fetch(`/api/agent/keys?id=${id}`, { method: "DELETE" });
       load();
     });
+  }
+
+  if (loadError) {
+    return (
+      <LoadFailure
+        title="Agent desk is unavailable"
+        message="We couldn’t verify your agent access. Please retry."
+        onRetry={() => {
+          setLoadError(false);
+          void load();
+        }}
+      />
+    );
   }
 
   if (allowed === null) {

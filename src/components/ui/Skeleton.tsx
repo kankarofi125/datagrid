@@ -7,7 +7,7 @@ export function Skeleton({
   return (
     <div
       className={cn(
-        "animate-pulse rounded-md bg-ink/[0.08]",
+        "skeleton-shimmer rounded-md bg-ink/[0.075]",
         className
       )}
       aria-hidden
@@ -39,7 +39,7 @@ export function SkeletonCard({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-line bg-paper p-3",
+        "rounded-xl border border-line bg-white p-3",
         className
       )}
     >
@@ -146,16 +146,18 @@ export function SkeletonPage({
 }) {
   if (variant === "list") {
     return (
-      <div className="space-y-3 p-3 lg:p-6" aria-busy="true" aria-label="Loading">
-        <Skeleton className="h-3 w-16" />
-        <Skeleton className="h-7 w-32" />
-        <SkeletonList rows={8} />
+      <div className="space-y-3 px-3.5 py-4 lg:p-6" aria-busy="true" aria-label="Loading">
+        <span className="sr-only">Loading page</span>
+        <Skeleton className="h-2.5 w-16" />
+        <Skeleton className="h-7 w-36" />
+        <SkeletonList rows={6} />
       </div>
     );
   }
   if (variant === "analytics") {
     return (
-      <div className="space-y-4 p-3 lg:p-6" aria-busy="true" aria-label="Loading">
+      <div className="space-y-3.5 px-3.5 py-4 lg:p-6" aria-busy="true" aria-label="Loading">
+        <span className="sr-only">Loading analytics</span>
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-36 w-full rounded-2xl bg-green-deep/20" />
@@ -169,19 +171,25 @@ export function SkeletonPage({
   }
   if (variant === "form") {
     return (
-      <div className="space-y-4 p-3 lg:p-6" aria-busy="true" aria-label="Loading">
-        <Skeleton className="h-3 w-16" />
-        <Skeleton className="h-8 w-36" />
-        <Skeleton className="h-11 w-full rounded-lg" />
-        <Skeleton className="h-11 w-full rounded-lg" />
-        <Skeleton className="h-11 w-full rounded-lg" />
-        <Skeleton className="h-12 w-full rounded-lg" />
+      <div className="px-3.5 py-4 lg:p-6" aria-busy="true" aria-label="Loading form">
+        <span className="sr-only">Loading form</span>
+        <Skeleton className="h-2.5 w-14" />
+        <Skeleton className="mt-2 h-7 w-36" />
+        <div className="mt-4 space-y-3 rounded-2xl border border-line bg-white p-3.5 lg:max-w-xl lg:p-5">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index}>
+              <Skeleton className="mb-1.5 h-2.5 w-20" />
+              <Skeleton className="h-11 w-full rounded-xl" />
+            </div>
+          ))}
+          <Skeleton className="h-11 w-full rounded-xl bg-green/15" />
+        </div>
       </div>
     );
   }
   if (variant === "admin") {
     return (
-      <div className="space-y-4 p-3 lg:p-6" aria-busy="true" aria-label="Loading">
+      <div className="space-y-4 px-3.5 py-4 lg:p-6" aria-busy="true" aria-label="Loading">
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-8 w-48" />
         <SkeletonKpiGrid count={6} />
@@ -191,25 +199,53 @@ export function SkeletonPage({
   }
   // dashboard
   return (
-    <div className="space-y-3 p-3 lg:p-6" aria-busy="true" aria-label="Loading">
-      <Skeleton className="h-3 w-20" />
-      <Skeleton className="h-7 w-28" />
-      <Skeleton className="h-16 w-full rounded-xl bg-green-deep/25" />
+    <div className="space-y-3 px-3.5 py-3.5 lg:p-6" aria-busy="true" aria-label="Loading dashboard">
+      <span className="sr-only">Loading dashboard</span>
+      <Skeleton className="h-[112px] w-full rounded-[18px] bg-green-deep/20" />
       <div className="grid grid-cols-4 gap-1.5">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-12 rounded-xl" />
+          <Skeleton key={i} className="h-[66px] rounded-[14px]" />
         ))}
       </div>
       <Skeleton className="h-4 w-16" />
       <div className="flex gap-2 overflow-hidden">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-28 shrink-0 rounded-xl" />
+          <Skeleton key={i} className="h-16 w-32 shrink-0 rounded-xl" />
         ))}
       </div>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-2">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 rounded-xl" />
+          <Skeleton key={i} className="h-[124px] rounded-[16px]" />
         ))}
+      </div>
+    </div>
+  );
+}
+
+export function LoadFailure({
+  title = "Couldn’t load this page",
+  message = "Check your connection and try again.",
+  onRetry,
+}: {
+  title?: string;
+  message?: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="px-3.5 py-4 lg:p-6" role="alert">
+      <div className="rounded-2xl border border-danger/15 bg-white p-4 lg:max-w-xl">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-danger/[0.07] text-sm font-bold text-danger">
+          !
+        </span>
+        <h1 className="mt-3 text-base font-semibold text-ink">{title}</h1>
+        <p className="mt-1 text-[13px] leading-relaxed text-ink/50">{message}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="pressable mt-4 min-h-11 rounded-xl bg-green px-4 text-sm font-semibold text-white"
+        >
+          Try again
+        </button>
       </div>
     </div>
   );

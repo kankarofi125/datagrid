@@ -232,6 +232,34 @@ a {
   animation: sheet-up 0.36s var(--ease-out-expo);
 }
 
+@keyframes skeleton-sweep {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(110%);
+  }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-110%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.62),
+    transparent
+  );
+  animation: skeleton-sweep 1.35s ease-in-out infinite;
+}
+
 /* Scroll reveal — y + clip, not generic fade */
 .reveal-base {
   opacity: 0;
@@ -342,6 +370,10 @@ select:focus-visible {
   .mono-label-in {
     animation: none !important;
   }
+  .skeleton-shimmer::after {
+    animation: none !important;
+    display: none;
+  }
   .reveal-base,
   .hero-enter {
     opacity: 1 !important;
@@ -372,7 +404,51 @@ select:focus-visible {
 }
 
 .pb-tabbar {
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Compact customer UI on phones; desktop density is intentionally unchanged. */
+@media (max-width: 1023px) {
+  .mobile-density > .px-4 {
+    padding-inline: 0.875rem;
+  }
+
+  .mobile-density > .py-6 {
+    padding-block: 1rem;
+  }
+
+  .mobile-density > .py-8 {
+    padding-block: 1.25rem;
+  }
+
+  .mobile-density .space-y-6 > :not(:last-child) {
+    margin-block-start: 0;
+    margin-block-end: 1rem;
+  }
+
+  .mobile-density .space-y-5 > :not(:last-child) {
+    margin-block-start: 0;
+    margin-block-end: 0.875rem;
+  }
+
+  .mobile-density .space-y-4 > :not(:last-child) {
+    margin-block-start: 0;
+    margin-block-end: 0.75rem;
+  }
+
+  .mobile-density .surface.p-5,
+  .mobile-density .surface-deep.p-5 {
+    padding: 0.875rem;
+  }
+
+  .mobile-density .surface.p-4,
+  .mobile-density .surface-deep.p-4 {
+    padding: 0.8125rem;
+  }
+
+  .mobile-density select {
+    height: 2.75rem;
+  }
 }
 
 @media (min-width: 1024px) {
