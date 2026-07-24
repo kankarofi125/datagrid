@@ -9,13 +9,16 @@ export function PageShell({
   children,
   className,
   wide,
+  motionCascade = true,
 }: {
   children: ReactNode;
   className?: string;
   wide?: boolean;
+  motionCascade?: boolean;
 }) {
   return (
     <div
+      data-motion-cascade={motionCascade ? "" : undefined}
       className={cn(
         "w-full px-3.5 py-4 sm:px-6 sm:py-6",
         wide ? "lg:px-8 lg:py-8 xl:px-10" : "lg:px-8 lg:py-8 xl:px-10",
@@ -43,6 +46,7 @@ export function MotionPageHeader({
 }) {
   return (
     <div
+      data-motion-static
       className={cn(
         "mb-5 flex flex-col gap-3 lg:mb-8 lg:flex-row lg:items-end lg:justify-between lg:gap-4",
         className
@@ -91,7 +95,10 @@ export function MotionMobileHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-start justify-between gap-3", className)}>
+    <div
+      data-motion-static
+      className={cn("flex items-start justify-between gap-3", className)}
+    >
       <div>
         {kicker && (
           <HeroEnter delay={0}>

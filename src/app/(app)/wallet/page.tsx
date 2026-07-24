@@ -14,6 +14,7 @@ import { LoadFailure, SkeletonPage } from "@/components/ui/Skeleton";
 import { BalanceAmount } from "@/components/ui/BalanceAmount";
 import { PinPad } from "@/components/buy/PinPad";
 import { isPinDenied } from "@/lib/pin-feedback";
+import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 type LedgerRow = {
   id: string;
@@ -25,6 +26,7 @@ type LedgerRow = {
 };
 
 export default function WalletPage() {
+  const { runBlocking } = useBlockingLoader();
   const [balance, setBalance] = useState(0);
   const [commission, setCommission] = useState(0);
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
@@ -77,103 +79,111 @@ export default function WalletPage() {
 
   function fund() {
     start(async () => {
-      setMsg(null);
-      const res = await fetch("/api/wallet/fund", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: Number(amount),
-          method:
-            tab === "card"
-              ? "paystack"
-              : tab === "flutterwave"
-                ? "flutterwave"
-                : "monnify",
-        }),
+      await runBlocking(async () => {
+        setMsg(null);
+        const res = await fetch("/api/wallet/fund", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: Number(amount),
+            method:
+              tab === "card"
+                ? "paystack"
+                : tab === "flutterwave"
+                  ? "flutterwave"
+                  : "monnify",
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setMsg(data.error || "Failed");
+          return;
+        }
+        if (data.virtualAccount) setVa(data.virtualAccount);
+        if (data.simulated && data.balance != null) {
+          setBalance(data.balance);
+          setMsg(
+            tab === "flutterwave"
+              ? "Flutterwave (sim) credited your wallet."
+              : "Paystack (sim) credited your wallet."
+          );
+          setOpen(false);
+          await refresh();
+        }
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setMsg(data.error || "Failed");
-        return;
-      }
-      if (data.virtualAccount) setVa(data.virtualAccount);
-      if (data.simulated && data.balance != null) {
-        setBalance(data.balance);
-        setMsg(
-          tab === "flutterwave"
-            ? "Flutterwave (sim) credited your wallet."
-            : "Paystack (sim) credited your wallet."
-        );
-        setOpen(false);
-        await refresh();
-      }
     });
   }
 
   function transfer() {
     start(async () => {
-      setMsg(null);
-      setXferError(null);
-      const res = await fetch("/api/wallet/transfer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: xferPhone,
-          amount: Number(xferAmount),
-          pin: xferPin,
-        }),
+      await runBlocking(async () => {
+        setMsg(null);
+        setXferError(null);
+        const res = await fetch("/api/wallet/transfer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: xferPhone,
+            amount: Number(xferAmount),
+            pin: xferPin,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setXferError(data.error || "Transfer failed");
+          return;
+        }
+        setBalance(data.balance);
+        setMsg(`Sent ${formatNaira(Number(xferAmount))} to ${data.recipient}`);
+        setXferOpen(false);
+        setXferPin("");
+        await refresh();
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setXferError(data.error || "Transfer failed");
-        return;
-      }
-      setBalance(data.balance);
-      setMsg(`Sent ${formatNaira(Number(xferAmount))} to ${data.recipient}`);
-      setXferOpen(false);
-      setXferPin("");
-      await refresh();
     });
   }
 
   function payoutCommission() {
     start(async () => {
-      setMsg(null);
-      setPayoutError(null);
-      const res = await fetch("/api/wallet/commission/payout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin: payoutPin }),
+      await runBlocking(async () => {
+        setMsg(null);
+        setPayoutError(null);
+        const res = await fetch("/api/wallet/commission/payout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin: payoutPin }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setPayoutError(data.error || "Payout failed");
+          return;
+        }
+        setBalance(data.balance);
+        setMsg(`Moved ${formatNaira(data.amount)} commission → main`);
+        setPayoutOpen(false);
+        setPayoutPin("");
+        await refresh();
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setPayoutError(data.error || "Payout failed");
-        return;
-      }
-      setBalance(data.balance);
-      setMsg(`Moved ${formatNaira(data.amount)} commission → main`);
-      setPayoutOpen(false);
-      setPayoutPin("");
-      await refresh();
     });
   }
 
   function simulateTransfer() {
     start(async () => {
-      const res = await fetch("/api/wallet/fund/simulate-transfer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(amount) }),
+      await runBlocking(async () => {
+        const res = await fetch("/api/wallet/fund/simulate-transfer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: Number(amount) }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setMsg(data.error || "Failed");
+          return;
+        }
+        setBalance(data.balance);
+        setMsg("Monnify transfer received (sim webhook).");
+        setOpen(false);
+        await refresh();
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setMsg(data.error || "Failed");
-        return;
-      }
-      setBalance(data.balance);
-      setMsg("Monnify transfer received (sim webhook).");
-      setOpen(false);
-      await refresh();
     });
   }
 

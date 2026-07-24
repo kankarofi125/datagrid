@@ -297,7 +297,7 @@ function AdminAccessHeader() {
       <div className="mx-auto flex min-h-16 max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3" aria-label="DataGrid home">
           <span>
-            <BrandLogo priority className="w-28" />
+            <BrandLogo priority className="w-10" />
             <span className="block font-mono-num text-[7px] uppercase tracking-[0.18em] text-ink/35">
               Staff access
             </span>

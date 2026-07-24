@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { formatNaira } from "@/lib/money";
 import { Card } from "@/components/ui/Card";
+import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 type Dispute = {
   id: string;
@@ -20,6 +21,7 @@ type Dispute = {
 };
 
 export default function AdminDisputesPage() {
+  const { runBlocking } = useBlockingLoader();
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [orderRef, setOrderRef] = useState("");
   const [reason, setReason] = useState("Customer complaint");
@@ -27,7 +29,7 @@ export default function AdminDisputesPage() {
   const [pending, start] = useTransition();
 
   function load() {
-    fetch("/api/admin/disputes")
+    return fetch("/api/admin/disputes")
       .then((r) => r.json())
       .then((d) => setDisputes(d.disputes || []))
       .catch(() => {})
@@ -51,17 +53,19 @@ export default function AdminDisputesPage() {
 
   function resolve(id: string, refund: boolean) {
     start(async () => {
-      await fetch("/api/admin/disputes", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id,
-          status: "RESOLVED",
-          refund,
-          resolution: refund ? "Refunded to wallet" : "Resolved without refund",
-        }),
+      await runBlocking(async () => {
+        await fetch("/api/admin/disputes", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id,
+            status: "RESOLVED",
+            refund,
+            resolution: refund ? "Refunded to wallet" : "Resolved without refund",
+          }),
+        });
+        await load();
       });
-      load();
     });
   }
 

@@ -8,6 +8,7 @@ import { RateBoard } from "@/components/landing/RateBoard";
 import { MarginCalculator } from "@/components/landing/MarginCalculator";
 import { CountUp } from "@/components/motion/CountUp";
 import { HeroEnter, Reveal } from "@/components/motion/Reveal";
+import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { Button } from "@/components/ui/Button";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { prisma } from "@/lib/db";
@@ -66,12 +67,13 @@ export default async function LandingPage() {
 
   return (
     <>
+      <ScrollProgress />
       <RateTicker items={data.ticker} />
 
-      <header className="sticky top-2 z-30 mx-2 mt-2 rounded-[18px] border border-white/80 bg-paper/92 shadow-[0_18px_48px_-30px_rgba(14,33,26,.38)] backdrop-blur-xl sm:mx-3 lg:mx-auto lg:w-[calc(100%-2rem)] lg:max-w-7xl">
-        <div className="mx-auto flex items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3 lg:px-6">
+      <header className="sticky top-2 z-30 mx-3 mt-2 rounded-2xl border border-white/80 bg-paper/92 shadow-[0_18px_48px_-30px_rgba(14,33,26,.38)] backdrop-blur-xl sm:mx-5 lg:mx-auto lg:w-[calc(100%-4rem)] lg:max-w-6xl">
+        <div className="mx-auto flex items-center justify-between gap-2 px-3 py-2 sm:px-4 lg:px-5">
           <Link href="/" className="flex min-w-0 items-center gap-2">
-            <BrandLogo priority className="w-24 sm:w-28" />
+            <BrandLogo priority className="w-9 sm:w-10" />
           </Link>
           <nav className="hidden items-center gap-7 rounded-full border border-line bg-white/60 px-5 py-2 text-sm font-medium md:flex">
             <Link href="#services" className="link-draw text-ink/70 hover:text-ink">
@@ -348,7 +350,7 @@ export default async function LandingPage() {
       <footer className="border-t border-line bg-green-deep text-paper">
         <div className="mx-auto grid max-w-7xl gap-8 px-3 py-10 sm:grid-cols-2 sm:gap-10 sm:px-4 sm:py-14 lg:grid-cols-4 lg:px-8">
           <div>
-            <BrandLogo className="w-40" alt="AYK Data Grid" />
+            <BrandLogo tone="inverse" className="w-14" alt="DataGrid" />
             <p className="mt-3 text-sm leading-relaxed text-paper/60">
               The national grid for your phone.
             </p>

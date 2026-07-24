@@ -18,6 +18,7 @@ import { cn } from "@/lib/cn";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
+import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 type Plan = {
   id: string;
@@ -43,6 +44,7 @@ type Schedule = {
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function SchedulesPage() {
+  const { runBlocking } = useBlockingLoader();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [phone, setPhone] = useState("");
@@ -61,7 +63,7 @@ export default function SchedulesPage() {
 
   function load(isInitial = false) {
     if (isInitial) setLoading(true);
-    Promise.all([
+    return Promise.all([
       fetch("/api/schedules").then((r) => r.json()),
       fetch("/api/catalog/plans").then((r) => r.json()),
     ])
@@ -137,11 +139,13 @@ export default function SchedulesPage() {
 
   async function runNow() {
     start(async () => {
-      setMsg(null);
-      const res = await fetch("/api/schedules/run", { method: "POST" });
-      const data = await res.json();
-      setMsg(`Runner processed ${data.processed} due job(s)`);
-      load();
+      await runBlocking(async () => {
+        setMsg(null);
+        const res = await fetch("/api/schedules/run", { method: "POST" });
+        const data = await res.json();
+        setMsg(`Runner processed ${data.processed} due job(s)`);
+        await load();
+      });
     });
   }
 

@@ -10,6 +10,7 @@ import {
   type NetworkCode,
 } from "@/lib/phone";
 import { formatNaira } from "@/lib/money";
+import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 export type Plan = {
   id: string;
@@ -33,6 +34,7 @@ export type TypeFilter = "ALL" | "SME" | "GIFTING" | "RETAIL";
 
 export function useBuyData(initial?: { phone?: string; planId?: string }) {
   const router = useRouter();
+  const { runBlocking } = useBlockingLoader();
   const initialPhone = initial?.phone || "";
   const initialPlanId = initial?.planId;
   const [phone, setPhoneRaw] = useState(() => sanitizeNgPhoneInput(initialPhone));
@@ -112,47 +114,49 @@ export function useBuyData(initial?: { phone?: string; planId?: string }) {
   function pay() {
     if (!selected || !local || pin.length < 4) return;
     start(async () => {
-      setStatus("processing");
-      setError(null);
-      setTrail([
-        { at: new Date().toISOString(), status: "PENDING", note: "Submitting" },
-        { at: new Date().toISOString(), status: "PROCESSING", note: "Debiting wallet" },
-      ]);
-      const res = await fetch("/api/vtu/data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: local,
-          planId: selected.id,
-          networkCode: network,
-          pin,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setStatus("failed");
-        setError(data.error || "Purchase failed");
-        if (data.transaction?.statusTrail) setTrail(data.transaction.statusTrail);
+      await runBlocking(async () => {
+        setStatus("processing");
+        setError(null);
+        setTrail([
+          { at: new Date().toISOString(), status: "PENDING", note: "Submitting" },
+          { at: new Date().toISOString(), status: "PROCESSING", note: "Debiting wallet" },
+        ]);
+        const res = await fetch("/api/vtu/data", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: local,
+            planId: selected.id,
+            networkCode: network,
+            pin,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus("failed");
+          setError(data.error || "Purchase failed");
+          if (data.transaction?.statusTrail) setTrail(data.transaction.statusTrail);
+          if (data.balance != null) setBalance(data.balance);
+          if (data.code === "PIN_REQUIRED") setHasPin(false);
+          return;
+        }
+        setOrderRef(data.transaction.orderRef);
+        setTrail(data.transaction.statusTrail || []);
+        setUssdHint(data.ussdHint || null);
         if (data.balance != null) setBalance(data.balance);
-        if (data.code === "PIN_REQUIRED") setHasPin(false);
-        return;
-      }
-      setOrderRef(data.transaction.orderRef);
-      setTrail(data.transaction.statusTrail || []);
-      setUssdHint(data.ussdHint || null);
-      if (data.balance != null) setBalance(data.balance);
-      setStatus("delivered");
-      fetch("/api/beneficiaries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: local,
-          label: formatPhoneDisplay(local),
-          service: "DATA",
-          networkCode: network,
-        }),
-      }).catch(() => {});
-      router.refresh();
+        setStatus("delivered");
+        fetch("/api/beneficiaries", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: local,
+            label: formatPhoneDisplay(local),
+            service: "DATA",
+            networkCode: network,
+          }),
+        }).catch(() => {});
+        router.refresh();
+      });
     });
   }
 

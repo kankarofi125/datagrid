@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Anton, Instrument_Sans, IBM_Plex_Mono } from "next/font/google";
 import { RegisterSW } from "@/components/pwa/RegisterSW";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { BlockingLoaderProvider } from "@/components/ui/BlockingLoader";
 import "./globals.css";
 
 const anton = Anton({
@@ -90,18 +91,29 @@ export default function RootLayout({
     >
       <head>
         <link rel="preload" href="/media/scroll/poster.jpg" as="image" />
+        <noscript>
+          <style>{`
+            [data-motion-owned] {
+              opacity: 1 !important;
+              transform: none !important;
+              filter: none !important;
+            }
+          `}</style>
+        </noscript>
       </head>
       <body className="min-h-full flex flex-col bg-paper text-ink">
-        <a href="#main" className="skip-link">
-          Skip to content
-        </a>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-        {children}
-        <RegisterSW />
-        <InstallPrompt />
+        <BlockingLoaderProvider>
+          <a href="#main" className="skip-link">
+            Skip to content
+          </a>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          />
+          {children}
+          <RegisterSW />
+          <InstallPrompt />
+        </BlockingLoaderProvider>
       </body>
     </html>
   );

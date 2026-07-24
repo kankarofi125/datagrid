@@ -4,6 +4,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
+const PREMIUM_EASE = [0.16, 1, 0.3, 1] as const;
+
 type Props = {
   children: ReactNode;
   className?: string;
@@ -12,11 +14,13 @@ type Props = {
   /** once | always */
   once?: boolean;
   as?: "div" | "section" | "li" | "article";
+  direction?: "up" | "left" | "right" | "none";
+  distance?: number;
 };
 
 /**
- * Shared Framer Motion reveal. Subtle movement keeps dense transactional
- * screens responsive and respects the user's reduced-motion preference.
+ * Shared viewport reveal. It deliberately starts away from the final state so
+ * IntersectionObserver-driven `whileInView` motion remains visible.
  */
 export function Reveal({
   children,
@@ -24,6 +28,8 @@ export function Reveal({
   delay = 0,
   once = true,
   as: Tag = "div",
+  direction = "up",
+  distance = 26,
 }: Props) {
   const reduced = useReducedMotion();
   const MotionTag = {
@@ -32,25 +38,35 @@ export function Reveal({
     li: motion.li,
     article: motion.article,
   }[Tag];
+  const offset = {
+    up: { x: 0, y: distance },
+    left: { x: -distance, y: 0 },
+    right: { x: distance, y: 0 },
+    none: { x: 0, y: 0 },
+  }[direction];
 
   return (
     <MotionTag
-      initial={false}
-      whileInView={
+      data-motion-owned
+      initial={
         reduced
-          ? { opacity: 1, y: 0, scale: 1 }
+          ? false
           : {
-              opacity: [0.86, 1],
-              y: [16, 0],
-              scale: [0.992, 1],
+              opacity: 0,
+              x: offset.x,
+              y: offset.y,
+              scale: 0.985,
+              filter: "blur(8px)",
             }
       }
-      viewport={{ once, amount: 0.12, margin: "0px 0px -5% 0px" }}
+      whileInView={{ opacity: 1, x: 0, y: 0, scale: 1, filter: "blur(0px)" }}
+      viewport={{ once, amount: 0.18, margin: "0px 0px -9% 0px" }}
       transition={{
-        duration: reduced ? 0 : 0.5,
+        duration: reduced ? 0 : 0.72,
         delay: reduced ? 0 : delay / 1000,
-        ease: [0.16, 1, 0.3, 1],
+        ease: PREMIUM_EASE,
       }}
+      style={{ willChange: reduced ? "auto" : "transform, opacity, filter" }}
       className={className}
     >
       {children}
@@ -72,21 +88,24 @@ export function HeroEnter({
 
   return (
     <motion.div
-      initial={false}
-      animate={
+      data-motion-owned
+      initial={
         reduced
-          ? { opacity: 1, y: 0, scale: 1 }
+          ? false
           : {
-              opacity: [0.84, 1],
-              y: [14, 0],
-              scale: [0.994, 1],
+              opacity: 0,
+              y: 24,
+              scale: 0.99,
+              filter: "blur(7px)",
             }
       }
+      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       transition={{
-        duration: reduced ? 0 : 0.46,
+        duration: reduced ? 0 : 0.78,
         delay: reduced ? 0 : delay / 1000,
-        ease: [0.16, 1, 0.3, 1],
+        ease: PREMIUM_EASE,
       }}
+      style={{ willChange: reduced ? "auto" : "transform, opacity, filter" }}
       className={cn(className)}
     >
       {children}

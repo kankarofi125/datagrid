@@ -14,6 +14,7 @@ import { TokenReceipt } from "@/components/buy/TokenReceipt";
 import { formatNaira } from "@/lib/money";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
+import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 type Biller = { id: string; code: string; name: string };
 
@@ -21,6 +22,7 @@ const QUICK = [1000, 2000, 5000, 10000];
 
 export default function ElectricityService() {
   const router = useRouter();
+  const { runBlocking } = useBlockingLoader();
   const [billers, setBillers] = useState<Biller[]>([]);
   const [disco, setDisco] = useState("");
   const [meter, setMeter] = useState("");
@@ -101,33 +103,35 @@ export default function ElectricityService() {
 
   function pay() {
     start(async () => {
-      setStatus("processing");
-      setError(null);
-      const res = await fetch("/api/vtu/electricity", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          billerCode: disco,
-          meter: meterClean,
-          amount: n,
-          pin,
-          customerName,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setStatus("failed");
-        setError(data.error || "Failed");
-        if (data.transaction?.statusTrail) setTrail(data.transaction.statusTrail);
+      await runBlocking(async () => {
+        setStatus("processing");
+        setError(null);
+        const res = await fetch("/api/vtu/electricity", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            billerCode: disco,
+            meter: meterClean,
+            amount: n,
+            pin,
+            customerName,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus("failed");
+          setError(data.error || "Failed");
+          if (data.transaction?.statusTrail) setTrail(data.transaction.statusTrail);
+          if (data.balance != null) setBalance(data.balance);
+          return;
+        }
+        setOrderRef(data.transaction.orderRef);
+        setToken(data.transaction.token);
+        setTrail(data.transaction.statusTrail || []);
         if (data.balance != null) setBalance(data.balance);
-        return;
-      }
-      setOrderRef(data.transaction.orderRef);
-      setToken(data.transaction.token);
-      setTrail(data.transaction.statusTrail || []);
-      if (data.balance != null) setBalance(data.balance);
-      setStatus("delivered");
-      router.refresh();
+        setStatus("delivered");
+        router.refresh();
+      });
     });
   }
 

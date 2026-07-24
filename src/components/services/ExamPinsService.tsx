@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/Card";
 import { formatNaira } from "@/lib/money";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
+import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 type Biller = {
   code: string;
@@ -22,6 +23,7 @@ type Biller = {
 
 export default function ExamPinsService() {
   const router = useRouter();
+  const { runBlocking } = useBlockingLoader();
   const [billers, setBillers] = useState<Biller[]>([]);
   const [billerCode, setBillerCode] = useState("");
   const [balance, setBalance] = useState<number | null>(null);
@@ -69,27 +71,29 @@ export default function ExamPinsService() {
 
   function pay() {
     start(async () => {
-      setStatus("processing");
-      setError(null);
-      const res = await fetch("/api/vtu/pins", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ billerCode, pin }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setStatus("failed");
-        setError(data.error || "Failed");
-        if (data.transaction?.statusTrail) setTrail(data.transaction.statusTrail);
+      await runBlocking(async () => {
+        setStatus("processing");
+        setError(null);
+        const res = await fetch("/api/vtu/pins", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ billerCode, pin }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus("failed");
+          setError(data.error || "Failed");
+          if (data.transaction?.statusTrail) setTrail(data.transaction.statusTrail);
+          if (data.balance != null) setBalance(data.balance);
+          return;
+        }
+        setOrderRef(data.transaction.orderRef);
+        setExamPin(data.transaction.token);
+        setTrail(data.transaction.statusTrail || []);
         if (data.balance != null) setBalance(data.balance);
-        return;
-      }
-      setOrderRef(data.transaction.orderRef);
-      setExamPin(data.transaction.token);
-      setTrail(data.transaction.statusTrail || []);
-      if (data.balance != null) setBalance(data.balance);
-      setStatus("delivered");
-      router.refresh();
+        setStatus("delivered");
+        router.refresh();
+      });
     });
   }
 

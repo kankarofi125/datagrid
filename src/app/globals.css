@@ -171,6 +171,98 @@ a {
   }
 }
 
+.blocking-loader-mark {
+  --blocking-cell: 9px;
+  --blocking-gap: 2.5px;
+  display: grid;
+  grid-template-columns: repeat(2, var(--blocking-cell));
+  grid-template-rows: repeat(2, var(--blocking-cell));
+  gap: var(--blocking-gap);
+}
+
+.blocking-loader-cell {
+  width: var(--blocking-cell);
+  height: var(--blocking-cell);
+  border-radius: 2px;
+  background: var(--green-deep);
+  animation: blocking-corner-pulse 1.4s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+
+.blocking-loader-tl {
+  grid-column: 1;
+  grid-row: 1;
+  animation-delay: 0s;
+}
+.blocking-loader-tr {
+  grid-column: 2;
+  grid-row: 1;
+  animation-delay: 0.35s;
+}
+.blocking-loader-br {
+  grid-column: 2;
+  grid-row: 2;
+  animation-delay: 0.7s;
+}
+.blocking-loader-bl {
+  grid-column: 1;
+  grid-row: 2;
+  animation-delay: 1.05s;
+}
+
+@keyframes blocking-corner-pulse {
+  0%,
+  24%,
+  100% {
+    background: var(--green-deep);
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(242, 166, 61, 0);
+  }
+  6%,
+  16% {
+    background: var(--amber);
+    transform: scale(1.1);
+    box-shadow: 0 5px 14px rgba(242, 166, 61, 0.42);
+  }
+}
+
+.blocking-loader-caret {
+  display: inline-block;
+  width: 1px;
+  height: 0.9em;
+  margin-left: 2px;
+  translate: 0 1px;
+  background: currentColor;
+  animation: blocking-caret-blink 0.75s steps(1, end) infinite;
+}
+
+@keyframes blocking-caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  46%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (min-width: 640px) {
+  .blocking-loader-mark {
+    --blocking-cell: 12px;
+    --blocking-gap: 3.25px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .blocking-loader-mark {
+    --blocking-cell: 15px;
+    --blocking-gap: 4px;
+  }
+  .blocking-loader-cell {
+    border-radius: 3px;
+  }
+}
+
 .pulse-dot {
   animation: status-pulse 1.8s ease-in-out infinite;
 }
@@ -351,8 +443,13 @@ select:focus-visible {
   .stamp-delivered,
   .sheet-enter,
   .bg-grid-live,
-  .mono-label-in {
+  .mono-label-in,
+  .blocking-loader-cell,
+  .blocking-loader-caret {
     animation: none !important;
+  }
+  .blocking-loader-cell {
+    background: var(--amber);
   }
   .skeleton-shimmer::after {
     animation: none !important;
@@ -369,6 +466,9 @@ select:focus-visible {
   .surface-interactive:hover,
   .edge-card:hover {
     transform: none;
+  }
+  .scroll-progress {
+    display: none;
   }
 }
 

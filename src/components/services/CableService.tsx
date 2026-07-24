@@ -14,12 +14,14 @@ import { ReceiptCard } from "@/components/buy/ReceiptCard";
 import { formatNaira } from "@/lib/money";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
+import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 type Pkg = { code: string; name: string; amount: number };
 type Biller = { code: string; name: string; packages: Pkg[] };
 
 export default function CableService() {
   const router = useRouter();
+  const { runBlocking } = useBlockingLoader();
   const [billers, setBillers] = useState<Biller[]>([]);
   const [billerCode, setBillerCode] = useState("");
   const [smartCard, setSmartCard] = useState("");
@@ -107,32 +109,34 @@ export default function CableService() {
 
   function pay() {
     start(async () => {
-      setStatus("processing");
-      setError(null);
-      const res = await fetch("/api/vtu/cable", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          billerCode,
-          smartCard,
-          packageCode,
-          pin,
-          customerName,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setStatus("failed");
-        setError(data.error || "Failed");
-        if (data.transaction?.statusTrail) setTrail(data.transaction.statusTrail);
+      await runBlocking(async () => {
+        setStatus("processing");
+        setError(null);
+        const res = await fetch("/api/vtu/cable", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            billerCode,
+            smartCard,
+            packageCode,
+            pin,
+            customerName,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus("failed");
+          setError(data.error || "Failed");
+          if (data.transaction?.statusTrail) setTrail(data.transaction.statusTrail);
+          if (data.balance != null) setBalance(data.balance);
+          return;
+        }
+        setOrderRef(data.transaction.orderRef);
+        setTrail(data.transaction.statusTrail || []);
         if (data.balance != null) setBalance(data.balance);
-        return;
-      }
-      setOrderRef(data.transaction.orderRef);
-      setTrail(data.transaction.statusTrail || []);
-      if (data.balance != null) setBalance(data.balance);
-      setStatus("delivered");
-      router.refresh();
+        setStatus("delivered");
+        router.refresh();
+      });
     });
   }
 

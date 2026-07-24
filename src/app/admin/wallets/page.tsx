@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { formatNaira } from "@/lib/money";
 import { Card } from "@/components/ui/Card";
+import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 type Req = {
   id: string;
@@ -21,6 +22,7 @@ type Req = {
 };
 
 export default function AdminWalletsPage() {
+  const { runBlocking } = useBlockingLoader();
   const [requests, setRequests] = useState<Req[]>([]);
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("1000");
@@ -31,7 +33,7 @@ export default function AdminWalletsPage() {
   const [pending, start] = useTransition();
 
   function load() {
-    fetch("/api/admin/wallets")
+    return fetch("/api/admin/wallets")
       .then((r) => r.json())
       .then((d) => setRequests(d.requests || []))
       .catch(() => {})
@@ -63,20 +65,22 @@ export default function AdminWalletsPage() {
 
   function decide(id: string, decision: "APPROVE" | "REJECT", force?: boolean) {
     start(async () => {
-      setError(null);
-      setMsg(null);
-      const res = await fetch("/api/admin/wallets", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, decision, force }),
+      await runBlocking(async () => {
+        setError(null);
+        setMsg(null);
+        const res = await fetch("/api/admin/wallets", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, decision, force }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || "Failed");
+          return;
+        }
+        setMsg(`${decision} · ${data.orderRef || data.status}`);
+        await load();
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Failed");
-        return;
-      }
-      setMsg(`${decision} · ${data.orderRef || data.status}`);
-      load();
     });
   }
 

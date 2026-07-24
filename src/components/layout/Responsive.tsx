@@ -17,7 +17,11 @@ export function MobileOnly({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={cn("mobile-density lg:hidden", className)}>{children}</div>;
+  return (
+    <div data-motion-cascade className={cn("mobile-density lg:hidden", className)}>
+      {children}
+    </div>
+  );
 }
 
 export function DesktopOnly({
@@ -27,7 +31,11 @@ export function DesktopOnly({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={cn("hidden lg:block", className)}>{children}</div>;
+  return (
+    <div data-motion-cascade className={cn("hidden lg:block", className)}>
+      {children}
+    </div>
+  );
 }
 
 /** Shared page container — narrow on mobile, wide on desktop */
@@ -43,6 +51,7 @@ export function PageFrame({
   return (
     <PageShell
       wide={wide}
+      motionCascade
       className={cn(
         wide ? "max-w-7xl" : "max-w-lg lg:max-w-5xl",
         "mx-auto",

@@ -25,6 +25,7 @@ import { formatNaira } from "@/lib/money";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { isPinDenied } from "@/lib/pin-feedback";
 import { Card } from "@/components/ui/Card";
+import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 const QUICK = [100, 200, 500, 1000, 2000, 5000];
 
@@ -36,6 +37,7 @@ export default function AirtimeService({
   initialAmount?: string;
 }) {
   const router = useRouter();
+  const { runBlocking } = useBlockingLoader();
   const [phone, setPhone] = useState(initialPhone || "");
   const [amount, setAmount] = useState(initialAmount || "500");
   const [balance, setBalance] = useState<number | null>(null);
@@ -84,31 +86,33 @@ export default function AirtimeService({
 
   function buy() {
     start(async () => {
-      setStatus("processing");
-      setError(null);
-      const res = await fetch("/api/vtu/airtime", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: local,
-          amount: n,
-          networkCode: network,
-          pin,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setStatus("failed");
-        setError(data.error || "Failed");
-        if (data.transaction?.statusTrail) setTrail(data.transaction.statusTrail);
+      await runBlocking(async () => {
+        setStatus("processing");
+        setError(null);
+        const res = await fetch("/api/vtu/airtime", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: local,
+            amount: n,
+            networkCode: network,
+            pin,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus("failed");
+          setError(data.error || "Failed");
+          if (data.transaction?.statusTrail) setTrail(data.transaction.statusTrail);
+          if (data.balance != null) setBalance(data.balance);
+          return;
+        }
+        setOrderRef(data.transaction.orderRef);
+        setTrail(data.transaction.statusTrail || []);
         if (data.balance != null) setBalance(data.balance);
-        return;
-      }
-      setOrderRef(data.transaction.orderRef);
-      setTrail(data.transaction.statusTrail || []);
-      if (data.balance != null) setBalance(data.balance);
-      setStatus("delivered");
-      router.refresh();
+        setStatus("delivered");
+        router.refresh();
+      });
     });
   }
 

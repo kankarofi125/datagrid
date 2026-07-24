@@ -16,6 +16,7 @@ import {
 } from "@/lib/phone";
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
+import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 type Plan = {
   id: string;
@@ -39,6 +40,7 @@ const DEMO_PLANS: Plan[] = [
 ];
 
 export function GuestPurchaseWidget({ plans = DEMO_PLANS }: { plans?: Plan[] }) {
+  const { runBlocking } = useBlockingLoader();
   const [tab, setTab] = useState<Tab>("DATA");
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("500");
@@ -81,38 +83,40 @@ export function GuestPurchaseWidget({ plans = DEMO_PLANS }: { plans?: Plan[] }) 
 
   function runPurchase() {
     startTransition(async () => {
-      setStatus("processing");
-      setError(null);
-      try {
-        const body =
-          tab === "DATA"
-            ? {
-                service: "DATA",
-                phone: local,
-                planId: (selectedPlan || filteredPlans[0])?.id,
-                amount: (selectedPlan || filteredPlans[0])?.retailPrice,
-                networkCode: network,
-              }
-            : {
-                service: "AIRTIME",
-                phone: local,
-                amount: Number(amount),
-                networkCode: network,
-              };
+      await runBlocking(async () => {
+        setStatus("processing");
+        setError(null);
+        try {
+          const body =
+            tab === "DATA"
+              ? {
+                  service: "DATA",
+                  phone: local,
+                  planId: (selectedPlan || filteredPlans[0])?.id,
+                  amount: (selectedPlan || filteredPlans[0])?.retailPrice,
+                  networkCode: network,
+                }
+              : {
+                  service: "AIRTIME",
+                  phone: local,
+                  amount: Number(amount),
+                  networkCode: network,
+                };
 
-        const res = await fetch("/api/transactions/guest", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Purchase failed");
-        setOrderRef(data.orderRef);
-        setStatus("delivered");
-      } catch (e) {
-        setStatus("failed");
-        setError(e instanceof Error ? e.message : "Something went wrong");
-      }
+          const res = await fetch("/api/transactions/guest", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Purchase failed");
+          setOrderRef(data.orderRef);
+          setStatus("delivered");
+        } catch (e) {
+          setStatus("failed");
+          setError(e instanceof Error ? e.message : "Something went wrong");
+        }
+      });
     });
   }
 

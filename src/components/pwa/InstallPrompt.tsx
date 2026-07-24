@@ -131,8 +131,8 @@ export function InstallPrompt() {
       aria-label="Install DataGrid"
     >
       <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-paper">
-          <BrandLogo variant="mark" alt="" className="w-9" />
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden">
+          <BrandLogo variant="mark" tone="inverse" alt="" className="w-9" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-semibold">Install DataGrid</p>

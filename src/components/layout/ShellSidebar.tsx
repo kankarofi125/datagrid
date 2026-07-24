@@ -68,21 +68,15 @@ export function ShellSidebar({
         >
           <span className="sr-only">{brand}</span>
           <span className={cn("min-w-0", collapsed && "flex justify-center")}>
-            <span
-              className={cn(
-                "block rounded-xl bg-paper/96 shadow-[0_8px_24px_-16px_rgba(0,0,0,.7)]",
-                collapsed ? "p-1" : "px-2 py-1"
-              )}
-            >
-              <BrandLogo
-                variant={collapsed ? "mark" : "lockup"}
-                alt=""
-                priority
-                className={collapsed ? "w-10" : "w-[116px]"}
-              />
-            </span>
+            <BrandLogo
+              variant="mark"
+              tone="inverse"
+              alt=""
+              priority
+              className={collapsed ? "w-9" : "w-11"}
+            />
             {!collapsed && (
-              <span className="mt-0.5 block whitespace-nowrap text-center font-mono-num text-[7px] tracking-[0.18em] text-paper/35">
+              <span className="mt-1 block whitespace-nowrap text-center font-mono-num text-[7px] tracking-[0.18em] text-paper/35">
                 {subtitle}
               </span>
             )}

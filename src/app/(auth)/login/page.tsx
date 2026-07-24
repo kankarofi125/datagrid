@@ -383,8 +383,8 @@ function LoginForm() {
     <>
       <div className="mx-auto w-full max-w-md px-4 py-12 lg:hidden">
         <HeroEnter delay={0}>
-          <Link href="/" className="inline-block" aria-label="AYK Data Grid home">
-            <BrandLogo priority className="w-32" />
+          <Link href="/" className="inline-block" aria-label="DataGrid home">
+            <BrandLogo priority className="w-14" />
           </Link>
         </HeroEnter>
         <HeroEnter delay={80}>
@@ -407,8 +407,12 @@ function LoginForm() {
       <div className="mx-auto hidden min-h-[calc(100vh-3rem)] max-w-6xl overflow-hidden lg:grid lg:grid-cols-2">
         <div className="bg-grid bg-grid-live flex flex-col justify-between p-12 text-paper">
           <HeroEnter delay={0}>
-            <Link href="/" className="inline-block" aria-label="AYK Data Grid home">
-              <BrandLogo priority className="w-40 drop-shadow-[0_8px_24px_rgba(0,0,0,0.18)]" />
+            <Link href="/" className="inline-block" aria-label="DataGrid home">
+              <BrandLogo
+                priority
+                tone="inverse"
+                className="w-16 drop-shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
+              />
             </Link>
           </HeroEnter>
           <div>
