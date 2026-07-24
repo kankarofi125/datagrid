@@ -5,6 +5,7 @@ import { SkeletonPage } from "@/components/ui/Skeleton";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, string | number>>({});
@@ -68,18 +69,26 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader kicker="PLATFORM" title="SETTINGS." />
-      <div className="max-w-md space-y-3 surface p-5">
+      <Card className="max-w-md p-5">
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save();
+          }}
+        >
         {field("referral.signup_bonus_ngn", "Referral signup bonus (₦)")}
         {field("referral.purchase_pct_bps", "Purchase commission (bps, 50 = 0.5%)")}
         {field("referral.window_months", "Referral window (months)")}
         {field("agent.volume_threshold_ngn", "Agent volume threshold (₦)")}
         {field("support.whatsapp", "WhatsApp (234…)")}
         {field("brand.cac_rc", "CAC RC")}
-        <Button fullWidth onClick={save} disabled={pending}>
+        <Button type="submit" fullWidth disabled={pending}>
           Save
         </Button>
         {msg && <p className="text-sm text-green">{msg}</p>}
-      </div>
+        </form>
+      </Card>
     </div>
   );
 }

@@ -369,54 +369,6 @@ export async function purchaseCable(input: {
   });
 }
 
-export async function purchaseBetting(input: {
-  userId: string;
-  billerCode: string;
-  customerId: string;
-  amount: number;
-  pin: string;
-  customerName?: string;
-  idempotencyKey?: string;
-}) {
-  if (input.amount < 100 || input.amount > 500000) {
-    return {
-      ok: false as const,
-      error: "Betting fund must be ₦100 – ₦500,000",
-      status: 400,
-    };
-  }
-  const customerId = input.customerId.trim();
-  if (customerId.length < 4) {
-    return { ok: false as const, error: "Invalid customer / user ID", status: 400 };
-  }
-
-  const biller = await prisma.biller.findFirst({
-    where: { code: input.billerCode.toUpperCase(), category: "BETTING", isActive: true },
-  });
-  if (!biller) return { ok: false as const, error: "Unknown betting platform", status: 400 };
-
-  return runWalletPurchase({
-    userId: input.userId,
-    service: "BETTING",
-    amount: input.amount,
-    pin: input.pin,
-    idempotencyKey: input.idempotencyKey,
-    fields: {
-      phone: customerId,
-      customerName: input.customerName,
-      billerId: biller.id,
-      meta: { biller: biller.code, customerId },
-    },
-    execute: (idem) =>
-      vtuRouter.buyBetting({
-        biller: biller.code,
-        customerId,
-        amount: input.amount,
-        idempotencyKey: idem,
-      }),
-  });
-}
-
 export async function purchaseExamPin(input: {
   userId: string;
   billerCode: string;

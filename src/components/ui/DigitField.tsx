@@ -68,12 +68,12 @@ export function DigitField({
         aria-label={ariaLabel || label || "Digit entry"}
         aria-invalid={Boolean(error)}
         className={cn(
-          "h-11 w-full rounded-lg border border-green/40 bg-paper px-3 text-base text-ink",
+          "h-11 w-full rounded-xl border border-line bg-white px-3 text-base text-ink shadow-[0_1px_0_rgba(14,33,26,.02)]",
           "font-mono-num tracking-[0.2em]",
           "placeholder:tracking-[0.2em] placeholder:text-ink/25",
           "outline-none ring-0",
-          "focus:border-green focus:outline-none focus:ring-0",
-          error && "border-danger focus:border-danger",
+          "focus:border-green focus:outline-none focus:ring-2 focus:ring-green/10",
+          error && "border-danger focus:border-danger focus:ring-danger/10",
           disabled && "opacity-60"
         )}
         onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, length))}

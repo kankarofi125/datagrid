@@ -6,14 +6,12 @@ export function HeroPhoneImage({ className }: { className?: string }) {
   return (
     <section
       className={cn(
-        "relative overflow-hidden bg-green-deep py-12 sm:py-16 lg:py-24",
+        "relative overflow-hidden bg-[radial-gradient(circle_at_70%_35%,rgba(242,166,61,.14),transparent_27%),linear-gradient(145deg,#0f3b2a,#071f17)] py-12 sm:py-16 lg:py-24",
         className
       )}
       aria-label="DataGrid on mobile"
       data-heavy-media
     >
-      <div className="bg-grid pointer-events-none absolute inset-0 opacity-80" aria-hidden />
-
       <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-8 px-3 sm:gap-10 sm:px-4 lg:grid-cols-2 lg:gap-12 lg:px-8">
         <div className="order-2 text-center lg:order-1 lg:text-left">
           <p className="font-mono-num mb-2 text-[10px] uppercase tracking-[0.2em] text-amber sm:mb-3 sm:text-[11px]">
@@ -28,6 +26,16 @@ export function HeroPhoneImage({ className }: { className?: string }) {
             Number detect, plan pick, PIN confirm, delivered. Airtime and data
             that feel like infrastructure — not a lottery.
           </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2 lg:justify-start">
+            {["Prefix detection", "PIN protected", "Live receipts"].map((item) => (
+              <span
+                key={item}
+                className="rounded-full bg-white/[0.07] px-3 py-1.5 font-mono-num text-[9px] uppercase tracking-wide text-paper/60"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div className="order-1 flex justify-center lg:order-2">

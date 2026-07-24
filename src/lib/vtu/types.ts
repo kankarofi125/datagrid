@@ -39,13 +39,6 @@ export type BuyCableInput = {
   idempotencyKey: string;
 };
 
-export type BuyBettingInput = {
-  biller: string;
-  customerId: string;
-  amount: number;
-  idempotencyKey: string;
-};
-
 export type BuyExamPinInput = {
   biller: string;
   quantity: number;
@@ -55,7 +48,6 @@ export type BuyExamPinInput = {
 
 export type ValidateMeterInput = { disco: string; meter: string };
 export type ValidateIUCInput = { biller: string; smartCard: string };
-export type ValidateBettingInput = { biller: string; customerId: string };
 
 export interface VTUProvider {
   code: string;
@@ -63,10 +55,8 @@ export interface VTUProvider {
   buyData(input: BuyDataInput): Promise<VTUResult>;
   buyToken(input: BuyTokenInput): Promise<VTUResult>;
   buyCable(input: BuyCableInput): Promise<VTUResult>;
-  buyBetting(input: BuyBettingInput): Promise<VTUResult>;
   buyExamPin(input: BuyExamPinInput): Promise<VTUResult>;
   validateMeter(input: ValidateMeterInput): Promise<VTUResult>;
   validateIUC(input: ValidateIUCInput): Promise<VTUResult>;
-  validateBetting(input: ValidateBettingInput): Promise<VTUResult>;
   status(): Promise<{ ok: boolean; latencyMs: number }>;
 }

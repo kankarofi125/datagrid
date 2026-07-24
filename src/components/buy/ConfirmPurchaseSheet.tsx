@@ -5,6 +5,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { PinPad } from "@/components/buy/PinPad";
 import { StatusTrail } from "@/components/buy/StatusTrail";
 import { formatNaira } from "@/lib/money";
+import { isPinDenied } from "@/lib/pin-feedback";
 
 type Row = { label: string; value: string; mono?: boolean };
 
@@ -39,6 +40,10 @@ export function ConfirmPurchaseSheet({
   onConfirm: () => void;
   delivered?: React.ReactNode;
 }) {
+  const pinDenied =
+    status === "failed" &&
+    isPinDenied(error);
+
   return (
     <Sheet
       open={open}
@@ -77,20 +82,23 @@ export function ConfirmPurchaseSheet({
             value={pin}
             onChange={onPinChange}
             disabled={pending || status === "processing"}
+            denied={pinDenied}
           />
-          <div className="rounded-md border border-line bg-ink/[0.03] p-3">
-            <StatusTrail
-              steps={trail}
-              activeStatus={
-                status === "processing"
-                  ? "PROCESSING"
-                  : status === "failed"
-                    ? "FAILED"
-                    : "PENDING"
-              }
-            />
-          </div>
-          {error && (
+          {!pinDenied && (
+            <div className="rounded-md border border-line bg-ink/[0.03] p-3">
+              <StatusTrail
+                steps={trail}
+                activeStatus={
+                  status === "processing"
+                    ? "PROCESSING"
+                    : status === "failed"
+                      ? "FAILED"
+                      : "PENDING"
+                }
+              />
+            </div>
+          )}
+          {error && !pinDenied && (
             <p className="text-sm text-danger" role="alert">
               {error}
             </p>

@@ -6,6 +6,7 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { cn } from "@/lib/cn";
+import { Card } from "@/components/ui/Card";
 
 type Row = {
   id: string;
@@ -64,7 +65,7 @@ export default function AdminIntegrationsPage() {
       </MobileOnly>
 
       <DesktopOnly>
-        <div className="surface overflow-hidden">
+        <Card className="overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line bg-ink/[0.03]">
@@ -91,7 +92,7 @@ export default function AdminIntegrationsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       </DesktopOnly>
     </div>
   );

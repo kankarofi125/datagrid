@@ -5,6 +5,7 @@ import { formatNaira } from "@/lib/money";
 import type { NetworkCode } from "@/lib/phone";
 import { NETWORK_COLORS } from "@/lib/phone";
 import { cn } from "@/lib/cn";
+import { BalanceAmount } from "@/components/ui/BalanceAmount";
 
 type Tx = {
   id: string;
@@ -32,9 +33,9 @@ const FALLBACK_NETWORKS: Net[] = [
 
 function repeatHref(transaction: Tx) {
   if (transaction.service === "DATA") {
-    return `/buy/data?phone=${encodeURIComponent(transaction.phone || "")}&planId=${transaction.planId || ""}`;
+    return `/services?service=data&phone=${encodeURIComponent(transaction.phone || "")}&planId=${transaction.planId || ""}`;
   }
-  return `/buy/airtime?phone=${encodeURIComponent(transaction.phone || "")}&amount=${transaction.amount}`;
+  return `/services?service=airtime&phone=${encodeURIComponent(transaction.phone || "")}&amount=${transaction.amount}`;
 }
 
 export function DashboardDesktop({
@@ -93,9 +94,7 @@ export function DashboardDesktop({
                 <p className="font-mono-num text-[10px] font-semibold tracking-[0.16em] text-amber">
                   MAIN WALLET
                 </p>
-                <p className="font-mono-num mt-3 text-[38px] font-semibold leading-none tracking-[-0.04em] tabular-nums xl:text-[42px]">
-                  {formatNaira(balance)}
-                </p>
+                <BalanceAmount amount={balance} className="mt-3 text-paper" />
               </div>
               <span className="rounded-full border border-white/10 bg-white/[0.07] px-3 py-1 font-mono-num text-[9px] tracking-wider text-paper/60">
                 AVAILABLE
@@ -153,7 +152,7 @@ export function DashboardDesktop({
               </p>
               <p className="mt-1 text-sm text-ink/48">Choose a service to continue.</p>
             </div>
-            <Link href="/buy" className="text-xs font-semibold text-green">
+            <Link href="/services" className="text-xs font-semibold text-green">
               All services →
             </Link>
           </div>
@@ -208,7 +207,7 @@ export function DashboardDesktop({
           {lastTx.length === 0 ? (
             <div className="flex min-h-[128px] flex-col items-center justify-center rounded-2xl border border-dashed border-ink/15 bg-paper/55 text-center">
               <p className="text-sm font-medium text-ink/60">No delivered orders yet.</p>
-              <Link href="/buy/data" className="mt-2 text-xs font-bold text-green">
+              <Link href="/services?service=data" className="mt-2 text-xs font-bold text-green">
                 Buy your first data plan →
               </Link>
             </div>

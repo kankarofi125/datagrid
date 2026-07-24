@@ -85,6 +85,7 @@ export default function RootLayout({
   return (
     <html
       lang="en-NG"
+      data-scroll-behavior="smooth"
       className={`${anton.variable} ${instrument.variable} ${plex.variable} h-full antialiased`}
     >
       <head>

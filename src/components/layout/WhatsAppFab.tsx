@@ -1,6 +1,14 @@
 "use client";
 
-export function WhatsAppFab({ orderRef }: { orderRef?: string }) {
+import { cn } from "@/lib/cn";
+
+export function WhatsAppFab({
+  orderRef,
+  hideOnMobile = false,
+}: {
+  orderRef?: string;
+  hideOnMobile?: boolean;
+}) {
   const phone = process.env.NEXT_PUBLIC_WHATSAPP || "2348000000000";
   const text = orderRef
     ? encodeURIComponent(`Hi DataGrid support — order ${orderRef}`)
@@ -12,7 +20,10 @@ export function WhatsAppFab({ orderRef }: { orderRef?: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-[92px] right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-sm font-semibold text-white shadow-[0_14px_28px_-12px_rgba(37,211,102,.75)] pressable lg:bottom-7 lg:right-8 lg:w-auto lg:gap-2 lg:px-4"
+      className={cn(
+        "fixed bottom-[120px] right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-sm font-semibold text-white shadow-[0_14px_28px_-12px_rgba(37,211,102,.75)] pressable lg:bottom-7 lg:right-8 lg:w-auto lg:gap-2 lg:px-4",
+        hideOnMobile && "hidden sm:flex"
+      )}
       aria-label="Chat on WhatsApp"
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>

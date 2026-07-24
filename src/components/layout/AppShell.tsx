@@ -30,13 +30,11 @@ export function AppShell({
 
         <div className="flex min-w-0 flex-1 flex-col">
           <AppTopBar balance={balance} phone={phone} />
-          <div className="hidden lg:block">
-            <DesktopTopBar
-              balance={balance}
-              phone={phone}
-              title="OPERATOR CONSOLE"
-            />
-          </div>
+          <DesktopTopBar
+            balance={balance}
+            phone={phone}
+            title="OPERATOR CONSOLE"
+          />
 
           <main
             id="main"

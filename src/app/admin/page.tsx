@@ -8,6 +8,8 @@ import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { cn } from "@/lib/cn";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { useRealtimeRefresh } from "@/hooks/useRealtime";
+import { BalanceAmount } from "@/components/ui/BalanceAmount";
+import { ButtonLink } from "@/components/ui/Button";
 
 type Analytics = {
   gmv: number;
@@ -66,12 +68,13 @@ export default function AdminCommandPage() {
         title="CONTROL ROOM."
         description="Jump board — open modules, glance KPIs, watch the latest orders."
         actions={
-          <Link
+          <ButtonLink
             href="/admin/analytics"
-            className="font-mono-num rounded-lg bg-green px-3 py-2 text-[10px] font-semibold tracking-wide text-white"
+            size="sm"
+            className="font-mono-num text-[10px] tracking-wide"
           >
             FULL ANALYTICS →
-          </Link>
+          </ButtonLink>
         }
       />
 
@@ -80,14 +83,25 @@ export default function AdminCommandPage() {
           <div className="overflow-hidden rounded-2xl bg-green-deep text-paper">
             <div className="bg-grid grid grid-cols-2 gap-px p-0.5">
               {[
-                ["GMV 30D", formatNaira(data.gmv, { compact: true })],
-                ["ORDERS", data.orders.toLocaleString("en-NG")],
+                ["GMV 30D", data.gmv],
+                ["ORDERS", data.orders],
                 ["SUCCESS", `${data.successRate.toFixed(1)}%`],
-                ["USERS", String(data.users)],
+                ["USERS", data.users],
               ].map(([k, v]) => (
-                <div key={k} className="bg-green-deep/90 px-3 py-3">
+                <div key={k} className="min-w-0 bg-green-deep/90 px-3 py-3">
                   <p className="font-mono-num text-[8px] tracking-wide text-amber/90">{k}</p>
-                  <p className="font-mono-num mt-1 text-lg font-semibold tabular-nums">{v}</p>
+                  {k === "GMV 30D" ? (
+                    <BalanceAmount
+                      amount={v}
+                      compact
+                      variant="card"
+                      className="mt-1 text-paper"
+                    />
+                  ) : (
+                    <p className="mt-1 truncate font-mono-num text-lg font-semibold tabular-nums">
+                      {v}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -159,9 +173,7 @@ export default function AdminCommandPage() {
                 <p className="font-mono-num text-[10px] tracking-widest text-amber">
                   30-DAY GMV
                 </p>
-                <p className="font-mono-num mt-2 text-4xl font-semibold tabular-nums">
-                  {formatNaira(data.gmv)}
-                </p>
+                <BalanceAmount amount={data.gmv} className="mt-3 text-paper" />
                 <p className="mt-2 text-sm text-paper/55">
                   Revenue est. {formatNaira(data.revenue, { compact: true })} ·{" "}
                   {data.successRate.toFixed(1)}% success
@@ -186,7 +198,7 @@ export default function AdminCommandPage() {
                 <div
                   key={k}
                   className={cn(
-                    "rounded-2xl border p-4",
+                    "min-w-0 overflow-hidden rounded-2xl border p-4",
                     tone === "paper" && "border-line bg-paper",
                     tone === "amber" && "border-amber/30 bg-amber/20",
                     tone === "danger" && "border-danger/20 bg-danger/5",
@@ -201,14 +213,23 @@ export default function AdminCommandPage() {
                   >
                     {k}
                   </p>
-                  <p
-                    className={cn(
-                      "font-mono-num mt-1 text-xl font-semibold tabular-nums",
-                      tone === "danger" && "text-danger"
-                    )}
-                  >
-                    {v}
-                  </p>
+                  {k === "REVENUE" ? (
+                    <BalanceAmount
+                      amount={data.revenue}
+                      compact
+                      variant="compact"
+                      className="mt-2 text-paper"
+                    />
+                  ) : (
+                    <p
+                      className={cn(
+                        "mt-1 truncate font-mono-num text-xl font-semibold tabular-nums",
+                        tone === "danger" && "text-danger"
+                      )}
+                    >
+                      {v}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -259,9 +280,9 @@ export default function AdminCommandPage() {
               </h2>
               <ul className="divide-y divide-line">
                 {Object.entries(data.byService).map(([k, v]) => (
-                  <li key={k} className="flex justify-between py-2.5 text-sm">
-                    <span className="font-medium">{k}</span>
-                    <span className="font-mono-num text-ink/60">
+                  <li key={k} className="flex min-w-0 justify-between gap-3 py-2.5 text-sm">
+                    <span className="min-w-0 truncate font-medium">{k}</span>
+                    <span className="shrink-0 font-mono-num text-xs text-ink/60">
                       {v.count} · {formatNaira(v.gmv, { compact: true })}
                     </span>
                   </li>

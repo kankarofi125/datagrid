@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { hashPin, isValidPin, verifyPin } from "@/lib/auth/pin";
+import { CacheKeys, invalidate } from "@/lib/cache";
 
 /** GET — whether user has PIN set */
 export async function GET() {
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
     where: { id: user.id },
     data: { pinHash },
   });
+  await invalidate(CacheKeys.userProfile(user.id));
 
   return NextResponse.json({ ok: true, hasPin: true });
 }

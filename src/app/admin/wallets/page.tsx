@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { formatNaira } from "@/lib/money";
+import { Card } from "@/components/ui/Card";
 
 type Req = {
   id: string;
@@ -88,7 +89,16 @@ export default function AdminWalletsPage() {
       <AdminPageHeader kicker="DUAL APPROVAL" title="WALLET CREDITS." description="Manual credits require two admins: one requests, another approves. Dev may force
           with same admin only when dual-approval blocks." />
 
-      <div className="max-w-md space-y-3 surface p-5">
+      <Card
+        className="max-w-md p-5"
+      >
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            create();
+          }}
+        >
         <PhoneInput label="User phone" value={phone} onChange={setPhone} />
         <Input
           label="Amount"
@@ -101,18 +111,20 @@ export default function AdminWalletsPage() {
           value={reason}
           onChange={(e) => setReason(e.target.value)}
         />
-        <Button fullWidth onClick={create} disabled={pending}>
+        <Button type="submit" fullWidth disabled={pending}>
           Create credit request
         </Button>
         {msg && <p className="text-sm text-green">{msg}</p>}
         {error && <p className="text-sm text-danger">{error}</p>}
-      </div>
+        </form>
+      </Card>
 
       <ul className="space-y-2">
         {requests.map((r) => (
-          <li
+          <Card
+            as="li"
             key={r.id}
-            className="flex flex-wrap items-center justify-between gap-3 surface p-4"
+            className="flex flex-wrap items-center justify-between gap-3 p-4"
           >
             <div>
               <p className="font-mono-num font-semibold text-green">
@@ -148,7 +160,7 @@ export default function AdminWalletsPage() {
                 </Button>
               </div>
             )}
-          </li>
+          </Card>
         ))}
       </ul>
     </div>

@@ -5,6 +5,7 @@ import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Reveal } from "@/components/motion/Reveal";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 type Provider = {
   id: string;
@@ -99,9 +100,10 @@ export default function AdminProvidersPage() {
       <Reveal delay={120}>
       <ul className="space-y-3">
         {providers.map((p) => (
-          <li
+          <Card
+            as="li"
             key={p.id}
-            className="surface surface-interactive flex flex-wrap items-center justify-between gap-3 p-4"
+            className="surface-interactive flex flex-wrap items-center justify-between gap-3 p-4"
           >
             <div>
               <p className="font-semibold">
@@ -135,7 +137,7 @@ export default function AdminProvidersPage() {
                 Make {p.role === "PRIMARY" ? "fallback" : "primary"}
               </Button>
             </div>
-          </li>
+          </Card>
         ))}
       </ul>
       </Reveal>
@@ -145,7 +147,7 @@ export default function AdminProvidersPage() {
           <h2 className="font-mono-num mb-2 text-[11px] tracking-widest text-ink/45">
             PROVIDER LOGS
           </h2>
-          <ul className="surface max-h-80 divide-y divide-line overflow-y-auto">
+          <Card as="ul" className="max-h-80 divide-y divide-line overflow-y-auto">
             {logs.map((l) => (
               <li key={l.id} className="px-3 py-2 text-sm">
                 <span className="font-mono-num text-xs text-ink/45">
@@ -164,7 +166,7 @@ export default function AdminProvidersPage() {
             {logs.length === 0 && (
               <li className="px-3 py-6 text-sm text-ink/50">No logs yet</li>
             )}
-          </ul>
+          </Card>
         </section>
       </Reveal>
     </div>

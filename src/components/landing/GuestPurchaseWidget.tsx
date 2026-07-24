@@ -152,7 +152,13 @@ export function GuestPurchaseWidget({ plans = DEMO_PLANS }: { plans?: Plan[] }) 
         </div>
       </div>
 
-      <div className="space-y-4 p-4">
+      <form
+        className="space-y-4 p-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          openConfirm();
+        }}
+      >
         {(tab === "DATA" || tab === "AIRTIME") && (
           <>
             <div>
@@ -229,7 +235,7 @@ export function GuestPurchaseWidget({ plans = DEMO_PLANS }: { plans?: Plan[] }) 
               </div>
             )}
 
-            <Button fullWidth size="lg" onClick={() => openConfirm()} disabled={pending}>
+            <Button type="submit" fullWidth size="lg" disabled={pending}>
               {tab === "DATA" ? "Buy data" : "Buy airtime"} —{" "}
               <span className="font-mono-num">{formatNaira(price, { compact: true })}</span>
             </Button>
@@ -255,7 +261,7 @@ export function GuestPurchaseWidget({ plans = DEMO_PLANS }: { plans?: Plan[] }) 
             {error}
           </p>
         )}
-      </div>
+      </form>
 
       <Sheet
         open={confirmOpen}

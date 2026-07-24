@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { toKoboSafe } from "@/lib/money";
 import type { Prisma, WalletKind } from "@prisma/client";
+import { CacheTags, invalidate } from "@/lib/cache";
 
 export class WalletError extends Error {
   constructor(
@@ -32,6 +33,14 @@ export async function getWalletBalance(userId: string, kind: WalletKind = "MAIN"
 }
 
 type TxClient = Prisma.TransactionClient;
+
+async function invalidateWalletCache(userId: string) {
+  try {
+    await invalidate(CacheTags.wallet(userId), true);
+  } catch {
+    // Wallet writes must not fail because an optional cache is unavailable.
+  }
+}
 
 async function applyLedger(
   tx: TxClient,
@@ -78,7 +87,7 @@ export async function creditWallet(opts: {
   const amount = toKoboSafe(opts.amount);
   if (amount <= 0) throw new WalletError("Amount must be positive", "INVALID");
 
-  return prisma.$transaction(async (tx) => {
+  const balance = await prisma.$transaction(async (tx) => {
     let wallet = await tx.wallet.findUnique({
       where: {
         userId_kind: { userId: opts.userId, kind: opts.kind || "MAIN" },
@@ -105,6 +114,8 @@ export async function creditWallet(opts: {
     });
     return balanceAfter;
   });
+  await invalidateWalletCache(opts.userId);
+  return balance;
 }
 
 /** Debit main wallet (purchases). Throws INSUFFICIENT if low. */
@@ -118,7 +129,7 @@ export async function debitWallet(opts: {
   const amount = toKoboSafe(opts.amount);
   if (amount <= 0) throw new WalletError("Amount must be positive", "INVALID");
 
-  return prisma.$transaction(async (tx) => {
+  const balance = await prisma.$transaction(async (tx) => {
     const wallet = await tx.wallet.findUnique({
       where: {
         userId_kind: { userId: opts.userId, kind: opts.kind || "MAIN" },
@@ -144,6 +155,8 @@ export async function debitWallet(opts: {
     });
     return balanceAfter;
   });
+  await invalidateWalletCache(opts.userId);
+  return balance;
 }
 
 /** Refund after failed VTU — credit back */

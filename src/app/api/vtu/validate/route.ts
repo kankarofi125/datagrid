@@ -41,20 +41,5 @@ export async function POST(req: Request) {
     });
   }
 
-  if (type === "BETTING") {
-    const result = await vtuRouter.validateBetting({
-      biller: String(body.billerCode || ""),
-      customerId: String(body.customerId || ""),
-    });
-    if (!result.success) {
-      return NextResponse.json({ error: result.error || "Invalid ID" }, { status: 400 });
-    }
-    return NextResponse.json({
-      ok: true,
-      customerName: result.customerName,
-      provider: result.providerCode,
-    });
-  }
-
   return NextResponse.json({ error: "Unknown validation type" }, { status: 400 });
 }

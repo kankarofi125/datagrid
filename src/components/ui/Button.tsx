@@ -1,7 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import type { ButtonHTMLAttributes } from "react";
+import Link, { type LinkProps } from "next/link";
+import type {
+  AnchorHTMLAttributes,
+  ButtonHTMLAttributes,
+} from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "amber";
 
@@ -21,6 +25,35 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   fullWidth?: boolean;
 };
 
+type LinkButtonProps = LinkProps &
+  Omit<AnchorHTMLAttributes<HTMLAnchorElement>, keyof LinkProps> & {
+    variant?: Variant;
+    size?: "sm" | "md" | "lg";
+    fullWidth?: boolean;
+  };
+
+function buttonClassName({
+  className,
+  variant,
+  size,
+  fullWidth,
+}: {
+  className?: string;
+  variant: Variant;
+  size: "sm" | "md" | "lg";
+  fullWidth?: boolean;
+}) {
+  return cn(
+    "pressable inline-flex items-center justify-center gap-2 font-semibold transition-[transform,box-shadow,background-color] duration-150 disabled:pointer-events-none disabled:opacity-50",
+    size === "sm" && "h-9 rounded-lg px-3 text-sm",
+    size === "md" && "h-11 rounded-xl px-4 text-[15px]",
+    size === "lg" && "h-11 rounded-xl px-4 text-[15px] sm:h-12 sm:px-5 sm:text-base",
+    fullWidth && "w-full",
+    variants[variant],
+    className
+  );
+}
+
 export function Button({
   className,
   variant = "primary",
@@ -33,18 +66,28 @@ export function Button({
   return (
     <button
       type={type}
-      className={cn(
-        "pressable inline-flex items-center justify-center gap-2 font-semibold transition-[transform,box-shadow,background-color] duration-150 disabled:opacity-50 disabled:pointer-events-none",
-        size === "sm" && "h-9 px-3 text-sm rounded-lg",
-        size === "md" && "h-11 px-4 text-[15px] rounded-xl",
-        size === "lg" && "h-11 px-4 text-[15px] rounded-xl sm:h-12 sm:px-5 sm:text-base",
-        fullWidth && "w-full",
-        variants[variant],
-        className
-      )}
+      className={buttonClassName({ className, variant, size, fullWidth })}
       {...props}
     >
       {children}
     </button>
+  );
+}
+
+export function ButtonLink({
+  className,
+  variant = "primary",
+  size = "md",
+  fullWidth,
+  children,
+  ...props
+}: LinkButtonProps) {
+  return (
+    <Link
+      className={buttonClassName({ className, variant, size, fullWidth })}
+      {...props}
+    >
+      {children}
+    </Link>
   );
 }

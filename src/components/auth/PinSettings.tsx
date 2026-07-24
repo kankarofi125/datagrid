@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { PinPad } from "@/components/buy/PinPad";
 
 export function PinSettings({ hasPin: initial }: { hasPin: boolean }) {
+  const router = useRouter();
   const [hasPin, setHasPin] = useState(initial);
   const [step, setStep] = useState<"idle" | "current" | "new" | "confirm">("idle");
   const [currentPin, setCurrentPin] = useState("");
@@ -57,6 +59,7 @@ export function PinSettings({ hasPin: initial }: { hasPin: boolean }) {
       setHasPin(true);
       setStep("idle");
       setMsg("Transaction PIN saved.");
+      router.refresh();
     });
   }
 

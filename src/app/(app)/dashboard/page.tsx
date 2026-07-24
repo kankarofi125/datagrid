@@ -4,6 +4,7 @@ import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { DashboardMobile } from "@/components/dashboard/DashboardMobile";
 import { DashboardDesktop } from "@/components/dashboard/DashboardDesktop";
 import type { NetworkCode } from "@/lib/phone";
+import { cached, CacheKeys, CacheTags } from "@/lib/cache";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -27,40 +28,61 @@ export default async function DashboardPage() {
 
   if (session.userId) {
     try {
-      const user = await prisma.user.findUnique({
-        where: { id: session.userId },
-        include: { wallets: true },
-      });
-      name = user?.name || user?.phoneLocal || name;
-      balance = Number(user?.wallets.find((w) => w.kind === "MAIN")?.balance ?? 0);
-      const rows = await prisma.transaction.findMany({
-        where: {
-          userId: session.userId,
-          service: { in: ["DATA", "AIRTIME"] },
-          status: "DELIVERED",
+      const userId = session.userId;
+      const data = await cached(
+        CacheKeys.dashboard(userId),
+        async () => {
+          const [user, rows, nets] = await Promise.all([
+            prisma.user.findUnique({
+              where: { id: userId },
+              include: { wallets: true },
+            }),
+            prisma.transaction.findMany({
+              where: {
+                userId,
+                service: { in: ["DATA", "AIRTIME"] },
+                status: "DELIVERED",
+              },
+              orderBy: { createdAt: "desc" },
+              take: 5,
+            }),
+            prisma.network.findMany({
+              where: { isActive: true },
+              orderBy: { sortOrder: "asc" },
+            }),
+          ]);
+          return {
+            name: user?.name || user?.phoneLocal || "Operator",
+            balance: Number(
+              user?.wallets.find((wallet) => wallet.kind === "MAIN")?.balance ?? 0
+            ),
+            lastTx: rows.map((transaction) => ({
+              id: transaction.id,
+              service: transaction.service,
+              amount: Number(transaction.amount),
+              phone: transaction.phone,
+              planId: transaction.planId,
+              orderRef: transaction.orderRef,
+              status: transaction.status,
+            })),
+            networks: nets.map((network) => ({
+              code: network.code as NetworkCode,
+              name: network.name,
+              status: network.status,
+              uptimePct: Number(network.uptimePct),
+            })),
+          };
         },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      });
-      lastTx = rows.map((t) => ({
-        id: t.id,
-        service: t.service,
-        amount: Number(t.amount),
-        phone: t.phone,
-        planId: t.planId,
-        orderRef: t.orderRef,
-        status: t.status,
-      }));
-      const nets = await prisma.network.findMany({
-        where: { isActive: true },
-        orderBy: { sortOrder: "asc" },
-      });
-      networks = nets.map((n) => ({
-        code: n.code as NetworkCode,
-        name: n.name,
-        status: n.status,
-        uptimePct: Number(n.uptimePct),
-      }));
+        {
+          ttl: 20,
+          staleTtl: 300,
+          tags: [CacheTags.wallet(userId), CacheTags.catalog],
+        }
+      );
+      name = data.name;
+      balance = data.balance;
+      lastTx = data.lastTx;
+      networks = data.networks;
     } catch {
       /* ignore */
     }

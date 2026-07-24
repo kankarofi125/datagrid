@@ -6,6 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { formatNaira } from "@/lib/money";
+import { Card } from "@/components/ui/Card";
 
 type Dispute = {
   id: string;
@@ -72,26 +73,35 @@ export default function AdminDisputesPage() {
     <div className="space-y-6">
       <AdminPageHeader kicker="SUPPORT" title="DISPUTES." />
 
-      <div className="flex max-w-lg flex-col gap-2 sm:flex-row">
-        <Input
-          placeholder="Order ref DG-…"
-          mono
-          value={orderRef}
-          onChange={(e) => setOrderRef(e.target.value)}
-        />
-        <Button onClick={openDispute} disabled={pending}>
-          Open
-        </Button>
-      </div>
-      <Input
-        label="Reason"
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-      />
+      <Card className="max-w-2xl p-4">
+        <form
+          className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+          onSubmit={(event) => {
+            event.preventDefault();
+            openDispute();
+          }}
+        >
+          <Input
+            label="Order reference"
+            placeholder="DG-…"
+            mono
+            value={orderRef}
+            onChange={(e) => setOrderRef(e.target.value)}
+          />
+          <Input
+            label="Reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <Button type="submit" disabled={pending}>
+            Open
+          </Button>
+        </form>
+      </Card>
 
       <ul className="space-y-2">
         {disputes.map((d) => (
-          <li key={d.id} className="surface p-4">
+          <Card as="li" key={d.id} className="p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-mono-num text-green">{d.orderRef}</p>
@@ -119,7 +129,7 @@ export default function AdminDisputesPage() {
                 </div>
               )}
             </div>
-          </li>
+          </Card>
         ))}
         {disputes.length === 0 && (
           <p className="text-sm text-ink/50">No disputes</p>

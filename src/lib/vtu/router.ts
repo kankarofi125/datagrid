@@ -106,14 +106,10 @@ export const vtuRouter = {
     withFailover((p) => p.buyToken(input), "buyToken"),
   buyCable: (input: Parameters<VTUProvider["buyCable"]>[0]) =>
     withFailover((p) => p.buyCable(input), "buyCable"),
-  buyBetting: (input: Parameters<VTUProvider["buyBetting"]>[0]) =>
-    withFailover((p) => p.buyBetting(input), "buyBetting"),
   buyExamPin: (input: Parameters<VTUProvider["buyExamPin"]>[0]) =>
     withFailover((p) => p.buyExamPin(input), "buyExamPin"),
   validateMeter: (input: Parameters<VTUProvider["validateMeter"]>[0]) =>
     withFailover((p) => p.validateMeter(input), "validateMeter"),
   validateIUC: (input: Parameters<VTUProvider["validateIUC"]>[0]) =>
     withFailover((p) => p.validateIUC(input), "validateIUC"),
-  validateBetting: (input: Parameters<VTUProvider["validateBetting"]>[0]) =>
-    withFailover((p) => p.validateBetting(input), "validateBetting"),
 };

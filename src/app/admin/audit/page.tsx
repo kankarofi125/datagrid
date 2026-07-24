@@ -3,6 +3,7 @@
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { useEffect, useState } from "react";
+import { Card } from "@/components/ui/Card";
 
 type Log = {
   id: string;
@@ -34,7 +35,7 @@ export default function AdminAuditPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader kicker="COMPLIANCE" title="AUDIT LOG." />
-      <ul className="divide-y divide-line surface">
+      <Card as="ul" className="divide-y divide-line">
         {logs.map((l) => (
           <li key={l.id} className="px-4 py-3 text-sm">
             <div className="flex flex-wrap justify-between gap-2">
@@ -60,7 +61,7 @@ export default function AdminAuditPage() {
         {logs.length === 0 && (
           <li className="px-4 py-8 text-center text-sm text-ink/50">No audit events</li>
         )}
-      </ul>
+      </Card>
     </div>
   );
 }

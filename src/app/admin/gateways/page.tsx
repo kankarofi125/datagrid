@@ -6,6 +6,7 @@ import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { cn } from "@/lib/cn";
+import { Card } from "@/components/ui/Card";
 
 type Gateway = {
   key: string;
@@ -112,7 +113,7 @@ export default function AdminGatewaysPage() {
       <DesktopOnly>
         <div className="grid gap-4 md:grid-cols-3">
           {gateways.map((g) => (
-            <div key={g.key} className="surface p-5">
+            <Card key={g.key} className="p-5">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-display text-xl text-ink">{g.name.toUpperCase()}.</p>
@@ -141,7 +142,7 @@ export default function AdminGatewaysPage() {
               >
                 {g.enabled ? "Disable gateway" : "Enable gateway"}
               </Button>
-            </div>
+            </Card>
           ))}
         </div>
       </DesktopOnly>

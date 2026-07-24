@@ -18,7 +18,11 @@ export async function GET() {
           orderBy: { sortOrder: "asc" },
           take: 100,
         }),
-        prisma.biller.findMany({ orderBy: { name: "asc" }, take: 80 }),
+        prisma.biller.findMany({
+          where: { category: { not: "BETTING" } },
+          orderBy: { name: "asc" },
+          take: 80,
+        }),
         prisma.provider.findMany({ orderBy: { priority: "asc" } }),
       ]);
 

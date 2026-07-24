@@ -74,7 +74,7 @@ export function LineChart({
 
   return (
     <div className={cn("w-full", className)}>
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height={height} minWidth={1} minHeight={1}>
         <AreaChart data={data} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
           <defs>
             <linearGradient id={`fill-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
@@ -151,7 +151,7 @@ export function BarChart({
 
   return (
     <div className={cn("w-full", className)}>
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height={height} minWidth={1} minHeight={1}>
         <RBar data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.06} vertical={false} />
           <XAxis
@@ -183,13 +183,25 @@ export function HBarList({
   series,
   className,
   valueFormat,
+  currency = false,
 }: {
   series: Point[];
   className?: string;
   valueFormat?: (n: number) => string;
+  currency?: boolean;
 }) {
   const max = Math.max(...series.map((p) => p.value), 1);
-  const fmt = valueFormat || ((n: number) => n.toLocaleString("en-NG"));
+  const fmt =
+    valueFormat ||
+    (currency
+      ? (n: number) =>
+          new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+            notation: "compact",
+            maximumFractionDigits: 1,
+          }).format(n)
+      : (n: number) => n.toLocaleString("en-NG"));
 
   return (
     <ul className={cn("space-y-2.5", className)}>
@@ -239,7 +251,7 @@ export function DonutChart({
   return (
     <div className={cn("flex flex-col items-center gap-3 sm:flex-row sm:items-center", className)}>
       <div className="relative shrink-0" style={{ width: size, height: size }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
           <PieChart>
             <Pie
               data={data}
@@ -310,7 +322,7 @@ export function Sparkline({
 
   return (
     <div className={cn("h-5 w-16", className)}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
         <RLine data={data} margin={{ top: 2, right: 0, left: 0, bottom: 2 }}>
           <Line
             type="monotone"

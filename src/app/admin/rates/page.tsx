@@ -5,6 +5,8 @@ import { SkeletonPage } from "@/components/ui/Skeleton";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { formatNaira } from "@/lib/money";
+import { Input } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
 
 type Plan = {
   id: string;
@@ -60,7 +62,7 @@ export default function AdminRatesPage() {
       <AdminPageHeader kicker="CATALOG" title="RATES." description="Bulk-friendly plan editor. Retail + reseller margin control." />
       {msg && <p className="text-sm text-green">{msg}</p>}
 
-      <div className="overflow-x-auto surface">
+      <Card className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-line bg-ink/[0.03]">
@@ -77,49 +79,58 @@ export default function AdminRatesPage() {
           <tbody>
             {plans.map((p) => (
               <tr key={p.id} className="border-b border-line last:border-0">
-                <td className="px-3 py-2 font-semibold">{p.networkCode}</td>
+                <td className="px-3 py-2 font-semibold">
+                  <form
+                    id={`plan-${p.id}`}
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const data = new FormData(event.currentTarget);
+                      update(p.id, {
+                        retailPrice: Number(data.get("retail")),
+                        resellerPrice: Number(data.get("reseller")),
+                      });
+                    }}
+                  />
+                  {p.networkCode}
+                </td>
                 <td className="px-3 py-2">{p.name}</td>
                 <td className="font-mono-num px-3 py-2 text-xs">{p.type}</td>
                 <td className="px-3 py-2">
-                  <input
+                  <Input
                     type="number"
-                    className="font-mono-num w-24 rounded border border-line px-2 py-1"
+                    name="retail"
+                    form={`plan-${p.id}`}
+                    className="h-9 w-24 rounded-lg px-2 text-sm"
                     defaultValue={p.retailPrice}
-                    id={`r-${p.id}`}
+                    mono
                   />
                 </td>
                 <td className="px-3 py-2">
-                  <input
+                  <Input
                     type="number"
-                    className="font-mono-num w-24 rounded border border-line px-2 py-1"
+                    name="reseller"
+                    form={`plan-${p.id}`}
+                    className="h-9 w-24 rounded-lg px-2 text-sm"
                     defaultValue={p.resellerPrice}
-                    id={`s-${p.id}`}
+                    mono
                   />
-                </td>
-                <td className="px-3 py-2">
-                  <button
-                    type="button"
-                    className="font-mono-num text-xs"
-                    onClick={() => update(p.id, { isActive: !p.isActive })}
-                  >
-                    {p.isActive ? "ON" : "OFF"}
-                  </button>
                 </td>
                 <td className="px-3 py-2">
                   <Button
                     size="sm"
+                    variant={p.isActive ? "secondary" : "ghost"}
+                    className="h-7 px-2 font-mono-num text-[10px]"
+                    onClick={() => update(p.id, { isActive: !p.isActive })}
+                  >
+                    {p.isActive ? "ON" : "OFF"}
+                  </Button>
+                </td>
+                <td className="px-3 py-2">
+                  <Button
+                    type="submit"
+                    form={`plan-${p.id}`}
+                    size="sm"
                     disabled={pending}
-                    onClick={() => {
-                      const retail = Number(
-                        (document.getElementById(`r-${p.id}`) as HTMLInputElement)
-                          ?.value
-                      );
-                      const reseller = Number(
-                        (document.getElementById(`s-${p.id}`) as HTMLInputElement)
-                          ?.value
-                      );
-                      update(p.id, { retailPrice: retail, resellerPrice: reseller });
-                    }}
                   >
                     Save
                   </Button>
@@ -128,7 +139,7 @@ export default function AdminRatesPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
       <p className="font-mono-num text-xs text-ink/40">
         Live catalog: current retail example {plans[0] ? formatNaira(plans[0].retailPrice) : "—"}
       </p>

@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { formatNaira } from "@/lib/money";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { useLocalClock } from "@/hooks/useLocalClock";
 import { APP_NAV } from "@/components/layout/app-nav";
+import { BalanceAmount } from "@/components/ui/BalanceAmount";
+import { FloatingDesktopHeader } from "@/components/layout/ShellHeaders";
 
 export function DesktopTopBar({
   balance,
@@ -26,17 +27,11 @@ export function DesktopTopBar({
   const onDashboard = path === "/dashboard";
 
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-paper/92 backdrop-blur-xl">
-      <div className="flex h-[62px] items-center justify-between gap-5 px-7 xl:px-10">
-        <div className="min-w-0">
-          <p className="font-mono-num text-[8px] font-semibold uppercase tracking-[0.18em] text-ink/32">
-            {title || "Operator console"}
-          </p>
-          <p className="mt-1 truncate text-sm font-semibold text-ink/75">
-            {navItem?.label || "DataGrid"}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+    <FloatingDesktopHeader
+      kicker={title || "Operator console"}
+      title={navItem?.label || "DataGrid"}
+      trailing={
+        <>
           <div className="hidden items-center gap-2 font-mono-num text-[9px] tracking-wide text-ink/42 xl:flex">
             <span className="h-1.5 w-1.5 rounded-full bg-green" />
             <span className="uppercase text-green">{clock.place || "LOCAL"}</span>
@@ -55,9 +50,7 @@ export function DesktopTopBar({
               className="flex h-9 items-center gap-2 rounded-xl border border-line bg-white px-3 text-ink shadow-sm"
             >
               <span className="text-green" aria-hidden>{hidden ? "○" : "◉"}</span>
-              <span className="font-mono-num text-xs font-semibold tabular-nums">
-                {hidden ? "₦••••" : formatNaira(balance)}
-              </span>
+              <BalanceAmount amount={balance} hidden={hidden} variant="compact" />
             </button>
           )}
           <Link
@@ -67,8 +60,8 @@ export function DesktopTopBar({
             <span aria-hidden>+</span>
             Fund
           </Link>
-        </div>
-      </div>
-    </header>
+        </>
+      }
+    />
   );
 }

@@ -1,11 +1,9 @@
 import type {
   BuyAirtimeInput,
-  BuyBettingInput,
   BuyCableInput,
   BuyDataInput,
   BuyExamPinInput,
   BuyTokenInput,
-  ValidateBettingInput,
   ValidateIUCInput,
   ValidateMeterInput,
   VTUProvider,
@@ -80,18 +78,6 @@ export const SimulatorProvider: VTUProvider = {
     };
   },
 
-  async buyBetting(input: BuyBettingInput): Promise<VTUResult> {
-    const t0 = Date.now();
-    await sleep(850 + Math.random() * 700);
-    return {
-      success: true,
-      providerRef: `SIM-BET-${Date.now()}`,
-      customerName: "PLAYER " + input.customerId.slice(-4),
-      raw: input,
-      latencyMs: Date.now() - t0,
-    };
-  },
-
   async buyExamPin(input: BuyExamPinInput): Promise<VTUResult> {
     const t0 = Date.now();
     await sleep(700 + Math.random() * 600);
@@ -129,20 +115,6 @@ export const SimulatorProvider: VTUProvider = {
     return {
       success: true,
       customerName: "CHIKEZIE N.",
-      raw: input,
-      latencyMs: Date.now() - t0,
-    };
-  },
-
-  async validateBetting(input: ValidateBettingInput): Promise<VTUResult> {
-    const t0 = Date.now();
-    await sleep(350);
-    if (input.customerId.trim().length < 4) {
-      return { success: false, error: "Invalid customer ID", latencyMs: Date.now() - t0 };
-    }
-    return {
-      success: true,
-      customerName: "VERIFIED USER",
       raw: input,
       latencyMs: Date.now() - t0,
     };

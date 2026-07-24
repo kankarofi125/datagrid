@@ -9,6 +9,13 @@ export async function GET(req: Request) {
     | BillerCategory
     | undefined;
 
+  if (category === "BETTING") {
+    return NextResponse.json(
+      { billers: [], cachedAt: new Date().toISOString() },
+      { status: 410 }
+    );
+  }
+
   const cacheKey = `${CacheKeys.catalogBillers()}:${category || "all"}`;
 
   const data = await cached(
@@ -17,7 +24,7 @@ export async function GET(req: Request) {
       const billers = await prisma.biller.findMany({
         where: {
           isActive: true,
-          ...(category ? { category } : {}),
+          category: category || { not: "BETTING" },
         },
         include: {
           packages: {

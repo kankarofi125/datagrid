@@ -126,20 +126,6 @@ async function main() {
     }
   }
 
-  const betting = ["BET9JA", "SPORTYBET", "BETKING", "BANGBET", "1XBET", "NAIRABET", "BETWAY"];
-  for (const code of betting) {
-    await prisma.biller.upsert({
-      where: { code },
-      update: {},
-      create: {
-        code,
-        name: code.charAt(0) + code.slice(1).toLowerCase(),
-        category: BillerCategory.BETTING,
-        validateType: "BETTING_ID",
-      },
-    });
-  }
-
   for (const code of ["WAEC", "NECO", "NABTEB"]) {
     const b = await prisma.biller.upsert({
       where: { code },

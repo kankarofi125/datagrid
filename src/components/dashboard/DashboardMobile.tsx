@@ -4,6 +4,7 @@ import { formatNaira } from "@/lib/money";
 import type { NetworkCode } from "@/lib/phone";
 import { NETWORK_COLORS } from "@/lib/phone";
 import { cn } from "@/lib/cn";
+import { BalanceAmount } from "@/components/ui/BalanceAmount";
 
 type Tx = {
   id: string;
@@ -32,7 +33,7 @@ export const DASHBOARD_SERVICES: {
   iconClass: string;
 }[] = [
   {
-    href: "/buy/data",
+    href: "/services?service=data",
     label: "Data",
     mono: "DATA",
     blurb: "SME · Gifting",
@@ -41,7 +42,7 @@ export const DASHBOARD_SERVICES: {
     iconClass: "bg-white/10 text-amber",
   },
   {
-    href: "/buy/airtime",
+    href: "/services?service=airtime",
     label: "Airtime",
     mono: "AIR",
     blurb: "All networks",
@@ -50,7 +51,7 @@ export const DASHBOARD_SERVICES: {
     iconClass: "bg-[#fcebd1] text-[#9a6316]",
   },
   {
-    href: "/buy/electricity",
+    href: "/services?service=electricity",
     label: "Power",
     mono: "KWH",
     blurb: "Instant tokens",
@@ -59,7 +60,7 @@ export const DASHBOARD_SERVICES: {
     iconClass: "bg-[#e4eef7] text-[#2f6fae]",
   },
   {
-    href: "/buy/cable",
+    href: "/services?service=cable",
     label: "Cable TV",
     mono: "TV",
     blurb: "DStv · GOtv",
@@ -68,16 +69,7 @@ export const DASHBOARD_SERVICES: {
     iconClass: "bg-[#efe9fa] text-[#6e4fb0]",
   },
   {
-    href: "/buy/betting",
-    label: "Betting",
-    mono: "BET",
-    blurb: "Wallet top-up",
-    accent: "#b23b31",
-    icon: "wallet",
-    iconClass: "bg-[#fbe7e5] text-[#b23b31]",
-  },
-  {
-    href: "/buy/pins",
+    href: "/services?service=pins",
     label: "Exam pins",
     mono: "PIN",
     blurb: "WAEC · NECO",
@@ -92,9 +84,9 @@ const QUICK_ACTIONS: {
   label: string;
   icon: DashboardIconName;
 }[] = [
-  { href: "/buy/data", label: "Data", icon: "data" },
-  { href: "/buy/airtime", label: "Airtime", icon: "airtime" },
-  { href: "/buy/electricity", label: "Power", icon: "power" },
+  { href: "/services?service=data", label: "Data", icon: "data" },
+  { href: "/services?service=airtime", label: "Airtime", icon: "airtime" },
+  { href: "/services?service=electricity", label: "Power", icon: "power" },
   { href: "/history", label: "History", icon: "history" },
 ];
 
@@ -144,9 +136,9 @@ const FALLBACK_NETWORKS: Net[] = [
 
 function repeatHref(tx: Tx) {
   if (tx.service === "DATA") {
-    return `/buy/data?phone=${encodeURIComponent(tx.phone || "")}&planId=${tx.planId || ""}`;
+    return `/services?service=data&phone=${encodeURIComponent(tx.phone || "")}&planId=${tx.planId || ""}`;
   }
-  return `/buy/airtime?phone=${encodeURIComponent(tx.phone || "")}&amount=${tx.amount}`;
+  return `/services?service=airtime&phone=${encodeURIComponent(tx.phone || "")}&amount=${tx.amount}`;
 }
 
 function SectionHeading({
@@ -198,9 +190,7 @@ export function DashboardMobile({
               <p className="font-mono-num text-[9px] font-semibold tracking-[0.15em] text-amber/90">
                 MAIN WALLET
               </p>
-              <p className="font-mono-num mt-1.5 text-[27px] font-semibold leading-none tracking-[-0.04em] tabular-nums">
-                {formatNaira(balance)}
-              </p>
+              <BalanceAmount amount={balance} variant="card" className="mt-1.5 text-paper" />
             </div>
             <Link
               href="/wallet"
@@ -246,7 +236,7 @@ export function DashboardMobile({
           <div className="rounded-[14px] border border-dashed border-ink/20 bg-white/45 px-4 py-4 text-center">
             <p className="text-[13px] font-medium text-ink/65">Your quick reorders will appear here.</p>
             <Link
-              href="/buy/data"
+              href="/services?service=data"
               className="mt-2 inline-flex min-h-8 items-center text-xs font-bold text-green"
             >
               Make your first purchase <span className="ml-1" aria-hidden>→</span>

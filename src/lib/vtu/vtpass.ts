@@ -1,11 +1,9 @@
 import type {
   BuyAirtimeInput,
-  BuyBettingInput,
   BuyCableInput,
   BuyDataInput,
   BuyExamPinInput,
   BuyTokenInput,
-  ValidateBettingInput,
   ValidateIUCInput,
   ValidateMeterInput,
   VTUProvider,
@@ -106,16 +104,6 @@ export const VtpassProvider: VTUProvider = {
     });
   },
 
-  async buyBetting(input: BuyBettingInput) {
-    if (!configured()) return SimulatorProvider.buyBetting(input);
-    return vtpassRequest("/pay", {
-      serviceID: input.biller.toLowerCase(),
-      billersCode: input.customerId,
-      amount: input.amount,
-      request_id: input.idempotencyKey,
-    });
-  },
-
   async buyExamPin(input: BuyExamPinInput) {
     if (!configured()) return SimulatorProvider.buyExamPin(input);
     return vtpassRequest("/pay", {
@@ -140,14 +128,6 @@ export const VtpassProvider: VTUProvider = {
     return vtpassRequest("/merchant-verify", {
       serviceID: input.biller.toLowerCase(),
       billersCode: input.smartCard,
-    });
-  },
-
-  async validateBetting(input: ValidateBettingInput) {
-    if (!configured()) return SimulatorProvider.validateBetting(input);
-    return vtpassRequest("/merchant-verify", {
-      serviceID: input.biller.toLowerCase(),
-      billersCode: input.customerId,
     });
   },
 

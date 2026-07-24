@@ -16,6 +16,8 @@ import {
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import { SkeletonPage } from "@/components/ui/Skeleton";
+import { Card } from "@/components/ui/Card";
+import { Select } from "@/components/ui/Select";
 
 type Plan = {
   id: string;
@@ -144,7 +146,14 @@ export default function SchedulesPage() {
   }
 
   const form = (
-    <div className="surface space-y-4 p-5">
+    <Card className="p-5">
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          create();
+        }}
+      >
       <p className="font-mono-num text-[10px] tracking-widest text-ink/45">
         NEW SCHEDULE · e.g. 1GB every Friday 6pm
       </p>
@@ -170,20 +179,18 @@ export default function SchedulesPage() {
         </p>
       )}
       {service === "DATA" ? (
-        <div>
-          <p className="font-mono-num mb-1 text-[11px] text-ink/50">PLAN</p>
-          <select
-            className="h-12 w-full rounded-md border border-line bg-paper px-3"
+        <Select
+            label="Plan"
             value={planId}
             onChange={(e) => setPlanId(e.target.value)}
+            mono
           >
             {filteredPlans.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} · {formatNaira(p.retailPrice, { compact: true })}
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
       ) : (
         <Input
           label="Amount"
@@ -224,23 +231,22 @@ export default function SchedulesPage() {
           ))}
         </div>
       )}
-      <label className="block text-sm">
-        <span className="font-mono-num text-[11px] text-ink/50">HOUR (WAT)</span>
-        <input
+        <Input
+          label="Hour (WAT)"
           type="number"
           min={0}
           max={23}
-          className="font-mono-num mt-1 h-12 w-full rounded-md border border-line px-3"
           value={hourWat}
           onChange={(e) => setHourWat(Number(e.target.value))}
+          mono
         />
-      </label>
       {error && <p className="text-sm text-danger">{error}</p>}
       {msg && <p className="text-sm text-green">{msg}</p>}
-      <Button fullWidth onClick={create} disabled={pending}>
+      <Button type="submit" fullWidth disabled={pending}>
         Create schedule
       </Button>
-    </div>
+      </form>
+    </Card>
   );
 
   const list = (

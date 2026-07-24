@@ -14,6 +14,7 @@ import {
   networkBadgeStyle,
 } from "@/lib/phone";
 import { formatNaira } from "@/lib/money";
+import { isPinDenied } from "@/lib/pin-feedback";
 import { cn } from "@/lib/cn";
 import { HeroEnter, Reveal } from "@/components/motion/Reveal";
 import type { BuyDataState, TypeFilter } from "@/hooks/useBuyData";
@@ -60,7 +61,13 @@ export function BuyDataFormBody({
   compact?: boolean;
 }) {
   return (
-    <div className="space-y-5">
+    <form
+      className="space-y-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        s.openConfirm();
+      }}
+    >
       {s.beneficiaries.length > 0 && (
         <div>
           <p className="font-mono-num mb-2 text-[10px] tracking-widest text-ink/45">
@@ -169,10 +176,10 @@ export function BuyDataFormBody({
 
       <div className={cn(compact ? "sticky bottom-20 z-10" : "pt-2")}>
         <Button
+          type="submit"
           fullWidth
           size="lg"
           disabled={!s.selected || !s.local}
-          onClick={s.openConfirm}
         >
           Continue
           {s.selected && (
@@ -182,11 +189,13 @@ export function BuyDataFormBody({
           )}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
 
 export function BuyDataConfirmSheet({ s }: { s: BuyDataState }) {
+  const pinDenied = s.status === "failed" && isPinDenied(s.error);
+
   return (
     <Sheet
       open={s.open}
@@ -240,20 +249,23 @@ export function BuyDataConfirmSheet({ s }: { s: BuyDataState }) {
             value={s.pin}
             onChange={s.setPin}
             disabled={s.pending || s.status === "processing"}
+            denied={pinDenied}
           />
-          <div className="surface p-3">
-            <StatusTrail
-              steps={s.trail}
-              activeStatus={
-                s.status === "processing"
-                  ? "PROCESSING"
-                  : s.status === "failed"
-                    ? "FAILED"
-                    : "PENDING"
-              }
-            />
-          </div>
-          {s.error && (
+          {!pinDenied && (
+            <div className="surface p-3">
+              <StatusTrail
+                steps={s.trail}
+                activeStatus={
+                  s.status === "processing"
+                    ? "PROCESSING"
+                    : s.status === "failed"
+                      ? "FAILED"
+                      : "PENDING"
+                }
+              />
+            </div>
+          )}
+          {s.error && !pinDenied && (
             <p className="text-sm text-danger" role="alert">
               {s.error}
             </p>

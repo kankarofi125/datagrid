@@ -4,7 +4,8 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { SearchField } from "@/components/ui/SearchField";
+import { Card } from "@/components/ui/Card";
 import { formatNaira } from "@/lib/money";
 
 type User = {
@@ -56,18 +57,15 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader kicker="IDENTITY" title="USERS." />
-      <div className="flex gap-2">
-        <Input
-          placeholder="Search phone or code"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          mono
-        />
-        <Button onClick={() => load(q)} disabled={pending}>
-          Search
-        </Button>
-      </div>
-      <div className="overflow-x-auto surface">
+      <SearchField
+        value={q}
+        onChange={setQ}
+        onSearch={() => load(q)}
+        placeholder="Search phone or referral code"
+        pending={pending}
+        className="max-w-xl"
+      />
+      <Card className="overflow-x-auto">
         <table className="w-full min-w-[800px] text-left text-sm">
           <thead>
             <tr className="border-b border-line bg-ink/[0.03]">
@@ -136,7 +134,7 @@ export default function AdminUsersPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }

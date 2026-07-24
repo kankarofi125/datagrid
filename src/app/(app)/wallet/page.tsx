@@ -10,7 +10,10 @@ import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
-import { SkeletonPage } from "@/components/ui/Skeleton";
+import { LoadFailure, SkeletonPage } from "@/components/ui/Skeleton";
+import { BalanceAmount } from "@/components/ui/BalanceAmount";
+import { PinPad } from "@/components/buy/PinPad";
+import { isPinDenied } from "@/lib/pin-feedback";
 
 type LedgerRow = {
   id: string;
@@ -35,6 +38,8 @@ export default function WalletPage() {
   const [xferPin, setXferPin] = useState("");
   const [payoutPin, setPayoutPin] = useState("");
   const [payoutOpen, setPayoutOpen] = useState(false);
+  const [xferError, setXferError] = useState<string | null>(null);
+  const [payoutError, setPayoutError] = useState<string | null>(null);
   const [va, setVa] = useState<{
     accountNumber: string;
     bankName: string;
@@ -43,18 +48,23 @@ export default function WalletPage() {
   const [copied, setCopied] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [pending, start] = useTransition();
 
   const refresh = useCallback((isInitial = false) => {
     if (isInitial) setLoading(true);
+    setLoadError(false);
     return fetch("/api/wallet")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Unable to load wallet");
+        return r.json();
+      })
       .then((d) => {
         if (d.balance != null) setBalance(d.balance);
         if (d.commissionBalance != null) setCommission(d.commissionBalance);
         if (d.ledger) setLedger(d.ledger);
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -103,6 +113,7 @@ export default function WalletPage() {
   function transfer() {
     start(async () => {
       setMsg(null);
+      setXferError(null);
       const res = await fetch("/api/wallet/transfer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -114,7 +125,7 @@ export default function WalletPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setMsg(data.error || "Transfer failed");
+        setXferError(data.error || "Transfer failed");
         return;
       }
       setBalance(data.balance);
@@ -128,6 +139,7 @@ export default function WalletPage() {
   function payoutCommission() {
     start(async () => {
       setMsg(null);
+      setPayoutError(null);
       const res = await fetch("/api/wallet/commission/payout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -135,7 +147,7 @@ export default function WalletPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setMsg(data.error || "Payout failed");
+        setPayoutError(data.error || "Payout failed");
         return;
       }
       setBalance(data.balance);
@@ -176,8 +188,17 @@ export default function WalletPage() {
     }
   }
 
+  const transferPinDenied = isPinDenied(xferError);
+  const payoutPinDenied = isPinDenied(payoutError);
+
   const fundSheet = (
     <Sheet open={open} onClose={() => setOpen(false)} title="FUND WALLET">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          fund();
+        }}
+      >
       <div className="mb-4 grid grid-cols-3 gap-1">
         {(
           [
@@ -230,7 +251,7 @@ export default function WalletPage() {
           </Button>
         </div>
       )}
-      <Button className="mt-4" fullWidth size="lg" onClick={fund} disabled={pending}>
+      <Button type="submit" className="mt-4" fullWidth size="lg" disabled={pending}>
         {tab === "card"
           ? "Pay with Paystack (sim)"
           : tab === "flutterwave"
@@ -242,12 +263,19 @@ export default function WalletPage() {
       <p className="font-mono-num mt-3 text-center text-[10px] text-ink/40">
         PAYSTACK → FLUTTERWAVE FALLBACK · MONNIFY VA
       </p>
+      </form>
     </Sheet>
   );
 
   const xferSheet = (
     <Sheet open={xferOpen} onClose={() => setXferOpen(false)} title="SEND MONEY">
-      <div className="space-y-3">
+      <form
+        className="space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (xferPin.length === 4) transfer();
+        }}
+      >
         <PhoneInput
           label="Recipient phone"
           value={xferPhone}
@@ -259,18 +287,26 @@ export default function WalletPage() {
           value={xferAmount}
           onChange={(e) => setXferAmount(e.target.value)}
         />
-        <Input
-          label="PIN"
-          mono
-          type="password"
-          maxLength={4}
-          value={xferPin}
-          onChange={(e) => setXferPin(e.target.value)}
-        />
-        <Button fullWidth onClick={transfer} disabled={pending || xferPin.length < 4}>
+        <div>
+          <p className="mb-2 text-center text-xs font-medium text-ink/55">
+            Enter your transaction PIN
+          </p>
+          <PinPad
+            value={xferPin}
+            onChange={setXferPin}
+            disabled={pending}
+            denied={transferPinDenied}
+          />
+          {xferError && !transferPinDenied && (
+            <p className="mt-2 text-center text-xs font-medium text-danger" role="alert">
+              {xferError}
+            </p>
+          )}
+        </div>
+        <Button type="submit" fullWidth disabled={pending || xferPin.length < 4}>
           Transfer
         </Button>
-      </div>
+      </form>
     </Sheet>
   );
 
@@ -282,14 +318,20 @@ export default function WalletPage() {
           {formatNaira(commission)}
         </span>
       </p>
-      <Input
-        label="PIN"
-        mono
-        type="password"
-        maxLength={4}
+      <p className="mb-2 text-center text-xs font-medium text-ink/55">
+        Confirm with your transaction PIN
+      </p>
+      <PinPad
         value={payoutPin}
-        onChange={(e) => setPayoutPin(e.target.value)}
+        onChange={setPayoutPin}
+        disabled={pending}
+        denied={payoutPinDenied}
       />
+      {payoutError && !payoutPinDenied && (
+        <p className="mt-2 text-center text-xs font-medium text-danger" role="alert">
+          {payoutError}
+        </p>
+      )}
       <Button
         className="mt-3"
         fullWidth
@@ -303,6 +345,16 @@ export default function WalletPage() {
 
   if (loading) {
     return <SkeletonPage variant="list" />;
+  }
+
+  if (loadError) {
+    return (
+      <LoadFailure
+        title="Your wallet is temporarily unavailable"
+        message="Your balance is safe. Check your connection and try again."
+        onRetry={() => void refresh(true)}
+      />
+    );
   }
 
   const ledgerList = (
@@ -347,21 +399,24 @@ export default function WalletPage() {
         <div className="space-y-6 px-4 py-6">
           <MotionMobileHeader kicker="WALLET" title="BALANCE." />
           <Reveal delay={80}>
-            <div className="surface-deep p-5 text-paper">
-              <div className="flex items-center gap-3">
-                <p className="font-mono-num text-4xl font-semibold tabular-nums text-paper">
-                  {hidden ? "₦••••••" : formatNaira(balance)}
-                </p>
+            <div className="overflow-hidden rounded-[20px] bg-green-deep p-4 text-paper shadow-[0_18px_44px_-28px_rgba(7,31,23,.8)]">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono-num text-[9px] font-semibold uppercase tracking-[0.16em] text-amber">
+                    Available balance
+                  </p>
+                  <BalanceAmount amount={balance} hidden={hidden} className="mt-2 text-paper" />
+                </div>
                 <button
                   type="button"
-                  className="font-mono-num text-xs text-paper/50"
+                  className="min-h-9 shrink-0 rounded-full border border-white/10 bg-white/[0.06] px-3 font-mono-num text-[9px] font-semibold text-paper/65"
                   onClick={() => setHidden((h) => !h)}
                 >
                   {hidden ? "SHOW" : "HIDE"}
                 </button>
               </div>
               {commission > 0 && (
-                <p className="font-mono-num mt-2 text-sm text-amber">
+                <p className="mt-3 border-t border-white/10 pt-3 font-mono-num text-xs text-amber">
                   Commission: {formatNaira(commission)}
                 </p>
               )}
@@ -422,41 +477,24 @@ export default function WalletPage() {
 
           <div className="grid items-start gap-6 xl:grid-cols-12">
             <div className="space-y-6 xl:col-span-4">
-              <Reveal delay={120}>
-              <div className="surface-deep p-6">
-                <div className="flex items-center justify-between">
-                  <p className="font-mono-num text-[10px] tracking-widest text-amber">
-                    MAIN BALANCE
-                  </p>
-                  <button
-                    type="button"
-                    className="font-mono-num text-[10px] text-paper/50"
-                    onClick={() => setHidden((h) => !h)}
-                  >
-                    {hidden ? "SHOW" : "HIDE"}
-                  </button>
-                </div>
-                <p className="font-mono-num mt-3 text-4xl font-semibold tabular-nums">
-                  {hidden ? "₦••••••" : formatNaira(balance)}
-                </p>
-                {commission > 0 && (
-                  <>
-                    <p className="font-mono-num mt-3 text-sm text-amber">
-                      Commission {formatNaira(commission)}
-                    </p>
-                    <Button
-                      className="mt-3"
-                      size="sm"
-                      variant="amber"
-                      onClick={() => setPayoutOpen(true)}
-                    >
-                      Payout to main
+              {commission > 0 && (
+                <Reveal delay={120}>
+                  <div className="surface flex items-center justify-between gap-4 p-5">
+                    <div>
+                      <p className="font-mono-num text-[10px] tracking-widest text-ink/45">
+                        COMMISSION READY
+                      </p>
+                      <p className="font-mono-num mt-1 text-lg font-semibold text-green">
+                        {formatNaira(commission)}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="amber" onClick={() => setPayoutOpen(true)}>
+                      Payout
                     </Button>
-                  </>
-                )}
-              </div>
-              </Reveal>
-              <Reveal delay={180}>
+                  </div>
+                </Reveal>
+              )}
+              <Reveal delay={commission > 0 ? 180 : 120}>
               <div className="surface p-6">
                 <p className="font-mono-num text-[10px] tracking-widest text-ink/45">
                   AIRTIME → CASH

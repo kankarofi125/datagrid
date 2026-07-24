@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -9,22 +9,23 @@ import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Respons
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
 import { ConfirmPurchaseSheet } from "@/components/buy/ConfirmPurchaseSheet";
+import { Card } from "@/components/ui/Card";
 import { ReceiptCard } from "@/components/buy/ReceiptCard";
 import { formatNaira } from "@/lib/money";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
 
-type Biller = { code: string; name: string };
+type Pkg = { code: string; name: string; amount: number };
+type Biller = { code: string; name: string; packages: Pkg[] };
 
-const QUICK = [500, 1000, 2000, 5000, 10000];
-
-export default function BettingPage() {
+export default function CableService() {
   const router = useRouter();
   const [billers, setBillers] = useState<Biller[]>([]);
   const [billerCode, setBillerCode] = useState("");
-  const [customerId, setCustomerId] = useState("");
-  const [amount, setAmount] = useState("1000");
+  const [smartCard, setSmartCard] = useState("");
+  const [packageCode, setPackageCode] = useState("");
   const [customerName, setCustomerName] = useState<string | null>(null);
+  const [validating, setValidating] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const [pin, setPin] = useState("");
   const [open, setOpen] = useState(false);
@@ -34,50 +35,67 @@ export default function BettingPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, start] = useTransition();
-  const [accepted, setAccepted] = useState(false);
 
-  const n = Number(amount) || 0;
+  const biller = useMemo(
+    () => billers.find((b) => b.code === billerCode),
+    [billers, billerCode]
+  );
+  const pkg = biller?.packages.find((p) => p.code === packageCode);
+  const amount = pkg?.amount || 0;
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/catalog/billers?category=BETTING").then((r) => r.json()),
+      fetch("/api/catalog/billers?category=CABLE").then((r) => r.json()),
       fetch("/api/wallet").then((r) => r.json()),
     ]).then(([b, w]) => {
-      setBillers(b.billers || []);
-      if (b.billers?.[0]) setBillerCode(b.billers[0].code);
+      const list = b.billers || [];
+      setBillers(list);
+      if (list[0]) {
+        setBillerCode(list[0].code);
+        if (list[0].packages?.[0]) setPackageCode(list[0].packages[0].code);
+      }
       if (w.balance != null) setBalance(w.balance);
     })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  async function validateId() {
+  async function validateIUC() {
     setError(null);
-    const res = await fetch("/api/vtu/validate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "BETTING", billerCode, customerId }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || "Invalid ID");
-      setCustomerName(null);
-      return;
+    setCustomerName(null);
+    setValidating(true);
+    try {
+      const res = await fetch("/api/vtu/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "IUC",
+          billerCode,
+          smartCard,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Invalid IUC");
+        return;
+      }
+      setCustomerName(data.customerName);
+    } finally {
+      setValidating(false);
     }
-    setCustomerName(data.customerName);
   }
 
   function openConfirm() {
     setError(null);
-    if (!accepted) {
-      setError("Confirm you are 18+ to continue");
+    if (!customerName) {
+      setError("Validate smartcard / IUC first");
       return;
     }
-    if (!customerId.trim() || n < 100) {
-      setError("Enter customer ID and amount (min ₦100)");
+    if (!pkg) {
+      setError("Select a package");
       return;
     }
-    if (balance != null && balance < n) {
+    if (balance != null && balance < amount) {
       setError("Insufficient balance — fund wallet");
       return;
     }
@@ -91,13 +109,13 @@ export default function BettingPage() {
     start(async () => {
       setStatus("processing");
       setError(null);
-      const res = await fetch("/api/vtu/betting", {
+      const res = await fetch("/api/vtu/cable", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           billerCode,
-          customerId,
-          amount: n,
+          smartCard,
+          packageCode,
           pin,
           customerName,
         }),
@@ -123,22 +141,26 @@ export default function BettingPage() {
   }
 
   const form = (
-    <div className="space-y-5">
-      <div className="rounded-lg border border-amber/40 bg-amber/10 p-3 text-sm">
-        <strong>18+ only.</strong> Betting products are restricted to adults. Gamble responsibly.
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <form
+      className="space-y-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (customerName) openConfirm();
+        else validateIUC();
+      }}
+    >
+      <div className="flex flex-wrap gap-2">
         {billers.map((b) => (
           <button
             key={b.code}
             type="button"
             onClick={() => {
               setBillerCode(b.code);
+              setPackageCode(b.packages[0]?.code || "");
               setCustomerName(null);
             }}
             className={cn(
-              "rounded-lg border px-3 py-2.5 text-sm font-semibold",
+              "rounded-lg border px-4 py-2 text-sm font-semibold",
               billerCode === b.code
                 ? "border-green bg-green text-white"
                 : "border-line hover:border-green"
@@ -150,52 +172,53 @@ export default function BettingPage() {
       </div>
 
       <Input
-        label="Customer / User ID"
-        mono
-        value={customerId}
-        onChange={(e) => {
-          setCustomerId(e.target.value);
-          setCustomerName(null);
-        }}
-      />
-      <Button variant="ghost" fullWidth onClick={validateId}>
-        Validate ID
-      </Button>
-      {customerName && (
-        <p className="rounded-lg border border-green/30 bg-green/5 px-3 py-2 text-sm">
-          Verified: <strong>{customerName}</strong>
-        </p>
-      )}
-
-      <Input
-        label="Amount"
+        label="Smartcard / IUC number"
         mono
         inputMode="numeric"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
+        value={smartCard}
+        onChange={(e) => {
+          setSmartCard(e.target.value);
+          setCustomerName(null);
+        }}
+        placeholder="1234567890"
       />
-      <div className="flex flex-wrap gap-2">
-        {QUICK.map((q) => (
-          <button
-            key={q}
-            type="button"
-            onClick={() => setAmount(String(q))}
-            className="font-mono-num rounded border border-line px-3 py-2 text-sm hover:border-green"
-          >
-            {formatNaira(q, { compact: true })}
-          </button>
-        ))}
-      </div>
+      <Button type="button" variant="ghost" fullWidth onClick={validateIUC} disabled={validating}>
+        {validating ? "Validating…" : "Validate & show name"}
+      </Button>
+      {customerName && (
+        <div className="rounded-lg border border-green/40 bg-green/5 px-3 py-3">
+          <p className="font-mono-num text-[10px] tracking-widest text-green">
+            TRUST MOMENT · CUSTOMER
+          </p>
+          <p className="mt-1 text-lg font-semibold">{customerName}</p>
+        </div>
+      )}
 
-      <label className="flex items-start gap-2 text-sm text-ink/70">
-        <input
-          type="checkbox"
-          checked={accepted}
-          onChange={(e) => setAccepted(e.target.checked)}
-          className="mt-1 accent-green"
-        />
-        I confirm I am 18 years or older and accept betting product terms.
-      </label>
+      <div>
+        <p className="font-mono-num mb-2 text-[11px] uppercase tracking-[0.14em] text-ink/70">
+          Package
+        </p>
+        <div className="grid gap-2">
+          {(biller?.packages || []).map((p) => (
+            <button
+              key={p.code}
+              type="button"
+              onClick={() => setPackageCode(p.code)}
+              className={cn(
+                "flex items-center justify-between rounded-lg border px-3 py-3 text-left",
+                packageCode === p.code
+                  ? "border-green ring-2 ring-green/20"
+                  : "border-line"
+              )}
+            >
+              <span className="font-semibold">{p.name}</span>
+              <span className="font-mono-num text-green">
+                {formatNaira(p.amount, { compact: true })}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {error && !open && (
         <p className="text-sm text-danger" role="alert">
@@ -208,10 +231,11 @@ export default function BettingPage() {
         </p>
       )}
 
-      <Button fullWidth size="lg" onClick={openConfirm}>
-        Fund wallet · <span className="font-mono-num">{formatNaira(n, { compact: true })}</span>
+      <Button type="submit" fullWidth size="lg" disabled={!customerName || !pkg}>
+        Continue ·{" "}
+        <span className="font-mono-num">{formatNaira(amount, { compact: true })}</span>
       </Button>
-    </div>
+    </form>
   );
 
   const sheet = (
@@ -219,12 +243,13 @@ export default function BettingPage() {
       open={open}
       onClose={() => setOpen(false)}
       rows={[
-        { label: "Platform", value: billerCode, mono: true },
-        { label: "Customer ID", value: customerId, mono: true },
-        { label: "Name", value: customerName || "—" },
+        { label: "Biller", value: biller?.name || billerCode },
+        { label: "IUC", value: smartCard, mono: true },
+        { label: "Customer", value: customerName || "—" },
+        { label: "Package", value: pkg?.name || "—" },
       ]}
-      amount={n}
-      balanceAfter={balance != null ? Math.max(0, balance - n) : null}
+      amount={amount}
+      balanceAfter={balance != null ? Math.max(0, balance - amount) : null}
       pin={pin}
       onPinChange={setPin}
       status={status}
@@ -236,9 +261,9 @@ export default function BettingPage() {
         orderRef ? (
           <ReceiptCard
             orderRef={orderRef}
-            service="BETTING"
-            amount={n}
-            planName={`${billerCode} wallet fund`}
+            service="CABLE"
+            amount={amount}
+            planName={`${biller?.name} · ${pkg?.name}`}
             onClose={() => {
               setOpen(false);
               router.push(`/history/${orderRef}`);
@@ -253,7 +278,7 @@ export default function BettingPage() {
     <>
       <MobileOnly>
         <div className="space-y-5 px-4 py-6">
-          <MotionMobileHeader kicker="18+" title="BETTING." />
+          <MotionMobileHeader kicker="TV" title="CABLE." />
           <Reveal delay={120}>{form}</Reveal>
           {sheet}
         </div>
@@ -261,12 +286,12 @@ export default function BettingPage() {
       <DesktopOnly>
         <div className="px-8 py-8 xl:px-10">
           <PageHeader
-            kicker="18+ · WALLET FUND"
-            title="BETTING."
-            description="Fund Bet9ja, SportyBet, BetKing and more. ID validation where supported."
+            kicker="BILLS · TV"
+            title="CABLE TV."
+            description="IUC validation returns the customer name before you pay."
           />
           <Reveal delay={140}>
-            <div className="surface max-w-xl p-6">{form}</div>
+            <Card className="max-w-2xl p-6">{form}</Card>
           </Reveal>
           {sheet}
         </div>

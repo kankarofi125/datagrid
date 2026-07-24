@@ -9,6 +9,7 @@ import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
 import { formatNaira } from "@/lib/money";
 import { LoadFailure, SkeletonPage } from "@/components/ui/Skeleton";
+import { Card, CardHeading } from "@/components/ui/Card";
 
 type KeyRow = {
   id: string;
@@ -122,10 +123,14 @@ export default function AgentPage() {
         automation.
       </div>
 
-      <section className="surface p-5">
-        <h2 className="font-mono-num text-[11px] tracking-widest text-ink/45">
-          CREATE API KEY
-        </h2>
+      <Card className="p-5">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            createKey();
+          }}
+        >
+        <CardHeading kicker="Agent tools" title="Create API key" />
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           <Input
             label="Label"
@@ -134,7 +139,7 @@ export default function AgentPage() {
             className="sm:flex-1"
           />
           <div className="flex items-end">
-            <Button onClick={createKey} disabled={pending}>
+            <Button type="submit" disabled={pending}>
               Generate key
             </Button>
           </div>
@@ -148,7 +153,8 @@ export default function AgentPage() {
           </div>
         )}
         {error && <p className="mt-2 text-sm text-danger">{error}</p>}
-      </section>
+        </form>
+      </Card>
 
       <section>
         <h2 className="font-mono-num mb-2 text-[11px] tracking-widest text-ink/45">

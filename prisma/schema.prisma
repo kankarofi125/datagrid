@@ -41,7 +41,7 @@ enum TxService {
   DATA
   ELECTRICITY
   CABLE
-  BETTING
+  BETTING // Legacy records only; the product is retired and unavailable.
   EXAM_PIN
   WALLET_FUND
   WALLET_TRANSFER
@@ -74,7 +74,7 @@ enum ProviderRole {
 enum BillerCategory {
   ELECTRICITY
   CABLE
-  BETTING
+  BETTING // Legacy database compatibility only.
   EXAM
 }
 

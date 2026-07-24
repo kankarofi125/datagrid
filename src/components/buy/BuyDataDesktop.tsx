@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { formatNaira } from "@/lib/money";
 import { BuyDataFormBody } from "@/components/buy/BuyDataMobile";
 import { Reveal } from "@/components/motion/Reveal";
 import { MotionPageHeader } from "@/components/motion/PageChrome";
 import type { BuyDataState } from "@/hooks/useBuyData";
+import { Card } from "@/components/ui/Card";
 
 export function BuyDataDesktop(s: BuyDataState) {
   return (
@@ -14,27 +14,17 @@ export function BuyDataDesktop(s: BuyDataState) {
         kicker="VTU DESK · DATA"
         title="BUY DATA."
         description="Enter a line, pick a plan, confirm with PIN. Wallet debits before the provider fires — failures auto-refund."
-        actions={
-          s.balance != null ? (
-            <Link href="/wallet" className="surface-deep surface-interactive px-6 py-5 text-paper">
-              <p className="font-mono-num text-[10px] text-amber">AVAILABLE</p>
-              <p className="font-mono-num mt-1 text-2xl font-semibold tabular-nums">
-                {formatNaira(s.balance)}
-              </p>
-            </Link>
-          ) : null
-        }
       />
 
       <div className="grid items-start gap-8 xl:grid-cols-12">
         <Reveal delay={120} className="xl:col-span-8">
-          <div className="surface space-y-5 p-6 xl:p-8">
+          <Card className="space-y-5 p-6 xl:p-8">
             <BuyDataFormBody s={s} />
-          </div>
+          </Card>
         </Reveal>
 
         <Reveal delay={200} className="xl:col-span-4">
-          <div className="surface sticky top-20 space-y-4 p-6">
+          <Card className="sticky top-20 space-y-4 p-6">
             <p className="font-mono-num text-[10px] tracking-widest text-ink/45">
               ORDER PREVIEW
             </p>
@@ -65,7 +55,7 @@ export function BuyDataDesktop(s: BuyDataState) {
               <br />
               PENDING → PROCESSING → DELIVERED
             </div>
-          </div>
+          </Card>
         </Reveal>
       </div>
     </div>

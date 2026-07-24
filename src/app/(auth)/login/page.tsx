@@ -201,7 +201,17 @@ function LoginForm() {
   }
 
   const form = (
-    <div className="space-y-5">
+    <form
+      className="space-y-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (step === "phone") continueWithPhone();
+        else if (step === "otp") verifyOtp();
+        else if (step === "pin-login") loginWithPin();
+        else if (step === "pin-setup") onPinSetupNext();
+        else if (step === "pin-confirm") savePinAndEnter();
+      }}
+    >
       {step === "phone" && (
         <>
           <DigitField
@@ -214,9 +224,9 @@ function LoginForm() {
             aria-label="Nigerian phone number"
           />
           <Button
+            type="submit"
             fullWidth
             size="lg"
-            onClick={continueWithPhone}
             disabled={pending || phone.length < 10}
           >
             {pending ? "Checking…" : "Continue"}
@@ -240,9 +250,9 @@ function LoginForm() {
             aria-label="One-time password"
           />
           <Button
+            type="submit"
             fullWidth
             size="lg"
-            onClick={verifyOtp}
             disabled={pending || code.length < 4}
           >
             {pending ? "Verifying…" : isNew ? "Verify & create account" : "Verify"}
@@ -274,9 +284,9 @@ function LoginForm() {
             aria-label="Login PIN"
           />
           <Button
+            type="submit"
             fullWidth
             size="lg"
-            onClick={loginWithPin}
             disabled={pending || pin.length < 4}
           >
             {pending ? "Signing in…" : "Enter the grid"}
@@ -315,9 +325,9 @@ function LoginForm() {
             aria-label="Create PIN"
           />
           <Button
+            type="submit"
             fullWidth
             size="lg"
-            onClick={onPinSetupNext}
             disabled={pending || pin.length < 4}
           >
             Continue
@@ -337,9 +347,9 @@ function LoginForm() {
             aria-label="Confirm PIN"
           />
           <Button
+            type="submit"
             fullWidth
             size="lg"
-            onClick={savePinAndEnter}
             disabled={pending || pinConfirm.length < 4}
           >
             {pending ? "Saving…" : "Save PIN & enter"}
@@ -365,7 +375,7 @@ function LoginForm() {
           {cooldown > 0 ? ` (${cooldown}s)` : ""}
         </p>
       )}
-    </div>
+    </form>
   );
 
   return (

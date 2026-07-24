@@ -39,10 +39,13 @@ export async function GET() {
         cachedAt: new Date().toISOString(),
       };
     },
-    { ttl: 15, tags: [CacheTags.wallet(userId)] }
+    { ttl: 15, staleTtl: 300, tags: [CacheTags.wallet(userId)] }
   );
 
   return NextResponse.json(data, {
-    headers: { "X-Cache-Layer": "upstash" },
+    headers: {
+      "Cache-Control": "private, no-store",
+      "X-Cache-Layer": "hybrid",
+    },
   });
 }

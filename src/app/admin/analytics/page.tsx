@@ -14,6 +14,8 @@ import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { cn } from "@/lib/cn";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { useRealtimeRefresh } from "@/hooks/useRealtime";
+import { BalanceAmount } from "@/components/ui/BalanceAmount";
+import { Button } from "@/components/ui/Button";
 
 type Daily = {
   date: string;
@@ -115,17 +117,18 @@ export default function AdminAnalyticsPage() {
         actions={
           <div className="flex gap-1 rounded-lg border border-line bg-paper p-0.5">
             {[7, 14, 30].map((d) => (
-              <button
+              <Button
                 key={d}
-                type="button"
                 onClick={() => setDays(d)}
+                size="sm"
+                variant={days === d ? "secondary" : "ghost"}
                 className={cn(
-                  "font-mono-num rounded-md px-2.5 py-1.5 text-[10px]",
-                  days === d ? "bg-green-deep text-paper" : "text-ink/50 hover:text-ink"
+                  "h-8 rounded-md border-0 px-2.5 font-mono-num text-[10px] shadow-none",
+                  days !== d && "text-ink/50 hover:text-ink"
                 )}
               >
                 {d}D
-              </button>
+              </Button>
             ))}
           </div>
         }
@@ -138,9 +141,12 @@ export default function AdminAnalyticsPage() {
           <div className="overflow-hidden rounded-2xl bg-green-deep p-4 text-paper">
             <div className="bg-grid -m-4 p-4">
               <p className="font-mono-num text-[9px] tracking-widest text-amber">GMV · {days}D</p>
-              <p className="font-mono-num mt-1 text-2xl font-semibold tabular-nums">
-                {formatNaira(data.gmv, { compact: true })}
-              </p>
+              <BalanceAmount
+                amount={data.gmv}
+                compact
+                variant="card"
+                className="mt-2 text-paper"
+              />
               <p className="font-mono-num mt-1 text-[10px] text-paper/50">{deltaLabel}</p>
               <div className="mt-3 opacity-90">
                 <LineChart
@@ -209,13 +215,11 @@ export default function AdminAnalyticsPage() {
             <div className="overflow-hidden rounded-2xl bg-green-deep p-5 text-paper lg:col-span-2">
               <div className="bg-grid -m-5 p-5">
                 <div className="flex items-start justify-between gap-4">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="font-mono-num text-[10px] tracking-widest text-amber">
                       GROSS MERCHANDISE VALUE
                     </p>
-                    <p className="font-mono-num mt-2 text-4xl font-semibold tabular-nums">
-                      {formatNaira(data.gmv)}
-                    </p>
+                    <BalanceAmount amount={data.gmv} className="mt-3 text-paper" />
                     <p className="font-mono-num mt-2 text-xs text-paper/50">{deltaLabel}</p>
                   </div>
                   <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
@@ -399,7 +403,7 @@ function MetricPanel({
   return (
     <div
       className={cn(
-        "rounded-2xl border p-4",
+        "min-w-0 overflow-hidden rounded-2xl border p-4",
         tone === "paper" && "border-line bg-paper",
         tone === "deep" && "border-white/10 bg-green-deep text-paper",
         tone === "amber" && "border-amber/25 bg-amber text-ink",
@@ -428,7 +432,12 @@ function MetricPanel({
       </div>
       <p
         className={cn(
-          "font-mono-num mt-2 text-2xl font-semibold tabular-nums",
+          "mt-2 truncate font-mono-num font-semibold tabular-nums",
+          value.length > 18
+            ? "text-xs"
+            : value.length > 14
+              ? "text-base"
+              : "text-2xl",
           tone === "danger" && "text-danger"
         )}
       >

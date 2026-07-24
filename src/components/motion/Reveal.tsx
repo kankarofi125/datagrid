@@ -35,11 +35,19 @@ export function Reveal({
 
   return (
     <MotionTag
-      initial={reduced ? false : { opacity: 0, y: 14 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={false}
+      whileInView={
+        reduced
+          ? { opacity: 1, y: 0, scale: 1 }
+          : {
+              opacity: [0.86, 1],
+              y: [16, 0],
+              scale: [0.992, 1],
+            }
+      }
       viewport={{ once, amount: 0.12, margin: "0px 0px -5% 0px" }}
       transition={{
-        duration: reduced ? 0 : 0.42,
+        duration: reduced ? 0 : 0.5,
         delay: reduced ? 0 : delay / 1000,
         ease: [0.16, 1, 0.3, 1],
       }}
@@ -64,10 +72,18 @@ export function HeroEnter({
 
   return (
     <motion.div
-      initial={reduced ? false : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={false}
+      animate={
+        reduced
+          ? { opacity: 1, y: 0, scale: 1 }
+          : {
+              opacity: [0.84, 1],
+              y: [14, 0],
+              scale: [0.994, 1],
+            }
+      }
       transition={{
-        duration: reduced ? 0 : 0.38,
+        duration: reduced ? 0 : 0.46,
         delay: reduced ? 0 : delay / 1000,
         ease: [0.16, 1, 0.3, 1],
       }}

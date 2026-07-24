@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { createPortal } from "react-dom";
 import {
   useCallback,
   useEffect,
@@ -101,7 +102,7 @@ export function Sheet({ open, onClose, title, children, className }: Props) {
 
   const backdropOpacity = Math.max(0.15, 0.5 * (1 - offset / 320));
 
-  return (
+  const sheet = (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <button
         type="button"
@@ -122,7 +123,7 @@ export function Sheet({ open, onClose, title, children, className }: Props) {
         className={cn(
           "relative z-10 w-full max-w-lg border border-line bg-paper shadow-2xl",
           "rounded-t-2xl sm:rounded-xl",
-          "max-h-[90vh] overflow-y-auto overscroll-contain",
+          "max-h-[calc(100dvh-12px)] overflow-y-auto overscroll-contain sm:max-h-[90vh]",
           !draggingUi && "sheet-enter",
           className
         )}
@@ -165,4 +166,9 @@ export function Sheet({ open, onClose, title, children, className }: Props) {
       </div>
     </div>
   );
+
+  // Sheets can be opened by controls inside sticky/filtered headers. Rendering
+  // at the document root prevents those ancestors from constraining a fixed
+  // overlay to the header's bounds.
+  return typeof document === "undefined" ? null : createPortal(sheet, document.body);
 }

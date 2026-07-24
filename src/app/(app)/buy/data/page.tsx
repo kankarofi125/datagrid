@@ -1,25 +1,13 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
-import { BuyDataMobile, BuyDataConfirmSheet } from "@/components/buy/BuyDataMobile";
-import { BuyDataDesktop } from "@/components/buy/BuyDataDesktop";
-import { useBuyData } from "@/hooks/useBuyData";
-import { SkeletonPage } from "@/components/ui/Skeleton";
-
-export default function BuyDataPage() {
-  const state = useBuyData();
-  if (state.loading) {
-    return <SkeletonPage variant="form" />;
-  }
-  return (
-    <>
-      <MobileOnly>
-        <BuyDataMobile {...state} />
-      </MobileOnly>
-      <DesktopOnly>
-        <BuyDataDesktop {...state} />
-      </DesktopOnly>
-      <BuyDataConfirmSheet s={state} />
-    </>
-  );
+export default async function LegacyDataPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ phone?: string; planId?: string }>;
+}) {
+  const params = await searchParams;
+  const query = new URLSearchParams({ service: "data" });
+  if (params.phone) query.set("phone", params.phone);
+  if (params.planId) query.set("planId", params.planId);
+  redirect(`/services?${query.toString()}`);
 }

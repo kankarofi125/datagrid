@@ -30,7 +30,13 @@ export function DisputeForm({ orderRef }: { orderRef: string }) {
   }
 
   return (
-    <div className="rounded-xl border border-line bg-paper p-4">
+    <form
+      className="rounded-xl border border-line bg-paper p-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submit();
+      }}
+    >
       <p className="font-mono-num text-[10px] tracking-widest text-ink/45">
         OPEN DISPUTE
       </p>
@@ -42,10 +48,10 @@ export function DisputeForm({ orderRef }: { orderRef: string }) {
         placeholder="Not delivered, wrong number…"
       />
       <Button
+        type="submit"
         className="mt-3"
         size="sm"
         fullWidth
-        onClick={submit}
         disabled={pending || reason.length < 4}
       >
         Submit dispute
@@ -60,6 +66,6 @@ export function DisputeForm({ orderRef }: { orderRef: string }) {
           {error}
         </p>
       )}
-    </div>
+    </form>
   );
 }

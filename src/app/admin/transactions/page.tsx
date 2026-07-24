@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
-import { Input } from "@/components/ui/Input";
 import { formatNaira } from "@/lib/money";
 import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/Button";
+import { SearchField } from "@/components/ui/SearchField";
+import { Select } from "@/components/ui/Select";
+import { Card } from "@/components/ui/Card";
 
 type Tx = {
   id: string;
@@ -25,6 +28,7 @@ export default function AdminTransactionsPage() {
   const [rows, setRows] = useState<Tx[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [q, setQ] = useState("");
+  const [queryInput, setQueryInput] = useState("");
   const [status, setStatus] = useState("");
   const [service, setService] = useState("");
 
@@ -50,51 +54,44 @@ export default function AdminTransactionsPage() {
   }, [load]);
 
   const filters = (
-    <div className="flex flex-wrap gap-2">
-      <Input
-        label="Search"
-        mono
+    <div className="flex flex-wrap items-end gap-2">
+      <SearchField
+        value={queryInput}
+        onChange={setQueryInput}
+        onSearch={() => setQ(queryInput.trim())}
         placeholder="Ref or phone"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        className="min-w-[140px]"
+        className="min-w-[260px] flex-1"
       />
-      <div className="flex flex-col gap-1.5">
-        <span className="font-mono-num text-[11px] uppercase tracking-[0.14em] text-ink/70">
-          Status
-        </span>
-        <select
-          className="h-11 rounded-lg border border-line bg-paper px-2 text-sm"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
+      <Select
+        label="Status"
+        value={status}
+        onChange={(e) => setStatus(e.target.value)}
+        className="min-w-36"
+        mono
+      >
           <option value="">All</option>
           {["PENDING", "PROCESSING", "DELIVERED", "FAILED", "REFUNDED"].map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
           ))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <span className="font-mono-num text-[11px] uppercase tracking-[0.14em] text-ink/70">
-          Service
-        </span>
-        <select
-          className="h-11 rounded-lg border border-line bg-paper px-2 text-sm"
-          value={service}
-          onChange={(e) => setService(e.target.value)}
-        >
+      </Select>
+      <Select
+        label="Service"
+        value={service}
+        onChange={(e) => setService(e.target.value)}
+        className="min-w-40"
+        mono
+      >
           <option value="">All</option>
-          {["DATA", "AIRTIME", "ELECTRICITY", "CABLE", "BETTING", "EXAM_PIN", "WALLET_FUND"].map(
+          {["DATA", "AIRTIME", "ELECTRICITY", "CABLE", "EXAM_PIN", "WALLET_FUND"].map(
             (s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             )
           )}
-        </select>
-      </div>
+      </Select>
     </div>
   );
 
@@ -112,19 +109,18 @@ export default function AdminTransactionsPage() {
 
       <div className="flex flex-wrap gap-1.5">
         {Object.entries(statusCounts).map(([s, c]) => (
-          <button
+          <Button
             key={s}
-            type="button"
             onClick={() => setStatus(status === s ? "" : s)}
+            variant={status === s ? "primary" : "ghost"}
+            size="sm"
             className={cn(
-              "font-mono-num rounded-full border px-2.5 py-1 text-[10px]",
-              status === s
-                ? "border-green bg-green/10 text-green"
-                : "border-line text-ink/50"
+              "h-7 rounded-full px-2.5 font-mono-num text-[10px]",
+              status === s && "bg-green/10 text-green shadow-none hover:bg-green/15"
             )}
           >
             {s} {c}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -162,7 +158,7 @@ export default function AdminTransactionsPage() {
       </MobileOnly>
 
       <DesktopOnly>
-        <div className="surface overflow-x-auto">
+        <Card className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b border-line bg-ink/[0.03]">
@@ -197,7 +193,7 @@ export default function AdminTransactionsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       </DesktopOnly>
     </div>
   );

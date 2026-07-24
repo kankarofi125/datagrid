@@ -33,11 +33,14 @@ export async function GET() {
         cachedAt: new Date().toISOString(),
       };
     },
-    { ttl: 20, tags: [CacheTags.notifications(userId)] }
+    { ttl: 20, staleTtl: 300, tags: [CacheTags.notifications(userId)] }
   );
 
   return NextResponse.json(data, {
-    headers: { "X-Cache-Layer": "upstash" },
+    headers: {
+      "Cache-Control": "private, no-store",
+      "X-Cache-Layer": "hybrid",
+    },
   });
 }
 

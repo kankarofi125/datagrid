@@ -1,11 +1,9 @@
 import type {
   BuyAirtimeInput,
-  BuyBettingInput,
   BuyCableInput,
   BuyDataInput,
   BuyExamPinInput,
   BuyTokenInput,
-  ValidateBettingInput,
   ValidateIUCInput,
   ValidateMeterInput,
   VTUProvider,
@@ -94,11 +92,6 @@ export const ClubKonnectProvider: VTUProvider = {
     });
   },
 
-  async buyBetting(input: BuyBettingInput) {
-    if (!configured()) return SimulatorProvider.buyBetting(input);
-    return SimulatorProvider.buyBetting(input);
-  },
-
   async buyExamPin(input: BuyExamPinInput) {
     if (!configured()) return SimulatorProvider.buyExamPin(input);
     return SimulatorProvider.buyExamPin(input);
@@ -112,11 +105,6 @@ export const ClubKonnectProvider: VTUProvider = {
   async validateIUC(input: ValidateIUCInput) {
     if (!configured()) return SimulatorProvider.validateIUC(input);
     return SimulatorProvider.validateIUC(input);
-  },
-
-  async validateBetting(input: ValidateBettingInput) {
-    if (!configured()) return SimulatorProvider.validateBetting(input);
-    return SimulatorProvider.validateBetting(input);
   },
 
   async status() {

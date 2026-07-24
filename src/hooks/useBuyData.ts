@@ -31,9 +31,11 @@ export type Beneficiary = {
 
 export type TypeFilter = "ALL" | "SME" | "GIFTING" | "RETAIL";
 
-export function useBuyData() {
+export function useBuyData(initial?: { phone?: string; planId?: string }) {
   const router = useRouter();
-  const [phone, setPhoneRaw] = useState("");
+  const initialPhone = initial?.phone || "";
+  const initialPlanId = initial?.planId;
+  const [phone, setPhoneRaw] = useState(() => sanitizeNgPhoneInput(initialPhone));
   const setPhone = (value: string) => setPhoneRaw(sanitizeNgPhoneInput(value));
   const [plans, setPlans] = useState<Plan[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
@@ -62,14 +64,18 @@ export function useBuyData() {
       fetch("/api/beneficiaries?service=DATA").then((r) => r.json()),
     ])
       .then(([p, w, pinRes, b]) => {
-        setPlans(p.plans || []);
+        const loadedPlans = (p.plans || []) as Plan[];
+        setPlans(loadedPlans);
+        if (initialPlanId) {
+          setSelected(loadedPlans.find((plan) => plan.id === initialPlanId) || null);
+        }
         if (w.balance != null) setBalance(w.balance);
         setHasPin(pinRes.hasPin !== false);
         setBeneficiaries(b.beneficiaries || []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [initialPlanId]);
 
   const filtered = useMemo(() => {
     let list = plans;
