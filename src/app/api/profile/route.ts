@@ -38,7 +38,10 @@ export async function PATCH(request: Request) {
       },
       select: { name: true, email: true },
     });
-    await invalidate(CacheKeys.userProfile(session.userId));
+    await invalidate([
+      CacheKeys.userProfile(session.userId),
+      CacheKeys.dashboard(session.userId),
+    ]);
     return NextResponse.json({ ok: true, user });
   } catch (error) {
     if (

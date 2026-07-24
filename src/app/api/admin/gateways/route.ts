@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminGate } from "@/lib/admin";
 import { prisma } from "@/lib/db";
-import { cached, CacheKeys, CacheTags, invalidate } from "@/lib/cache";
+import { cached, CacheKeys, CacheTags, CacheTTL, invalidate } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 const GATEWAY_KEYS = [
   "gateway.paystack",
@@ -73,12 +74,10 @@ export async function GET() {
         cachedAt: new Date().toISOString(),
       };
     },
-    { ttl: 60, tags: [CacheTags.admin] }
+    { ttl: CacheTTL.settings, tags: [CacheTags.admin] }
   );
 
-  return NextResponse.json(data, {
-    headers: { "X-Cache-Layer": "upstash" },
-  });
+  return privateJson(data);
 }
 
 export async function PATCH(req: Request) {

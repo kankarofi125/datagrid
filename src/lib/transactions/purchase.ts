@@ -264,7 +264,14 @@ export async function purchaseWithWallet(input: PurchaseInput) {
       CacheKeys.analytics(14),
       CacheKeys.analytics(30),
     ]);
-    await invalidate([CacheTags.analytics, CacheTags.admin], true);
+    await invalidate(
+      [
+        CacheTags.wallet(input.userId),
+        CacheTags.analytics,
+        CacheTags.admin,
+      ],
+      true
+    );
     await publishRealtime(userChannel(input.userId), "tx:delivered", {
       orderRef,
       service: input.service,

@@ -17,12 +17,6 @@ export function DesktopSidebar() {
           label: "SUPPORT",
           compactLabel: "?",
         },
-        {
-          href: "/admin",
-          label: "ADMIN",
-          compactLabel: "A",
-          accent: true,
-        },
       ]}
     />
   );

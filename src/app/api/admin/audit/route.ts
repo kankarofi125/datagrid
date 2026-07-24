@@ -1,30 +1,39 @@
-import { NextResponse } from "next/server";
 import { adminGate } from "@/lib/admin";
 import { prisma } from "@/lib/db";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 export async function GET() {
   const { error } = await adminGate();
   if (error) return error;
 
-  const logs = await prisma.auditLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    include: { actor: { select: { phoneLocal: true, name: true } } },
-  });
+  const data = await cached(
+    CacheKeys.adminAudit(),
+    async () => {
+      const logs = await prisma.auditLog.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        include: { actor: { select: { phoneLocal: true, name: true } } },
+      });
 
-  return NextResponse.json({
-    logs: logs.map((l) => ({
-      id: l.id,
-      action: l.action,
-      entityType: l.entityType,
-      entityId: l.entityId,
-      actorPhone: l.actor?.phoneLocal,
-      actorName: l.actor?.name,
-      before: l.before ? safeJson(l.before) : null,
-      after: l.after ? safeJson(l.after) : null,
-      createdAt: l.createdAt,
-    })),
-  });
+      return {
+        logs: logs.map((log) => ({
+          id: log.id,
+          action: log.action,
+          entityType: log.entityType,
+          entityId: log.entityId,
+          actorPhone: log.actor?.phoneLocal,
+          actorName: log.actor?.name,
+          before: log.before ? safeJson(log.before) : null,
+          after: log.after ? safeJson(log.after) : null,
+          createdAt: log.createdAt,
+        })),
+      };
+    },
+    { ttl: CacheTTL.realtime, tags: [CacheTags.admin] }
+  );
+
+  return privateJson(data);
 }
 
 function safeJson(s: string) {

@@ -35,6 +35,7 @@ export async function requireUser() {
 export async function requireAdmin() {
   const session = await requireUser();
   if (!session) return null;
+  if (!session.adminUsername) return null;
   if (session.role !== "ADMIN" && session.role !== "SUPER_ADMIN") return null;
   return session;
 }

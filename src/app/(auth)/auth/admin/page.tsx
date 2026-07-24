@@ -3,6 +3,7 @@
 import { useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { cn } from "@/lib/cn";
 
 export default function AdminLoginPage() {
@@ -295,11 +296,8 @@ function AdminAccessHeader() {
     <header className="relative z-10 border-b border-line bg-paper/94 backdrop-blur-xl">
       <div className="mx-auto flex min-h-16 max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3" aria-label="DataGrid home">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber font-display text-xs text-[#2c1b02]">
-            DG
-          </span>
           <span>
-            <span className="block font-display text-base tracking-wide text-ink">DATAGRID</span>
+            <BrandLogo priority className="w-28" />
             <span className="block font-mono-num text-[7px] uppercase tracking-[0.18em] text-ink/35">
               Staff access
             </span>

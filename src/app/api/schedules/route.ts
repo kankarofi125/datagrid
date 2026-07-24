@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { computeNextRun } from "@/lib/schedules";
 import { toLocalPhone } from "@/lib/phone";
 import type { ScheduleFrequency, TxService } from "@prisma/client";
+import { cached, CacheKeys, CacheTags, CacheTTL, invalidate } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 export async function GET() {
   const session = await requireUser();
@@ -11,30 +13,38 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rows = await prisma.scheduledTopUp.findMany({
-    where: { userId: session.userId },
-    include: { plan: true },
-    orderBy: { nextRunAt: "asc" },
-  });
+  const data = await cached(
+    CacheKeys.schedules(session.userId),
+    async () => {
+      const rows = await prisma.scheduledTopUp.findMany({
+        where: { userId: session.userId },
+        include: { plan: true },
+        orderBy: { nextRunAt: "asc" },
+      });
 
-  return NextResponse.json({
-    schedules: rows.map((s) => ({
-      id: s.id,
-      service: s.service,
-      phone: s.phone,
-      networkCode: s.networkCode,
-      planId: s.planId,
-      planName: s.plan?.name,
-      amount: s.amount != null ? Number(s.amount) : null,
-      frequency: s.frequency,
-      dayOfWeek: s.dayOfWeek,
-      hourWat: s.hourWat,
-      minuteWat: s.minuteWat,
-      nextRunAt: s.nextRunAt,
-      lastRunAt: s.lastRunAt,
-      isActive: s.isActive,
-    })),
-  });
+      return {
+        schedules: rows.map((schedule) => ({
+          id: schedule.id,
+          service: schedule.service,
+          phone: schedule.phone,
+          networkCode: schedule.networkCode,
+          planId: schedule.planId,
+          planName: schedule.plan?.name,
+          amount: schedule.amount != null ? Number(schedule.amount) : null,
+          frequency: schedule.frequency,
+          dayOfWeek: schedule.dayOfWeek,
+          hourWat: schedule.hourWat,
+          minuteWat: schedule.minuteWat,
+          nextRunAt: schedule.nextRunAt,
+          lastRunAt: schedule.lastRunAt,
+          isActive: schedule.isActive,
+        })),
+      };
+    },
+    { ttl: CacheTTL.user, tags: [CacheTags.schedules(session.userId)] }
+  );
+
+  return privateJson(data);
 }
 
 export async function POST(req: Request) {
@@ -101,6 +111,7 @@ export async function POST(req: Request) {
     },
     include: { plan: true },
   });
+  await invalidate(CacheTags.schedules(session.userId), true);
 
   return NextResponse.json({
     schedule: {
@@ -134,6 +145,7 @@ export async function PATCH(req: Request) {
       isActive: body.isActive != null ? Boolean(body.isActive) : undefined,
     },
   });
+  await invalidate(CacheTags.schedules(session.userId), true);
 
   return NextResponse.json({ ok: true });
 }
@@ -150,5 +162,6 @@ export async function DELETE(req: Request) {
   await prisma.scheduledTopUp.deleteMany({
     where: { id, userId: session.userId },
   });
+  await invalidate(CacheTags.schedules(session.userId), true);
   return NextResponse.json({ ok: true });
 }

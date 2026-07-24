@@ -538,7 +538,7 @@ function AirtimeToCashPreview() {
       <p className="font-mono-num mt-2 text-lg font-semibold text-green">
         → get {formatNaira(get)} @ 75%
       </p>
-      <p className="mt-1 text-xs opacity-50">Live rates admin-editable. Fulfillment in M3.</p>
+      <p className="mt-1 text-xs opacity-50">Live provider rates. Fulfillment in M3.</p>
     </div>
   );
 }

@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { adminGate } from "@/lib/admin";
 import { prisma } from "@/lib/db";
-import { cached, CacheKeys, CacheTags } from "@/lib/cache";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 export async function GET(req: Request) {
   const { error } = await adminGate();
@@ -166,10 +166,8 @@ export async function GET(req: Request) {
         cachedAt: new Date().toISOString(),
       };
     },
-    { ttl: 45, tags: [CacheTags.analytics, CacheTags.admin] }
+    { ttl: CacheTTL.operational, tags: [CacheTags.analytics, CacheTags.admin] }
   );
 
-  return NextResponse.json(data, {
-    headers: { "X-Cache-Layer": "upstash" },
-  });
+  return privateJson(data);
 }

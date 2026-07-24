@@ -39,22 +39,13 @@ export function MobileAppMenu({
           </div>
         }
         footer={
-          <div className="flex flex-col gap-2">
-            <Link
-              href="/admin"
-              onClick={() => setOpen(false)}
-              className="font-mono-num text-[11px] tracking-wide text-green"
-            >
-              ADMIN PANEL →
-            </Link>
-            <Link
-              href="/"
-              onClick={() => setOpen(false)}
-              className="font-mono-num text-[11px] tracking-wide text-ink/45"
-            >
-              ← MARKETING SITE
-            </Link>
-          </div>
+          <Link
+            href="/"
+            onClick={() => setOpen(false)}
+            className="font-mono-num text-[11px] tracking-wide text-ink/45"
+          >
+            ← MARKETING SITE
+          </Link>
         }
       />
     </>

@@ -3,6 +3,8 @@ import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { detectNetwork, toLocalPhone } from "@/lib/phone";
 import type { TxService } from "@prisma/client";
+import { cached, CacheKeys, CacheTags, CacheTTL, invalidate } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 export async function GET(req: Request) {
   const session = await requireUser();
@@ -12,24 +14,35 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const service = searchParams.get("service");
 
-  const rows = await prisma.beneficiary.findMany({
-    where: {
-      userId: session.userId,
-      ...(service ? { service: service.toUpperCase() as TxService } : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    take: 30,
-  });
+  const data = await cached(
+    CacheKeys.beneficiaries(session.userId, service),
+    async () => {
+      const rows = await prisma.beneficiary.findMany({
+        where: {
+          userId: session.userId,
+          ...(service ? { service: service.toUpperCase() as TxService } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+      });
 
-  return NextResponse.json({
-    beneficiaries: rows.map((b) => ({
-      id: b.id,
-      label: b.label,
-      phone: b.phone,
-      networkCode: b.networkCode,
-      service: b.service,
-    })),
-  });
+      return {
+        beneficiaries: rows.map((beneficiary) => ({
+          id: beneficiary.id,
+          label: beneficiary.label,
+          phone: beneficiary.phone,
+          networkCode: beneficiary.networkCode,
+          service: beneficiary.service,
+        })),
+      };
+    },
+    {
+      ttl: CacheTTL.user,
+      tags: [CacheTags.beneficiaries(session.userId)],
+    }
+  );
+
+  return privateJson(data);
 }
 
 export async function POST(req: Request) {
@@ -55,6 +68,7 @@ export async function POST(req: Request) {
       service,
     },
   });
+  await invalidate(CacheTags.beneficiaries(session.userId), true);
 
   return NextResponse.json({
     beneficiary: {
@@ -79,5 +93,6 @@ export async function DELETE(req: Request) {
   await prisma.beneficiary.deleteMany({
     where: { id, userId: session.userId },
   });
+  await invalidate(CacheTags.beneficiaries(session.userId), true);
   return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { resolveApiKey, hasScope } from "@/lib/api-keys";
 import { prisma } from "@/lib/db";
+import { privateJson } from "@/lib/http-cache";
 
 /** GET /api/public/v1/status?orderRef=DG-... or wallet balance */
 export async function GET(req: Request) {
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
     if (!tx) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    return NextResponse.json({
+    return privateJson({
       orderRef: tx.orderRef,
       status: tx.status,
       service: tx.service,
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
   }
 
   const wallet = auth.user.wallets.find((w) => w.kind === "MAIN");
-  return NextResponse.json({
+  return privateJson({
     balance: Number(wallet?.balance ?? 0),
     currency: "NGN",
     role: auth.user.role,

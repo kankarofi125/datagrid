@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { creditWallet } from "@/lib/wallet/service";
 import { getSettingNumber } from "@/lib/settings";
+import { CacheTags, invalidate } from "@/lib/cache";
 
 /**
  * After a referred user funds wallet for the first time (or any fund),
@@ -55,6 +56,7 @@ export async function maybeSignupBonus(opts: {
       body: `₦${bonus.toLocaleString("en-NG")} credited to commission wallet`,
     },
   });
+  await invalidate(CacheTags.notifications(user.referredById), true).catch(() => {});
 
   return commission;
 }
@@ -138,6 +140,7 @@ export async function trackVolumeAndMaybePromote(opts: {
         body: `Lifetime volume ₦${volume.toLocaleString("en-NG")} — wholesale rates & API access enabled`,
       },
     });
+    await invalidate(CacheTags.notifications(user.id), true).catch(() => {});
     return { promoted: true, role: "AGENT" as const, volume };
   }
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { CacheTags, invalidate } from "@/lib/cache";
 
 export async function writeAudit(opts: {
   actorId?: string | null;
@@ -9,7 +10,7 @@ export async function writeAudit(opts: {
   after?: unknown;
   ip?: string | null;
 }) {
-  return prisma.auditLog.create({
+  const entry = await prisma.auditLog.create({
     data: {
       actorId: opts.actorId || null,
       action: opts.action,
@@ -20,4 +21,9 @@ export async function writeAudit(opts: {
       ip: opts.ip || null,
     },
   });
+
+  // Every audited admin mutation can affect at least one operational view.
+  // Cache failure must never roll back a successful business mutation.
+  await invalidate(CacheTags.admin, true).catch(() => {});
+  return entry;
 }

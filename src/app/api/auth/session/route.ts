@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { privateJson } from "@/lib/http-cache";
 
 export async function GET() {
   const session = await getSession();
   if (!session.isLoggedIn || !session.userId) {
-    return NextResponse.json({ isLoggedIn: false });
+    return privateJson({ isLoggedIn: false });
   }
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -14,10 +14,10 @@ export async function GET() {
     },
   });
   if (!user) {
-    return NextResponse.json({ isLoggedIn: false });
+    return privateJson({ isLoggedIn: false });
   }
   const main = user.wallets.find((w) => w.kind === "MAIN");
-  return NextResponse.json({
+  return privateJson({
     isLoggedIn: true,
     user: {
       id: user.id,

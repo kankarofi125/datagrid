@@ -17,7 +17,7 @@ export function RatesClient({ children }: { children: ReactNode }) {
       </HeroEnter>
       <HeroEnter delay={140}>
         <p className="mt-3 max-w-xl text-ink/65">
-          Indexable rate pages per network ship as SEO content. All prices admin-editable.
+          Clear pricing by network, with live catalogue updates.
         </p>
       </HeroEnter>
       <Reveal delay={180}>

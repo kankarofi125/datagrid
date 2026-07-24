@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { makeIdempotencyKey, makeOrderRef } from "@/lib/order-ref";
 import { creditWallet } from "@/lib/wallet/service";
 import { maybeSignupBonus } from "@/lib/commissions";
+import { CacheTags, invalidate } from "@/lib/cache";
 
 /** Dev-only: simulate Monnify bank transfer webhook credit */
 export async function POST(req: Request) {
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
       channel: "IN_APP",
     },
   });
+  await invalidate(CacheTags.notifications(session.userId), true).catch(() => {});
 
   return NextResponse.json({ ok: true, balance, orderRef });
 }

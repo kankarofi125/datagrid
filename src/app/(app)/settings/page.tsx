@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { cached, CacheKeys } from "@/lib/cache";
+import { cached, CacheKeys, CacheTTL } from "@/lib/cache";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { PinSettings } from "@/components/auth/PinSettings";
 import { LowDataToggle } from "@/components/settings/LowDataToggle";
@@ -63,7 +63,7 @@ export default async function SettingsPage() {
   const profile = await cached(
     CacheKeys.userProfile(session.userId),
     () => loadProfile(session.userId!),
-    { ttl: 60, staleTtl: 900 }
+    { ttl: CacheTTL.settings, staleTtl: 900 }
   );
   if (!profile) redirect("/login");
 

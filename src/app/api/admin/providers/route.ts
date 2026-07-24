@@ -2,41 +2,51 @@ import { NextResponse } from "next/server";
 import { adminGate } from "@/lib/admin";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 export async function GET() {
   const { error } = await adminGate();
   if (error) return error;
 
-  const [providers, logs] = await Promise.all([
-    prisma.provider.findMany({ orderBy: { priority: "asc" } }),
-    prisma.providerLog.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 40,
-      include: { provider: true },
-    }),
-  ]);
+  const data = await cached(
+    CacheKeys.adminProviders(),
+    async () => {
+      const [providers, logs] = await Promise.all([
+        prisma.provider.findMany({ orderBy: { priority: "asc" } }),
+        prisma.providerLog.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 40,
+          include: { provider: true },
+        }),
+      ]);
 
-  return NextResponse.json({
-    providers: providers.map((p) => ({
-      id: p.id,
-      code: p.code,
-      name: p.name,
-      role: p.role,
-      priority: p.priority,
-      isActive: p.isActive,
-      successRate: Number(p.successRate),
-      lastHealth: p.lastHealth,
-    })),
-    logs: logs.map((l) => ({
-      id: l.id,
-      provider: l.provider.code,
-      action: l.action,
-      success: l.success,
-      latencyMs: l.latencyMs,
-      error: l.error,
-      createdAt: l.createdAt,
-    })),
-  });
+      return {
+        providers: providers.map((provider) => ({
+          id: provider.id,
+          code: provider.code,
+          name: provider.name,
+          role: provider.role,
+          priority: provider.priority,
+          isActive: provider.isActive,
+          successRate: Number(provider.successRate),
+          lastHealth: provider.lastHealth,
+        })),
+        logs: logs.map((log) => ({
+          id: log.id,
+          provider: log.provider.code,
+          action: log.action,
+          success: log.success,
+          latencyMs: log.latencyMs,
+          error: log.error,
+          createdAt: log.createdAt,
+        })),
+      };
+    },
+    { ttl: CacheTTL.realtime, tags: [CacheTags.admin] }
+  );
+
+  return privateJson(data);
 }
 
 export async function PATCH(req: Request) {

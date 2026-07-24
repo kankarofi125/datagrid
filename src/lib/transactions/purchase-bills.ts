@@ -255,7 +255,14 @@ async function runWalletPurchase(opts: {
       CacheKeys.analytics(14),
       CacheKeys.analytics(30),
     ]);
-    await invalidate([CacheTags.analytics, CacheTags.admin], true);
+    await invalidate(
+      [
+        CacheTags.wallet(opts.userId),
+        CacheTags.analytics,
+        CacheTags.admin,
+      ],
+      true
+    );
     await publishRealtime(userChannel(opts.userId), "tx:delivered", {
       orderRef,
       service: opts.service,

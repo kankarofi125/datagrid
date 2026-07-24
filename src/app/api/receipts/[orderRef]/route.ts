@@ -57,6 +57,8 @@ export async function GET(
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Content-Disposition": `attachment; filename="${orderRef}.txt"`,
+        "Cache-Control": "private, no-store, max-age=0",
+        Vary: "Cookie",
       },
     });
   }
@@ -64,6 +66,8 @@ export async function GET(
   return new NextResponse(receiptHtml(data), {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "private, no-store, max-age=0",
+      Vary: "Cookie",
     },
   });
 }

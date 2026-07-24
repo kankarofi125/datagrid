@@ -5,6 +5,7 @@ import { debitWallet, creditWallet, WalletError } from "@/lib/wallet/service";
 import { toLocalPhone, toE164 } from "@/lib/phone";
 import { verifyPin } from "@/lib/auth/pin";
 import { makeIdempotencyKey, makeOrderRef } from "@/lib/order-ref";
+import { CacheTags, invalidate } from "@/lib/cache";
 
 /** Wallet → wallet transfer by phone */
 export async function POST(req: Request) {
@@ -118,6 +119,7 @@ export async function POST(req: Request) {
         channel: "IN_APP",
       },
     });
+    await invalidate(CacheTags.notifications(recipient.id), true).catch(() => {});
 
     return NextResponse.json({
       ok: true,

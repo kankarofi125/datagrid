@@ -4,38 +4,53 @@ import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
 import { creditWallet } from "@/lib/wallet/service";
 import { makeIdempotencyKey, makeOrderRef } from "@/lib/order-ref";
+import {
+  cached,
+  CacheKeys,
+  CacheTags,
+  CacheTTL,
+  invalidate,
+} from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 export async function GET() {
   const { error } = await adminGate();
   if (error) return error;
 
-  const requests = await prisma.walletCreditRequest.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 40,
-  });
+  const data = await cached(
+    CacheKeys.adminWalletRequests(),
+    async () => {
+      const requests = await prisma.walletCreditRequest.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 40,
+      });
 
-  // Attach user phones
-  const userIds = [...new Set(requests.map((r) => r.userId))];
-  const users = await prisma.user.findMany({
-    where: { id: { in: userIds } },
-    select: { id: true, phoneLocal: true, name: true },
-  });
-  const map = Object.fromEntries(users.map((u) => [u.id, u]));
+      const userIds = [...new Set(requests.map((request) => request.userId))];
+      const users = await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, phoneLocal: true, name: true },
+      });
+      const usersById = Object.fromEntries(users.map((user) => [user.id, user]));
 
-  return NextResponse.json({
-    requests: requests.map((r) => ({
-      id: r.id,
-      userId: r.userId,
-      phone: map[r.userId]?.phoneLocal,
-      name: map[r.userId]?.name,
-      amount: Number(r.amount),
-      reason: r.reason,
-      status: r.status,
-      requestedBy: r.requestedBy,
-      approvedBy: r.approvedBy,
-      createdAt: r.createdAt,
-    })),
-  });
+      return {
+        requests: requests.map((request) => ({
+          id: request.id,
+          userId: request.userId,
+          phone: usersById[request.userId]?.phoneLocal,
+          name: usersById[request.userId]?.name,
+          amount: Number(request.amount),
+          reason: request.reason,
+          status: request.status,
+          requestedBy: request.requestedBy,
+          approvedBy: request.approvedBy,
+          createdAt: request.createdAt,
+        })),
+      };
+    },
+    { ttl: CacheTTL.realtime, tags: [CacheTags.admin] }
+  );
+
+  return privateJson(data);
 }
 
 /** Create credit request (first approval step) */
@@ -194,6 +209,7 @@ export async function PATCH(req: Request) {
       channel: "IN_APP",
     },
   });
+  await invalidate(CacheTags.notifications(row.userId), true).catch(() => {});
 
   return NextResponse.json({ ok: true, status: "APPROVED", orderRef, balance });
 }

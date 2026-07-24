@@ -4,7 +4,7 @@ import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 import { DashboardMobile } from "@/components/dashboard/DashboardMobile";
 import { DashboardDesktop } from "@/components/dashboard/DashboardDesktop";
 import type { NetworkCode } from "@/lib/phone";
-import { cached, CacheKeys, CacheTags } from "@/lib/cache";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -74,7 +74,7 @@ export default async function DashboardPage() {
           };
         },
         {
-          ttl: 20,
+          ttl: CacheTTL.operational,
           staleTtl: 300,
           tags: [CacheTags.wallet(userId), CacheTags.catalog],
         }

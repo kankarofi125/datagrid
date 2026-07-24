@@ -3,6 +3,7 @@ import { customAlphabet } from "nanoid";
 import { verifyOtp } from "@/lib/auth/otp";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { CacheKeys, invalidate } from "@/lib/cache";
 
 const refCode = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 8);
 
@@ -18,9 +19,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
+    let referredById: string | undefined;
     let user = await prisma.user.findUnique({ where: { phone: result.phone } });
     if (!user) {
-      let referredById: string | undefined;
       if (referral) {
         const ref = await prisma.user.findUnique({
           where: { referralCode: referral.toUpperCase() },
@@ -41,6 +42,9 @@ export async function POST(req: Request) {
           },
         },
       });
+      if (referredById) {
+        await invalidate(CacheKeys.referrals(referredById));
+      }
     } else {
       await prisma.user.update({
         where: { id: user.id },
@@ -52,6 +56,7 @@ export async function POST(req: Request) {
     session.userId = user.id;
     session.phone = user.phone;
     session.role = user.role;
+    delete session.adminUsername;
     session.isLoggedIn = true;
     await session.save();
 

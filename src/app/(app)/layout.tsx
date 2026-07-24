@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppShell } from "@/components/layout/AppShell";
-import { cached, CacheKeys, CacheTags } from "@/lib/cache";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
 
 export default async function AppLayout({
   children,
@@ -30,7 +30,7 @@ export default async function AppLayout({
         };
       },
       {
-        ttl: 15,
+        ttl: CacheTTL.realtime,
         staleTtl: 300,
         tags: [CacheTags.wallet(session.userId)],
       }

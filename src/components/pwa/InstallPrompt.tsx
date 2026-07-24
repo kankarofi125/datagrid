@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { Button } from "@/components/ui/Button";
 
 type BeforeInstallPromptEvent = Event & {
@@ -130,8 +131,8 @@ export function InstallPrompt() {
       aria-label="Install DataGrid"
     >
       <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber font-display text-xs text-[#2c1b02]">
-          DG
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-paper">
+          <BrandLogo variant="mark" alt="" className="w-9" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-semibold">Install DataGrid</p>

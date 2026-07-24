@@ -8,6 +8,7 @@ import { DigitField } from "@/components/ui/DigitField";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { TopUtilityStrip } from "@/components/layout/TopUtilityStrip";
 import { HeroEnter, Reveal } from "@/components/motion/Reveal";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { sanitizeNgPhoneInput, toLocalPhone, NG_LOCAL_MAX_DIGITS } from "@/lib/phone";
 
 type Step = "phone" | "otp" | "pin-login" | "pin-setup" | "pin-confirm";
@@ -382,8 +383,8 @@ function LoginForm() {
     <>
       <div className="mx-auto w-full max-w-md px-4 py-12 lg:hidden">
         <HeroEnter delay={0}>
-          <Link href="/" className="font-display text-2xl text-ink">
-            DATAGRID
+          <Link href="/" className="inline-block" aria-label="AYK Data Grid home">
+            <BrandLogo priority className="w-32" />
           </Link>
         </HeroEnter>
         <HeroEnter delay={80}>
@@ -406,8 +407,8 @@ function LoginForm() {
       <div className="mx-auto hidden min-h-[calc(100vh-3rem)] max-w-6xl overflow-hidden lg:grid lg:grid-cols-2">
         <div className="bg-grid bg-grid-live flex flex-col justify-between p-12 text-paper">
           <HeroEnter delay={0}>
-            <Link href="/" className="font-display text-2xl text-amber">
-              DATAGRID
+            <Link href="/" className="inline-block" aria-label="AYK Data Grid home">
+              <BrandLogo priority className="w-40 drop-shadow-[0_8px_24px_rgba(0,0,0,0.18)]" />
             </Link>
           </HeroEnter>
           <div>

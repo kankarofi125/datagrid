@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
 
 const defaults = {
   "referral.signup_bonus_ngn": 100,
@@ -8,22 +9,34 @@ const defaults = {
 };
 
 export async function getSettingNumber(key: keyof typeof defaults): Promise<number> {
-  const row = await prisma.setting.findUnique({ where: { key } });
-  if (!row) return defaults[key];
-  try {
-    const v = JSON.parse(row.value);
-    return typeof v === "number" ? v : Number(v) || defaults[key];
-  } catch {
-    return Number(row.value) || defaults[key];
-  }
+  return cached(
+    CacheKeys.settingNumber(key),
+    async () => {
+      const row = await prisma.setting.findUnique({ where: { key } });
+      if (!row) return defaults[key];
+      try {
+        const value = JSON.parse(row.value);
+        return typeof value === "number" ? value : Number(value) || defaults[key];
+      } catch {
+        return Number(row.value) || defaults[key];
+      }
+    },
+    { ttl: CacheTTL.settings, tags: [CacheTags.settings] }
+  );
 }
 
 export async function getSettingJson<T>(key: string, fallback: T): Promise<T> {
-  const row = await prisma.setting.findUnique({ where: { key } });
-  if (!row) return fallback;
-  try {
-    return JSON.parse(row.value) as T;
-  } catch {
-    return fallback;
-  }
+  return cached(
+    CacheKeys.settingJson(key),
+    async () => {
+      const row = await prisma.setting.findUnique({ where: { key } });
+      if (!row) return fallback;
+      try {
+        return JSON.parse(row.value) as T;
+      } catch {
+        return fallback;
+      }
+    },
+    { ttl: CacheTTL.settings, tags: [CacheTags.settings] }
+  );
 }

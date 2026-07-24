@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { cached, CacheKeys, CacheTags } from "@/lib/cache";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
+import { publicCatalogJson } from "@/lib/http-cache";
 
 export async function GET() {
   const data = await cached(
@@ -22,9 +22,9 @@ export async function GET() {
         cachedAt: new Date().toISOString(),
       };
     },
-    { ttl: 120, tags: [CacheTags.catalog] }
+    { ttl: CacheTTL.catalog, tags: [CacheTags.catalog] }
   );
-  return NextResponse.json(data, {
-    headers: { "X-Cache-Layer": "upstash" },
+  return publicCatalogJson(data, {
+    headers: { "X-Cache-Layer": "server" },
   });
 }

@@ -9,9 +9,10 @@ import { MarginCalculator } from "@/components/landing/MarginCalculator";
 import { CountUp } from "@/components/motion/CountUp";
 import { HeroEnter, Reveal } from "@/components/motion/Reveal";
 import { Button } from "@/components/ui/Button";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { prisma } from "@/lib/db";
 import type { NetworkCode } from "@/lib/phone";
-import { cached, CacheKeys, CacheTags } from "@/lib/cache";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
 
 // Live catalog data is served through the shared Redis + stale local cache.
 export const dynamic = "force-dynamic";
@@ -53,7 +54,7 @@ async function getLandingData() {
           ticker: tickerSetting ? (JSON.parse(tickerSetting.value) as string[]) : undefined,
         };
       },
-      { ttl: 60, staleTtl: 3600, tags: [CacheTags.catalog] }
+      { ttl: CacheTTL.catalog, staleTtl: 3600, tags: [CacheTags.catalog] }
     );
   } catch {
     return { networks: undefined, plans: undefined, ticker: undefined };
@@ -70,17 +71,7 @@ export default async function LandingPage() {
       <header className="sticky top-2 z-30 mx-2 mt-2 rounded-[18px] border border-white/80 bg-paper/92 shadow-[0_18px_48px_-30px_rgba(14,33,26,.38)] backdrop-blur-xl sm:mx-3 lg:mx-auto lg:w-[calc(100%-2rem)] lg:max-w-7xl">
         <div className="mx-auto flex items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3 lg:px-6">
           <Link href="/" className="flex min-w-0 items-center gap-2">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-green-deep font-display text-sm text-amber shadow-[0_10px_24px_-16px_rgba(10,46,34,.9)]">
-              DG
-            </span>
-            <span>
-              <span className="block font-display text-lg tracking-wide text-ink sm:text-xl">
-                DATAGRID
-              </span>
-              <span className="hidden font-mono-num text-[7px] uppercase tracking-[0.16em] text-ink/35 sm:block">
-                Payments infrastructure
-              </span>
-            </span>
+            <BrandLogo priority className="w-24 sm:w-28" />
           </Link>
           <nav className="hidden items-center gap-7 rounded-full border border-line bg-white/60 px-5 py-2 text-sm font-medium md:flex">
             <Link href="#services" className="link-draw text-ink/70 hover:text-ink">
@@ -303,7 +294,7 @@ export default async function LandingPage() {
             <ul className="moat-grid mt-8 sm:mt-12">
               {[
                 ["Guest checkout", "Buy first. Account later — with this number."],
-                ["Network auto-detect", "0803… snaps to MTN. Prefix map admin-editable."],
+                ["Network auto-detect", "0803… snaps to MTN using the live prefix map."],
                 ["Status board", "Live uptime dots on landing and dashboard."],
                 ["Provider failover", "2+ VTU adapters. You never see the retry."],
                 ["Scheduled top-ups", "1GB every Friday, 6pm WAT."],
@@ -357,7 +348,7 @@ export default async function LandingPage() {
       <footer className="border-t border-line bg-green-deep text-paper">
         <div className="mx-auto grid max-w-7xl gap-8 px-3 py-10 sm:grid-cols-2 sm:gap-10 sm:px-4 sm:py-14 lg:grid-cols-4 lg:px-8">
           <div>
-            <p className="font-display text-2xl text-amber">DATAGRID</p>
+            <BrandLogo className="w-40" alt="AYK Data Grid" />
             <p className="mt-3 text-sm leading-relaxed text-paper/60">
               The national grid for your phone.
             </p>

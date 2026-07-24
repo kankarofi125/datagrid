@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { adminGate } from "@/lib/admin";
 import { prisma } from "@/lib/db";
-import { cached, CacheKeys, CacheTags } from "@/lib/cache";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 /** Catalog overview: networks, plans, billers */
 export async function GET() {
@@ -62,10 +62,8 @@ export async function GET() {
         cachedAt: new Date().toISOString(),
       };
     },
-    { ttl: 90, tags: [CacheTags.admin, CacheTags.catalog] }
+    { ttl: CacheTTL.catalog, tags: [CacheTags.admin, CacheTags.catalog] }
   );
 
-  return NextResponse.json(data, {
-    headers: { "X-Cache-Layer": "upstash" },
-  });
+  return privateJson(data);
 }

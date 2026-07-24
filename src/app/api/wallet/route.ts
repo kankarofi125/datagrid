@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getMainWallet } from "@/lib/wallet/service";
-import { cached, CacheKeys, CacheTags } from "@/lib/cache";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
 
 export async function GET() {
   const session = await requireUser();
@@ -39,7 +39,7 @@ export async function GET() {
         cachedAt: new Date().toISOString(),
       };
     },
-    { ttl: 15, staleTtl: 300, tags: [CacheTags.wallet(userId)] }
+    { ttl: CacheTTL.realtime, staleTtl: 300, tags: [CacheTags.wallet(userId)] }
   );
 
   return NextResponse.json(data, {

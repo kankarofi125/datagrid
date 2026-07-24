@@ -3,36 +3,46 @@ import { adminGate } from "@/lib/admin";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
 import { refundToWallet } from "@/lib/wallet/service";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 export async function GET() {
   const { error } = await adminGate();
   if (error) return error;
 
-  const disputes = await prisma.dispute.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    include: {
-      user: { select: { phoneLocal: true, name: true } },
-      transaction: {
-        select: { orderRef: true, amount: true, status: true, service: true },
-      },
-    },
-  });
+  const data = await cached(
+    CacheKeys.adminDisputes(),
+    async () => {
+      const disputes = await prisma.dispute.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        include: {
+          user: { select: { phoneLocal: true, name: true } },
+          transaction: {
+            select: { orderRef: true, amount: true, status: true, service: true },
+          },
+        },
+      });
 
-  return NextResponse.json({
-    disputes: disputes.map((d) => ({
-      id: d.id,
-      reason: d.reason,
-      status: d.status,
-      resolution: d.resolution,
-      createdAt: d.createdAt,
-      userPhone: d.user.phoneLocal,
-      orderRef: d.transaction.orderRef,
-      amount: Number(d.transaction.amount),
-      txStatus: d.transaction.status,
-      service: d.transaction.service,
-    })),
-  });
+      return {
+        disputes: disputes.map((dispute) => ({
+          id: dispute.id,
+          reason: dispute.reason,
+          status: dispute.status,
+          resolution: dispute.resolution,
+          createdAt: dispute.createdAt,
+          userPhone: dispute.user.phoneLocal,
+          orderRef: dispute.transaction.orderRef,
+          amount: Number(dispute.transaction.amount),
+          txStatus: dispute.transaction.status,
+          service: dispute.transaction.service,
+        })),
+      };
+    },
+    { ttl: CacheTTL.realtime, tags: [CacheTags.admin] }
+  );
+
+  return privateJson(data);
 }
 
 export async function POST(req: Request) {

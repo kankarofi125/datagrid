@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { hashPin, isValidPin, verifyPin } from "@/lib/auth/pin";
 import { CacheKeys, invalidate } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 /** GET — whether user has PIN set */
 export async function GET() {
@@ -14,7 +15,7 @@ export async function GET() {
     where: { id: session.userId },
     select: { pinHash: true },
   });
-  return NextResponse.json({ hasPin: Boolean(user?.pinHash) });
+  return privateJson({ hasPin: Boolean(user?.pinHash) });
 }
 
 /** POST — set or change PIN */

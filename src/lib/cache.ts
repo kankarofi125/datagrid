@@ -11,6 +11,15 @@ export type CacheOpts = {
 const DEFAULT_TTL = 60;
 const MAX_LOCAL_ENTRIES = 500;
 
+/** Shared cache durations by volatility class. */
+export const CacheTTL = {
+  realtime: 10,
+  operational: 20,
+  user: 30,
+  catalog: 120,
+  settings: 300,
+} as const;
+
 type LocalEntry = {
   value: unknown;
   expiresAt: number;
@@ -187,13 +196,30 @@ export const CacheKeys = {
   adminServices: () => "admin:services:v1",
   adminGateways: () => "admin:gateways:v1",
   adminIntegrations: () => "admin:integrations:v1",
-  adminUsers: () => "admin:users:v1",
+  adminProviders: () => "admin:providers:v1",
+  adminPlans: () => "admin:plans:v1",
+  adminSettings: () => "admin:settings:v1",
+  adminAudit: () => "admin:audit:v1",
+  adminDisputes: () => "admin:disputes:v1",
+  adminWalletRequests: () => "admin:wallet-requests:v1",
+  adminUsers: (query?: string | null) =>
+    `admin:users:v1:${encodeURIComponent(query?.trim().toLowerCase() || "recent")}`,
+  adminTransactions: (query: string) =>
+    `admin:transactions:v1:${encodeURIComponent(query)}`,
   wallet: (userId: string) => `wallet:v1:${userId}`,
   appShell: (userId: string) => `app-shell:v1:${userId}`,
   dashboard: (userId: string) => `dashboard:v1:${userId}`,
   userAnalytics: (userId: string) => `user-analytics:v1:${userId}`,
   userProfile: (userId: string) => `user-profile:v1:${userId}`,
   notifications: (userId: string) => `notif:v1:${userId}`,
+  beneficiaries: (userId: string, service?: string | null) =>
+    `beneficiaries:v1:${userId}:${service?.toUpperCase() || "all"}`,
+  referrals: (userId: string) => `referrals:v1:${userId}`,
+  schedules: (userId: string) => `schedules:v1:${userId}`,
+  agentKeys: (userId: string) => `agent-keys:v1:${userId}`,
+  history: (userId: string) => `history:v1:${userId}`,
+  settingNumber: (key: string) => `setting:number:v1:${key}`,
+  settingJson: (key: string) => `setting:json:v1:${key}`,
   landing: () => "landing:v1",
   health: () => "health:v1",
 };
@@ -202,6 +228,10 @@ export const CacheTags = {
   analytics: "analytics",
   catalog: "catalog",
   admin: "admin",
+  settings: "settings",
   wallet: (userId: string) => `wallet:${userId}`,
   notifications: (userId: string) => `notif:${userId}`,
+  beneficiaries: (userId: string) => `beneficiaries:${userId}`,
+  schedules: (userId: string) => `schedules:${userId}`,
+  agentKeys: (userId: string) => `agent-keys:${userId}`,
 };

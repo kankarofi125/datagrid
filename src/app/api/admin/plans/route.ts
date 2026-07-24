@@ -2,30 +2,40 @@ import { NextResponse } from "next/server";
 import { adminGate } from "@/lib/admin";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
+import { cached, CacheKeys, CacheTags, CacheTTL, invalidate } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 export async function GET() {
   const { error } = await adminGate();
   if (error) return error;
 
-  const plans = await prisma.plan.findMany({
-    include: { network: true },
-    orderBy: [{ networkId: "asc" }, { sortOrder: "asc" }],
-  });
+  const data = await cached(
+    CacheKeys.adminPlans(),
+    async () => {
+      const plans = await prisma.plan.findMany({
+        include: { network: true },
+        orderBy: [{ networkId: "asc" }, { sortOrder: "asc" }],
+      });
 
-  return NextResponse.json({
-    plans: plans.map((p) => ({
-      id: p.id,
-      name: p.name,
-      type: p.type,
-      networkCode: p.network.code,
-      sizeMb: p.sizeMb,
-      validityDays: p.validityDays,
-      retailPrice: Number(p.retailPrice),
-      resellerPrice: Number(p.resellerPrice),
-      isActive: p.isActive,
-      sortOrder: p.sortOrder,
-    })),
-  });
+      return {
+        plans: plans.map((plan) => ({
+          id: plan.id,
+          name: plan.name,
+          type: plan.type,
+          networkCode: plan.network.code,
+          sizeMb: plan.sizeMb,
+          validityDays: plan.validityDays,
+          retailPrice: Number(plan.retailPrice),
+          resellerPrice: Number(plan.resellerPrice),
+          isActive: plan.isActive,
+          sortOrder: plan.sortOrder,
+        })),
+      };
+    },
+    { ttl: CacheTTL.catalog, tags: [CacheTags.admin, CacheTags.catalog] }
+  );
+
+  return privateJson(data);
 }
 
 export async function PATCH(req: Request) {
@@ -67,6 +77,7 @@ export async function PATCH(req: Request) {
       isActive: after.isActive,
     },
   });
+  await invalidate(CacheTags.catalog, true);
 
   return NextResponse.json({ ok: true });
 }

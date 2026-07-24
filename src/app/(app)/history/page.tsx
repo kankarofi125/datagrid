@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { HistoryViews } from "@/components/history/HistoryViews";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
 
 export default async function HistoryPage() {
   const session = await getSession();
@@ -16,25 +17,36 @@ export default async function HistoryPage() {
 
   if (session.userId) {
     try {
-      const data = await prisma.transaction.findMany({
-        where: {
-          OR: [
-            { userId: session.userId },
-            { guestPhone: session.phone?.replace("+234", "0") },
-          ],
+      const userId = session.userId;
+      rows = await cached(
+        CacheKeys.history(userId),
+        async () => {
+          const data = await prisma.transaction.findMany({
+            where: {
+              OR: [
+                { userId },
+                { guestPhone: session.phone?.replace("+234", "0") },
+              ],
+            },
+            orderBy: { createdAt: "desc" },
+            take: 50,
+          });
+          return data.map((transaction) => ({
+            id: transaction.id,
+            orderRef: transaction.orderRef,
+            service: transaction.service,
+            status: transaction.status,
+            amount: Number(transaction.amount),
+            phone: transaction.phone,
+            createdAt: transaction.createdAt.toISOString(),
+          }));
         },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      });
-      rows = data.map((t) => ({
-        id: t.id,
-        orderRef: t.orderRef,
-        service: t.service,
-        status: t.status,
-        amount: Number(t.amount),
-        phone: t.phone,
-        createdAt: t.createdAt.toISOString(),
-      }));
+        {
+          ttl: CacheTTL.user,
+          staleTtl: 300,
+          tags: [CacheTags.wallet(userId)],
+        }
+      );
     } catch {
       /* empty */
     }

@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { cached, CacheKeys, CacheTags, invalidate } from "@/lib/cache";
+import {
+  cached,
+  CacheKeys,
+  CacheTags,
+  CacheTTL,
+  invalidate,
+} from "@/lib/cache";
 import { publishRealtime, userChannel } from "@/lib/realtime";
 
 export async function GET() {
@@ -33,7 +39,11 @@ export async function GET() {
         cachedAt: new Date().toISOString(),
       };
     },
-    { ttl: 20, staleTtl: 300, tags: [CacheTags.notifications(userId)] }
+    {
+      ttl: CacheTTL.operational,
+      staleTtl: 300,
+      tags: [CacheTags.notifications(userId)],
+    }
   );
 
   return NextResponse.json(data, {

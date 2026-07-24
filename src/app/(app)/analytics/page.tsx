@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { TxService, TxStatus } from "@prisma/client";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { cached, CacheKeys, CacheTags } from "@/lib/cache";
+import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
 import { formatNaira } from "@/lib/money";
 import { LineChart, DonutChart, HBarList } from "@/components/admin/charts";
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
@@ -140,7 +140,7 @@ export default async function AnalyticsPage() {
     CacheKeys.userAnalytics(userId),
     () => loadAnalytics(userId),
     {
-      ttl: 30,
+      ttl: CacheTTL.user,
       staleTtl: 600,
       tags: [CacheTags.wallet(userId)],
     }

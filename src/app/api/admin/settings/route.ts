@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { adminGate } from "@/lib/admin";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
+import { cached, CacheKeys, CacheTags, CacheTTL, invalidate } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 const KEYS = [
   "referral.signup_bonus_ngn",
@@ -16,18 +18,26 @@ export async function GET() {
   const { error } = await adminGate();
   if (error) return error;
 
-  const rows = await prisma.setting.findMany({
-    where: { key: { in: [...KEYS] } },
-  });
-  const map: Record<string, unknown> = {};
-  for (const r of rows) {
-    try {
-      map[r.key] = JSON.parse(r.value);
-    } catch {
-      map[r.key] = r.value;
-    }
-  }
-  return NextResponse.json({ settings: map });
+  const data = await cached(
+    CacheKeys.adminSettings(),
+    async () => {
+      const rows = await prisma.setting.findMany({
+        where: { key: { in: [...KEYS] } },
+      });
+      const settings: Record<string, unknown> = {};
+      for (const row of rows) {
+        try {
+          settings[row.key] = JSON.parse(row.value);
+        } catch {
+          settings[row.key] = row.value;
+        }
+      }
+      return { settings };
+    },
+    { ttl: CacheTTL.settings, tags: [CacheTags.admin, CacheTags.settings] }
+  );
+
+  return privateJson(data);
 }
 
 export async function PATCH(req: Request) {
@@ -55,6 +65,7 @@ export async function PATCH(req: Request) {
     entityType: "Setting",
     after: updates,
   });
+  await invalidate(CacheTags.settings, true);
 
   return NextResponse.json({ ok: true });
 }

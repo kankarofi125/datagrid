@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import {
   groupShellNav,
   isShellNavActive,
@@ -22,7 +23,6 @@ export function ShellSidebar({
   items,
   homeHref,
   brand,
-  badge = "DG",
   subtitle,
   identity,
   ariaLabel,
@@ -34,7 +34,6 @@ export function ShellSidebar({
   items: readonly ShellNavItem[];
   homeHref: string;
   brand: string;
-  badge?: string;
   subtitle: string;
   identity?: string;
   ariaLabel: string;
@@ -67,17 +66,27 @@ export function ShellSidebar({
           className={cn("flex min-w-0 items-center gap-3", collapsed && "justify-center")}
           aria-label={collapsed ? `${brand} home` : undefined}
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber font-display text-sm text-[#2c1b02] shadow-[0_10px_24px_-14px_rgba(242,166,61,.85)]">
-            {badge}
-          </span>
-          {!collapsed && (
-            <span className="min-w-0">
-              <span className="block truncate font-display text-lg tracking-wide">{brand}</span>
-              <span className="mt-0.5 block whitespace-nowrap font-mono-num text-[8px] tracking-[0.18em] text-paper/35">
+          <span className="sr-only">{brand}</span>
+          <span className={cn("min-w-0", collapsed && "flex justify-center")}>
+            <span
+              className={cn(
+                "block rounded-xl bg-paper/96 shadow-[0_8px_24px_-16px_rgba(0,0,0,.7)]",
+                collapsed ? "p-1" : "px-2 py-1"
+              )}
+            >
+              <BrandLogo
+                variant={collapsed ? "mark" : "lockup"}
+                alt=""
+                priority
+                className={collapsed ? "w-10" : "w-[116px]"}
+              />
+            </span>
+            {!collapsed && (
+              <span className="mt-0.5 block whitespace-nowrap text-center font-mono-num text-[7px] tracking-[0.18em] text-paper/35">
                 {subtitle}
               </span>
-            </span>
-          )}
+            )}
+          </span>
         </Link>
         <button
           type="button"

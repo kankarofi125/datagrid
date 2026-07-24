@@ -2,46 +2,58 @@ import { NextResponse } from "next/server";
 import { adminGate } from "@/lib/admin";
 import { prisma } from "@/lib/db";
 import { writeAudit } from "@/lib/audit";
+import { cached, CacheKeys, CacheTags, CacheTTL, invalidate } from "@/lib/cache";
+import { privateJson } from "@/lib/http-cache";
 
 export async function GET(req: Request) {
   const { error } = await adminGate();
   if (error) return error;
 
   const q = new URL(req.url).searchParams.get("q")?.trim();
-  const users = await prisma.user.findMany({
-    where: q
-      ? {
-          OR: [
-            { phoneLocal: { contains: q } },
-            { phone: { contains: q } },
-            { name: { contains: q } },
-            { referralCode: { contains: q.toUpperCase() } },
-          ],
-        }
-      : undefined,
-    include: { wallets: true },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const data = await cached(
+    CacheKeys.adminUsers(q),
+    async () => {
+      const users = await prisma.user.findMany({
+        where: q
+          ? {
+              OR: [
+                { phoneLocal: { contains: q } },
+                { phone: { contains: q } },
+                { name: { contains: q } },
+                { referralCode: { contains: q.toUpperCase() } },
+              ],
+            }
+          : undefined,
+        include: { wallets: true },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      });
 
-  return NextResponse.json({
-    users: users.map((u) => ({
-      id: u.id,
-      phone: u.phoneLocal,
-      name: u.name,
-      role: u.role,
-      kycTier: u.kycTier,
-      kycStatus: u.kycStatus,
-      isActive: u.isActive,
-      lifetimeVolume: Number(u.lifetimeVolume),
-      referralCode: u.referralCode,
-      balance: Number(u.wallets.find((w) => w.kind === "MAIN")?.balance ?? 0),
-      commissionBalance: Number(
-        u.wallets.find((w) => w.kind === "COMMISSION")?.balance ?? 0
-      ),
-      createdAt: u.createdAt,
-    })),
-  });
+      return {
+        users: users.map((user) => ({
+          id: user.id,
+          phone: user.phoneLocal,
+          name: user.name,
+          role: user.role,
+          kycTier: user.kycTier,
+          kycStatus: user.kycStatus,
+          isActive: user.isActive,
+          lifetimeVolume: Number(user.lifetimeVolume),
+          referralCode: user.referralCode,
+          balance: Number(
+            user.wallets.find((wallet) => wallet.kind === "MAIN")?.balance ?? 0
+          ),
+          commissionBalance: Number(
+            user.wallets.find((wallet) => wallet.kind === "COMMISSION")?.balance ?? 0
+          ),
+          createdAt: user.createdAt,
+        })),
+      };
+    },
+    { ttl: CacheTTL.operational, tags: [CacheTags.admin] }
+  );
+
+  return privateJson(data);
 }
 
 export async function PATCH(req: Request) {
@@ -89,6 +101,11 @@ export async function PATCH(req: Request) {
     before: { role: before.role, isActive: before.isActive, kycStatus: before.kycStatus },
     after: { role: after.role, isActive: after.isActive, kycStatus: after.kycStatus },
   });
+  await invalidate([
+    CacheKeys.userProfile(id),
+    CacheKeys.appShell(id),
+    CacheKeys.dashboard(id),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

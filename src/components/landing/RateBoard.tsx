@@ -23,7 +23,7 @@ export function RateBoard() {
       <div className="flex items-center justify-between border-b border-white/10 bg-green-deep px-5 py-4">
         <h3 className="font-display text-xl text-paper">RATE BOARD</h3>
         <span className="font-mono-num text-[10px] tracking-widest text-amber">
-          ADMIN-EDITABLE
+          LIVE PRICING
         </span>
       </div>
       <div className="overflow-x-auto">

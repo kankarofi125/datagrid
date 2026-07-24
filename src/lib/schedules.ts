@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { ScheduleFrequency } from "@prisma/client";
+import { CacheTags, invalidate } from "@/lib/cache";
 
 /** Compute next run in WAT (Africa/Lagos = UTC+1, no DST) */
 export function computeNextRun(opts: {
@@ -110,6 +111,14 @@ export async function runDueSchedules(limit = 20) {
       });
     }
     await advanceSchedule(s);
+    await invalidate(
+      [
+        CacheTags.notifications(s.userId),
+        CacheTags.analytics,
+        CacheTags.admin,
+      ],
+      true
+    ).catch(() => {});
   }
 
   return results;
@@ -117,6 +126,7 @@ export async function runDueSchedules(limit = 20) {
 
 async function advanceSchedule(s: {
   id: string;
+  userId: string;
   frequency: ScheduleFrequency;
   dayOfWeek: number | null;
   hourWat: number;
@@ -133,4 +143,5 @@ async function advanceSchedule(s: {
     where: { id: s.id },
     data: { lastRunAt: new Date(), nextRunAt: next },
   });
+  await invalidate(CacheTags.schedules(s.userId), true).catch(() => {});
 }

@@ -51,6 +51,7 @@ export async function POST(req: Request) {
     session.userId = user.id;
     session.phone = user.phone;
     session.role = user.role;
+    delete session.adminUsername;
     session.isLoggedIn = true;
     await session.save();
 
