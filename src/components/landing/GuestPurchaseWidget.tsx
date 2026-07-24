@@ -17,6 +17,7 @@ import {
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import { useBlockingLoader } from "@/components/ui/BlockingLoader";
+import { ReceiptCard } from "@/components/buy/ReceiptCard";
 
 type Plan = {
   id: string;
@@ -272,20 +273,19 @@ export function GuestPurchaseWidget({ plans = DEMO_PLANS }: { plans?: Plan[] }) 
         onClose={() => {
           if (status !== "processing") setConfirmOpen(false);
         }}
-        title={status === "delivered" ? "DELIVERED" : "CONFIRM"}
+        title={status === "delivered" ? "RECEIPT" : "CONFIRM"}
       >
         {status === "delivered" && orderRef ? (
-          <div className="relative space-y-4 overflow-hidden">
-            <div className="stamp-delivered pointer-events-none absolute right-2 top-0 rotate-[-8deg] rounded border-4 border-green px-3 py-1 font-display text-2xl text-green opacity-90">
-              DELIVERED
-            </div>
-            <p className="font-mono-num text-xs tracking-widest text-ink/50">ORDER REF</p>
-            <p className="font-mono-num text-xl text-ink">{orderRef}</p>
-            <p className="text-sm text-ink/70">
-              {tab === "DATA" ? selectedPlan?.name || "Data" : `Airtime ${formatNaira(price)}`}{" "}
-              → {local ? formatPhoneDisplay(local) : phone}
-              {network ? ` (${NETWORK_LABELS[network]})` : ""}
-            </p>
+          <div className="space-y-4">
+            <ReceiptCard
+              orderRef={orderRef}
+              service={tab}
+              amount={price}
+              phone={local || phone}
+              networkCode={network}
+              planName={tab === "DATA" ? selectedPlan?.name || "Data" : "Airtime"}
+              celebrate
+            />
             <div className="rounded-lg border border-line bg-green-deep p-4 text-paper">
               <p className="text-sm">Create an account with this number to track &amp; repeat.</p>
               <Button

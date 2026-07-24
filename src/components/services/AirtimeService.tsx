@@ -179,7 +179,11 @@ export default function AirtimeService({
   const pinDenied = status === "failed" && isPinDenied(error);
 
   const sheet = (
-    <Sheet open={open} onClose={() => status !== "processing" && setOpen(false)} title="CONFIRM">
+    <Sheet
+      open={open}
+      onClose={() => status !== "processing" && setOpen(false)}
+      title={status === "delivered" ? "RECEIPT" : "CONFIRM"}
+    >
       {status === "delivered" && orderRef ? (
         <ReceiptCard
           orderRef={orderRef}
@@ -187,6 +191,7 @@ export default function AirtimeService({
           amount={n}
           phone={local}
           networkCode={network}
+          celebrate
           onClose={() => {
             setOpen(false);
             router.push(`/history/${orderRef}`);

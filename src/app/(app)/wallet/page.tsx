@@ -15,6 +15,7 @@ import { BalanceAmount } from "@/components/ui/BalanceAmount";
 import { PinPad } from "@/components/buy/PinPad";
 import { isPinDenied } from "@/lib/pin-feedback";
 import { useBlockingLoader } from "@/components/ui/BlockingLoader";
+import { ReceiptCard } from "@/components/buy/ReceiptCard";
 
 type LedgerRow = {
   id: string;
@@ -23,6 +24,14 @@ type LedgerRow = {
   balanceAfter: number;
   memo: string | null;
   createdAt: string;
+};
+
+type WalletReceipt = {
+  orderRef: string;
+  service: string;
+  amount: number;
+  phone?: string;
+  planName: string;
 };
 
 export default function WalletPage() {
@@ -42,6 +51,9 @@ export default function WalletPage() {
   const [payoutOpen, setPayoutOpen] = useState(false);
   const [xferError, setXferError] = useState<string | null>(null);
   const [payoutError, setPayoutError] = useState<string | null>(null);
+  const [fundReceipt, setFundReceipt] = useState<WalletReceipt | null>(null);
+  const [transferReceipt, setTransferReceipt] = useState<WalletReceipt | null>(null);
+  const [payoutReceipt, setPayoutReceipt] = useState<WalletReceipt | null>(null);
   const [va, setVa] = useState<{
     accountNumber: string;
     bankName: string;
@@ -81,6 +93,7 @@ export default function WalletPage() {
     start(async () => {
       await runBlocking(async () => {
         setMsg(null);
+        setFundReceipt(null);
         const res = await fetch("/api/wallet/fund", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -107,7 +120,14 @@ export default function WalletPage() {
               ? "Flutterwave (sim) credited your wallet."
               : "Paystack (sim) credited your wallet."
           );
-          setOpen(false);
+          if (data.orderRef) {
+            setFundReceipt({
+              orderRef: data.orderRef,
+              service: "WALLET_FUND",
+              amount: Number(amount),
+              planName: tab === "flutterwave" ? "Flutterwave funding" : "Paystack funding",
+            });
+          }
           await refresh();
         }
       });
@@ -119,6 +139,7 @@ export default function WalletPage() {
       await runBlocking(async () => {
         setMsg(null);
         setXferError(null);
+        setTransferReceipt(null);
         const res = await fetch("/api/wallet/transfer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -135,7 +156,13 @@ export default function WalletPage() {
         }
         setBalance(data.balance);
         setMsg(`Sent ${formatNaira(Number(xferAmount))} to ${data.recipient}`);
-        setXferOpen(false);
+        setTransferReceipt({
+          orderRef: data.orderRef,
+          service: "WALLET_TRANSFER",
+          amount: Number(xferAmount),
+          phone: data.recipient,
+          planName: `Transfer to ${data.recipient}`,
+        });
         setXferPin("");
         await refresh();
       });
@@ -147,6 +174,7 @@ export default function WalletPage() {
       await runBlocking(async () => {
         setMsg(null);
         setPayoutError(null);
+        setPayoutReceipt(null);
         const res = await fetch("/api/wallet/commission/payout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -159,7 +187,12 @@ export default function WalletPage() {
         }
         setBalance(data.balance);
         setMsg(`Moved ${formatNaira(data.amount)} commission → main`);
-        setPayoutOpen(false);
+        setPayoutReceipt({
+          orderRef: data.orderRef,
+          service: "COMMISSION_PAYOUT",
+          amount: data.amount,
+          planName: "Commission to main wallet",
+        });
         setPayoutPin("");
         await refresh();
       });
@@ -169,6 +202,7 @@ export default function WalletPage() {
   function simulateTransfer() {
     start(async () => {
       await runBlocking(async () => {
+        setFundReceipt(null);
         const res = await fetch("/api/wallet/fund/simulate-transfer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -181,7 +215,12 @@ export default function WalletPage() {
         }
         setBalance(data.balance);
         setMsg("Monnify transfer received (sim webhook).");
-        setOpen(false);
+        setFundReceipt({
+          orderRef: data.orderRef,
+          service: "WALLET_FUND",
+          amount: Number(amount),
+          planName: "Monnify bank transfer",
+        });
         await refresh();
       });
     });
@@ -202,7 +241,24 @@ export default function WalletPage() {
   const payoutPinDenied = isPinDenied(payoutError);
 
   const fundSheet = (
-    <Sheet open={open} onClose={() => setOpen(false)} title="FUND WALLET">
+    <Sheet
+      open={open}
+      onClose={() => {
+        setOpen(false);
+        setFundReceipt(null);
+      }}
+      title={fundReceipt ? "RECEIPT" : "FUND WALLET"}
+    >
+      {fundReceipt ? (
+        <ReceiptCard
+          {...fundReceipt}
+          celebrate
+          onClose={() => {
+            setOpen(false);
+            setFundReceipt(null);
+          }}
+        />
+      ) : (
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -274,11 +330,29 @@ export default function WalletPage() {
         PAYSTACK → FLUTTERWAVE FALLBACK · MONNIFY VA
       </p>
       </form>
+      )}
     </Sheet>
   );
 
   const xferSheet = (
-    <Sheet open={xferOpen} onClose={() => setXferOpen(false)} title="SEND MONEY">
+    <Sheet
+      open={xferOpen}
+      onClose={() => {
+        setXferOpen(false);
+        setTransferReceipt(null);
+      }}
+      title={transferReceipt ? "RECEIPT" : "SEND MONEY"}
+    >
+      {transferReceipt ? (
+        <ReceiptCard
+          {...transferReceipt}
+          celebrate
+          onClose={() => {
+            setXferOpen(false);
+            setTransferReceipt(null);
+          }}
+        />
+      ) : (
       <form
         className="space-y-3"
         onSubmit={(event) => {
@@ -317,11 +391,30 @@ export default function WalletPage() {
           Transfer
         </Button>
       </form>
+      )}
     </Sheet>
   );
 
   const payoutSheet = (
-    <Sheet open={payoutOpen} onClose={() => setPayoutOpen(false)} title="COMMISSION → MAIN">
+    <Sheet
+      open={payoutOpen}
+      onClose={() => {
+        setPayoutOpen(false);
+        setPayoutReceipt(null);
+      }}
+      title={payoutReceipt ? "RECEIPT" : "COMMISSION → MAIN"}
+    >
+      {payoutReceipt ? (
+        <ReceiptCard
+          {...payoutReceipt}
+          celebrate
+          onClose={() => {
+            setPayoutOpen(false);
+            setPayoutReceipt(null);
+          }}
+        />
+      ) : (
+      <>
       <p className="mb-3 text-sm text-ink/65">
         Available:{" "}
         <span className="font-mono-num font-semibold text-amber">
@@ -350,6 +443,8 @@ export default function WalletPage() {
       >
         Move all to main wallet
       </Button>
+      </>
+      )}
     </Sheet>
   );
 

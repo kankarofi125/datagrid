@@ -212,6 +212,7 @@ export function BuyDataConfirmSheet({ s }: { s: BuyDataState }) {
           networkCode={s.network}
           planName={s.selected.name}
           ussdHint={s.ussdHint}
+          celebrate
           onClose={s.goToReceipt}
         />
       ) : (

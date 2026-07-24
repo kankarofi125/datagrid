@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { cn } from "@/lib/cn";
 
 type BlockingOptions = {
@@ -123,7 +124,11 @@ export function BlockingLoaderProvider({
       { minimumMs = LOADER_MINIMUM_MS }: BlockingOptions = {}
     ) => {
       const startedAt = performance.now();
-      setActiveJobs((count) => count + 1);
+      // Transaction handlers use React transitions. Force the blocker into
+      // the urgent lane so its visible state cannot be batched with completion.
+      flushSync(() => {
+        setActiveJobs((count) => count + 1);
+      });
 
       try {
         return await operation();
@@ -132,7 +137,9 @@ export function BlockingLoaderProvider({
         if (remaining > 0) {
           await new Promise((resolve) => window.setTimeout(resolve, remaining));
         }
-        setActiveJobs((count) => Math.max(0, count - 1));
+        flushSync(() => {
+          setActiveJobs((count) => Math.max(0, count - 1));
+        });
       }
     },
     []

@@ -29,6 +29,7 @@ export function TokenReceipt({
       token={token}
       tokenLabel={label}
       onClose={onDone}
+      celebrate
     />
   );
 }

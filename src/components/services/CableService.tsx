@@ -268,6 +268,7 @@ export default function CableService() {
             service="CABLE"
             amount={amount}
             planName={`${biller?.name} · ${pkg?.name}`}
+            celebrate
             onClose={() => {
               setOpen(false);
               router.push(`/history/${orderRef}`);

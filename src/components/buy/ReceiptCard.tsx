@@ -5,6 +5,8 @@ import { formatPhoneDisplay } from "@/lib/phone";
 import { Button } from "@/components/ui/Button";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
+import { motion, useReducedMotion } from "framer-motion";
+import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 type Props = {
   orderRef: string;
@@ -19,6 +21,7 @@ type Props = {
   tokenLabel?: string;
   customerName?: string | null;
   onClose?: () => void;
+  celebrate?: boolean;
 };
 
 export function ReceiptCard({
@@ -34,12 +37,16 @@ export function ReceiptCard({
   tokenLabel = "Token / pin",
   customerName,
   onClose,
+  celebrate = false,
 }: Props) {
+  const reduced = useReducedMotion();
+  const { active: transactionBlocking } = useBlockingLoader();
   const [copied, setCopied] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
   const waPhone = process.env.NEXT_PUBLIC_WHATSAPP || "2348000000000";
   const formattedAmount = formatNaira(amount);
   const delivered = status === "DELIVERED";
+  const playCelebration = celebrate && delivered && !reduced;
   const shareText = encodeURIComponent(
     `DataGrid ${service} ${status}\n${orderRef}\n${planName || service} ${formatNaira(amount)}\n${phone || ""}`
   );
@@ -65,8 +72,39 @@ export function ReceiptCard({
     }
   }
 
+  if (celebrate && delivered && transactionBlocking) {
+    return <div className="min-h-[420px]" aria-hidden />;
+  }
+
   return (
-    <div className="space-y-3.5">
+    <motion.div
+      className="space-y-3.5"
+      initial={
+        playCelebration
+          ? {
+              opacity: 0,
+              y: 28,
+              scale: 0.965,
+              filter: "blur(9px)",
+            }
+          : false
+      }
+      animate={
+        playCelebration
+          ? {
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              filter: "blur(0px)",
+            }
+          : undefined
+      }
+      transition={{
+        delay: playCelebration ? 0.16 : 0,
+        duration: playCelebration ? 0.68 : 0,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+    >
       <header
         className={cn(
           "relative overflow-hidden rounded-[20px] p-4 text-paper",
@@ -75,21 +113,62 @@ export function ReceiptCard({
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <span
+            <motion.span
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-full",
+                "relative flex h-9 w-9 items-center justify-center rounded-full",
                 delivered ? "bg-[#58d68d]/15 text-[#72e5a2]" : "bg-white/10 text-white"
               )}
               aria-hidden
+              initial={
+                playCelebration
+                  ? { opacity: 0, scale: 0.45, rotate: -18 }
+                  : false
+              }
+              animate={
+                playCelebration
+                  ? { opacity: 1, scale: 1, rotate: 0 }
+                  : undefined
+              }
+              transition={{
+                delay: playCelebration ? 0.38 : 0,
+                type: "spring",
+                stiffness: 310,
+                damping: 18,
+              }}
             >
+              {playCelebration && (
+                <motion.span
+                  className="pointer-events-none absolute inset-0 rounded-full border border-[#72e5a2]/65"
+                  initial={{ opacity: 0.8, scale: 0.75 }}
+                  animate={{ opacity: 0, scale: 2.15 }}
+                  transition={{ delay: 0.48, duration: 0.82, ease: "easeOut" }}
+                />
+              )}
               {delivered ? (
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                  <path d="m6.5 12.5 3.5 3.5 7.5-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <motion.path
+                    d="m6.5 12.5 3.5 3.5 7.5-8"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    initial={playCelebration ? { pathLength: 0, opacity: 0 } : false}
+                    animate={
+                      playCelebration
+                        ? { pathLength: 1, opacity: 1 }
+                        : undefined
+                    }
+                    transition={{
+                      delay: playCelebration ? 0.5 : 0,
+                      duration: playCelebration ? 0.48 : 0,
+                      ease: [0.16, 1, 0.3, 1],
+                    }}
+                  />
                 </svg>
               ) : (
                 "!"
               )}
-            </span>
+            </motion.span>
             <div>
               <p className="text-sm font-semibold">
                 {delivered ? "Payment successful" : "Transaction update"}
@@ -214,7 +293,7 @@ export function ReceiptCard({
           Done
         </Button>
       )}
-    </div>
+    </motion.div>
   );
 }
 
