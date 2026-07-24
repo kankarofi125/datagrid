@@ -78,7 +78,7 @@ function BlockingOverlay({
           aria-label="DataGrid is processing your request"
           data-blocking-loader-overlay
           tabIndex={-1}
-          className="fixed inset-0 z-[9999] flex cursor-wait items-center justify-center bg-paper/20 px-5"
+        className="fixed inset-0 z-[9999] flex cursor-wait items-center justify-center bg-paper/16 px-5 backdrop-blur-[4px]"
           initial={reduced ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={reduced ? undefined : { opacity: 0 }}
