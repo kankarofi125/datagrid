@@ -19,33 +19,33 @@ export type ReceiptTx = {
   customerName: string | null;
   token: string | null;
   planName?: string | null;
+  issuedAt?: string | null;
   trail: { at: string; status: string; note?: string }[];
 };
 
 export function ReceiptViews({ tx }: { tx: ReceiptTx }) {
   const body = (
     <>
-      <div className="rounded-[22px] border border-line bg-paper p-3 shadow-[0_16px_44px_rgba(7,31,23,.08)] sm:p-4">
-        <ReceiptCard
-          orderRef={tx.orderRef}
-          service={tx.service}
-          status={tx.status}
-          amount={tx.amount}
-          phone={tx.phone}
-          networkCode={tx.networkCode}
-          customerName={tx.customerName}
-          token={tx.token}
-          tokenLabel={tx.service === "EXAM_PIN" ? "Exam pin" : "Token"}
-          planName={
-            tx.planName ||
-            (tx.meterNumber
-              ? `Meter ${tx.meterNumber}`
-              : tx.smartCardNumber
-                ? `IUC ${tx.smartCardNumber}`
-                : undefined)
-          }
-        />
-      </div>
+      <ReceiptCard
+        orderRef={tx.orderRef}
+        service={tx.service}
+        status={tx.status}
+        amount={tx.amount}
+        phone={tx.phone}
+        networkCode={tx.networkCode}
+        customerName={tx.customerName}
+        token={tx.token}
+        tokenLabel={tx.service === "EXAM_PIN" ? "Exam pin" : "Token"}
+        issuedAt={tx.issuedAt}
+        planName={
+          tx.planName ||
+          (tx.meterNumber
+            ? `Meter ${tx.meterNumber}`
+            : tx.smartCardNumber
+              ? `IUC ${tx.smartCardNumber}`
+              : undefined)
+        }
+      />
 
       <div className="mt-6">
         <h2 className="font-mono-num text-[11px] tracking-widest text-ink/45">

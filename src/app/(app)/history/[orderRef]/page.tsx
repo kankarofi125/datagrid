@@ -45,6 +45,7 @@ export default async function ReceiptPage({
         customerName: tx.customerName,
         token: tx.token,
         planName,
+        issuedAt: (tx.deliveredAt || tx.createdAt).toISOString(),
         trail,
       }}
     />
