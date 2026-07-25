@@ -52,6 +52,7 @@ export async function POST(req: Request) {
     session.phone = user.phone;
     session.role = user.role;
     delete session.adminUsername;
+    delete session.pendingGoogle;
     session.isLoggedIn = true;
     await session.save();
 

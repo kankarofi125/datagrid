@@ -12,7 +12,14 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const phone = String(body.phone || "");
     const code = String(body.code || "");
-    const referral = body.referral ? String(body.referral) : undefined;
+    const session = await getSession();
+    const pendingGoogle =
+      session.pendingGoogle && session.pendingGoogle.expiresAt > Date.now()
+        ? session.pendingGoogle
+        : undefined;
+    const referral = body.referral
+      ? String(body.referral)
+      : pendingGoogle?.referral;
 
     const result = await verifyOtp(phone, code);
     if (!result.ok) {
@@ -52,11 +59,45 @@ export async function POST(req: Request) {
       });
     }
 
-    const session = await getSession();
+    if (pendingGoogle) {
+      const alreadyLinked = await prisma.user.findUnique({
+        where: { googleSub: pendingGoogle.sub },
+        select: { id: true },
+      });
+      if (alreadyLinked && alreadyLinked.id !== user.id) {
+        return NextResponse.json(
+          {
+            error:
+              "This Google account is already linked to another DataGrid account.",
+            code: "GOOGLE_ALREADY_LINKED",
+          },
+          { status: 409 }
+        );
+      }
+
+      const emailOwner = await prisma.user.findUnique({
+        where: { email: pendingGoogle.email },
+        select: { id: true },
+      });
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleSub: pendingGoogle.sub,
+          googleAvatar: pendingGoogle.picture,
+          name: user.name || pendingGoogle.name || null,
+          email:
+            !emailOwner || emailOwner.id === user.id
+              ? pendingGoogle.email
+              : user.email,
+        },
+      });
+    }
+
     session.userId = user.id;
     session.phone = user.phone;
     session.role = user.role;
     delete session.adminUsername;
+    delete session.pendingGoogle;
     session.isLoggedIn = true;
     await session.save();
 

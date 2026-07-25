@@ -5,6 +5,15 @@ export type SessionData = {
   userId?: string;
   phone?: string;
   role?: string;
+  /** Short-lived, server-verified Google identity awaiting phone OTP linking. */
+  pendingGoogle?: {
+    sub: string;
+    email: string;
+    name?: string;
+    picture?: string;
+    referral?: string;
+    expiresAt: number;
+  };
   /** Present when logged in via /auth/admin (username/password) */
   adminUsername?: string;
   isLoggedIn: boolean;

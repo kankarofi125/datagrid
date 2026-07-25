@@ -114,6 +114,9 @@ model User {
   phone          String    @unique
   phoneLocal     String
   email          String?   @unique
+  /// Stable Google OpenID subject. Email is not used as the provider identity.
+  googleSub      String?   @unique
+  googleAvatar   String?
   /// Staff/admin console login (username + password)
   username       String?   @unique
   passwordHash   String?

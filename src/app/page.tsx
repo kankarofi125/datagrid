@@ -335,6 +335,10 @@ export default async function LandingPage() {
                 "Can I become a reseller?",
                 "Yes. Hit the lifetime volume threshold and agent tier unlocks wholesale rates plus API keys.",
               ],
+              [
+                "What happens when I sign in with Google?",
+                "We use only your verified email, name, profile image and stable Google account ID to authenticate and link your DataGrid account. We do not access Gmail, Drive, contacts, calendar or other Google product content.",
+              ],
             ].map(([q, a], i) => (
               <Reveal key={q} delay={i * 80}>
                 <div className="rounded-2xl border border-line bg-white p-4 shadow-[0_12px_32px_-30px_rgba(14,33,26,.45)] sm:p-5">
@@ -359,13 +363,13 @@ export default async function LandingPage() {
             <p className="font-mono-num text-[10px] tracking-widest text-paper/40">LEGAL</p>
             <ul className="mt-3 space-y-2 text-sm text-paper/75">
               <li>
-                <Link href="/legal/privacy" className="hover:text-amber">
-                  NDPR Privacy
+                <Link href="/privacy" className="hover:text-amber">
+                  Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/legal/terms" className="hover:text-amber">
-                  Terms
+                <Link href="/terms" className="hover:text-amber">
+                  Terms of Service
                 </Link>
               </li>
               <li>NIN-SIM notice applies</li>
@@ -375,7 +379,7 @@ export default async function LandingPage() {
           <div>
             <p className="font-mono-num text-[10px] tracking-widest text-paper/40">COMPANY</p>
             <ul className="mt-3 space-y-2 text-sm text-paper/75">
-              <li>CAC RC ————</li>
+              <li>Digital services · Nigeria</li>
               <li>
                 <Link href="/about" className="hover:text-amber">
                   Trust &amp; about

@@ -1,12 +1,5 @@
-import { LegalClient } from "@/components/marketing/LegalClient";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Terms" };
-
-export default function TermsPage() {
-  return (
-    <LegalClient
-      title="TERMS."
-      body="Transactions are final after delivery. Failed orders are refunded to wallet. NIN-SIM regulations apply to telecom services."
-    />
-  );
+export default function LegacyTermsPage() {
+  redirect("/terms");
 }

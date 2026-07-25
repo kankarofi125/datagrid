@@ -156,3 +156,17 @@ GET  /api/notifications
 ## Env
 
 Copy `.env.example` → `.env`. Never commit secrets.
+
+### Google login
+
+Create an **OAuth 2.0 Web application** in Google Cloud, then set:
+
+```bash
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+GOOGLE_REDIRECT_URI="http://localhost:3000/api/auth/google/callback"
+```
+
+Add that exact callback URL to the client’s **Authorized redirect URIs**. Use
+`https://your-domain.com/api/auth/google/callback` in production. New Google
+users verify a Nigerian phone once before their wallet account is linked.
