@@ -32,7 +32,11 @@ export type Beneficiary = {
 
 export type TypeFilter = "ALL" | "SME" | "GIFTING" | "RETAIL";
 
-export function useBuyData(initial?: { phone?: string; planId?: string }) {
+export function useBuyData(initial?: {
+  phone?: string;
+  planId?: string;
+  selfPhone?: string;
+}) {
   const router = useRouter();
   const { runBlocking } = useBlockingLoader();
   const initialPhone = initial?.phone || "";
@@ -176,6 +180,7 @@ export function useBuyData(initial?: { phone?: string; planId?: string }) {
   }
 
   return {
+    selfPhone: initial?.selfPhone,
     phone,
     setPhone,
     plans,

@@ -2,11 +2,29 @@ import { NextResponse } from "next/server";
 import { requestOtp } from "@/lib/auth/otp";
 import { prisma } from "@/lib/db";
 import { toE164 } from "@/lib/phone";
+import { getSession } from "@/lib/auth/session";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const phone = String(body.phone || "");
+    if (body.googleLink === true) {
+      const session = await getSession();
+      if (
+        !session.pendingGoogle ||
+        session.pendingGoogle.expiresAt <= Date.now()
+      ) {
+        delete session.pendingGoogle;
+        await session.save();
+        return NextResponse.json(
+          {
+            error: "Your Google sign-in expired. Please continue with Google again.",
+            code: "GOOGLE_LINK_EXPIRED",
+          },
+          { status: 401 }
+        );
+      }
+    }
     const result = await requestOtp(phone);
     if (!result.ok) {
       return NextResponse.json(

@@ -4,6 +4,14 @@ import { RegisterSW } from "@/components/pwa/RegisterSW";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { BlockingLoaderProvider } from "@/components/ui/BlockingLoader";
 import { HapticFeedback } from "@/components/ui/HapticFeedback";
+import {
+  absoluteUrl,
+  LOGO_PATH,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_ORIGIN,
+  SOCIAL_IMAGE_PATH,
+} from "@/lib/site";
 import "./globals.css";
 
 const anton = Anton({
@@ -27,32 +35,84 @@ const plex = IBM_Plex_Mono({
   weight: ["400", "500", "600", "700"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_ORIGIN),
   title: {
-    default: "DataGrid — Airtime, Data & Bills in Seconds",
+    default: "DataGrid Nigeria — Buy Data, Airtime & Pay Bills",
     template: "%s · DataGrid",
   },
-  description:
-    "Nigeria's national grid for your phone. Buy airtime, data, electricity tokens, cable TV, and more. Reseller wholesale rates. Guest checkout.",
-  metadataBase: new URL(siteUrl),
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  authors: [{ name: SITE_NAME, url: SITE_ORIGIN }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  category: "financial technology",
+  keywords: [
+    "buy data Nigeria",
+    "buy airtime online Nigeria",
+    "cheap data plans Nigeria",
+    "MTN data",
+    "Airtel data",
+    "Glo data",
+    "9mobile data",
+    "electricity token Nigeria",
+    "DStv payment",
+    "GOtv payment",
+    "WAEC result checker",
+    "VTU Nigeria",
+  ],
+  referrer: "origin-when-cross-origin",
+  formatDetection: {
+    telephone: false,
+    address: false,
+    email: false,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   openGraph: {
-    title: "DataGrid — DATA IN TEN SECONDS.",
-    description: "Airtime, data, power tokens, cable. Control-room reliable VTU for Nigeria.",
-    url: siteUrl,
-    siteName: "DataGrid",
+    title: "DataGrid Nigeria — Buy Data, Airtime & Pay Bills",
+    description: SITE_DESCRIPTION,
+    url: SITE_ORIGIN,
+    siteName: SITE_NAME,
     locale: "en_NG",
     type: "website",
-    images: [{ url: "/media/og/og-default.jpg", width: 1200, height: 630 }],
+    images: [
+      {
+        url: SOCIAL_IMAGE_PATH,
+        width: 1200,
+        height: 630,
+        alt: "DataGrid — digital essentials for Nigeria",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "DataGrid",
-    description: "DATA IN TEN SECONDS. LIGHT IN TWENTY.",
-    images: ["/media/og/og-default.jpg"],
+    title: "DataGrid Nigeria — Buy Data, Airtime & Pay Bills",
+    description: SITE_DESCRIPTION,
+    images: [SOCIAL_IMAGE_PATH],
   },
   manifest: "/manifest.webmanifest",
+  verification: {
+    ...(process.env.GOOGLE_SITE_VERIFICATION
+      ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+      : {}),
+    ...(process.env.BING_SITE_VERIFICATION
+      ? {
+          other: {
+            "msvalidate.01": process.env.BING_SITE_VERIFICATION,
+          },
+        }
+      : {}),
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -60,6 +120,9 @@ export const metadata: Metadata = {
   },
   other: {
     "theme-color": "#04291C",
+    "geo.region": "NG",
+    "geo.placename": "Nigeria",
+    "mobile-web-app-capable": "yes",
   },
 };
 
@@ -77,11 +140,63 @@ export default function RootLayout({
 }>) {
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "DataGrid",
-    url: siteUrl,
-    description: "Nigerian airtime, data and bills payment platform",
-    areaServed: "NG",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${SITE_ORIGIN}/#organization`,
+        name: SITE_NAME,
+        url: SITE_ORIGIN,
+        logo: {
+          "@type": "ImageObject",
+          url: absoluteUrl(LOGO_PATH),
+          width: 512,
+          height: 512,
+        },
+        description: SITE_DESCRIPTION,
+        areaServed: {
+          "@type": "Country",
+          name: "Nigeria",
+        },
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${SITE_ORIGIN}/#website`,
+        name: SITE_NAME,
+        url: SITE_ORIGIN,
+        description: SITE_DESCRIPTION,
+        inLanguage: "en-NG",
+        publisher: { "@id": `${SITE_ORIGIN}/#organization` },
+      },
+      {
+        "@type": "WebApplication",
+        "@id": `${SITE_ORIGIN}/#webapp`,
+        name: SITE_NAME,
+        url: SITE_ORIGIN,
+        description: SITE_DESCRIPTION,
+        applicationCategory: "FinanceApplication",
+        operatingSystem: "Any",
+        browserRequirements: "Requires JavaScript and a modern web browser",
+        inLanguage: "en-NG",
+        areaServed: {
+          "@type": "Country",
+          name: "Nigeria",
+        },
+        publisher: { "@id": `${SITE_ORIGIN}/#organization` },
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "NGN",
+          description: "No fee to create a DataGrid account",
+        },
+        featureList: [
+          "Mobile data purchases",
+          "Airtime purchases",
+          "Electricity token payments",
+          "Cable television payments",
+          "Digital receipts",
+        ],
+      },
+    ],
   };
 
   return (

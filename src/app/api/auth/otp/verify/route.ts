@@ -17,6 +17,17 @@ export async function POST(req: Request) {
       session.pendingGoogle && session.pendingGoogle.expiresAt > Date.now()
         ? session.pendingGoogle
         : undefined;
+    if (body.googleLink === true && !pendingGoogle) {
+      delete session.pendingGoogle;
+      await session.save();
+      return NextResponse.json(
+        {
+          error: "Your Google sign-in expired. Please continue with Google again.",
+          code: "GOOGLE_LINK_EXPIRED",
+        },
+        { status: 401 }
+      );
+    }
     const referral = body.referral
       ? String(body.referral)
       : pendingGoogle?.referral;
@@ -26,8 +37,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
-    let referredById: string | undefined;
     let user = await prisma.user.findUnique({ where: { phone: result.phone } });
+    let googleOwner: { id: string } | null = null;
+    let emailOwner: { id: string } | null = null;
+    if (pendingGoogle) {
+      [googleOwner, emailOwner] = await Promise.all([
+        prisma.user.findUnique({
+          where: { googleSub: pendingGoogle.sub },
+          select: { id: true },
+        }),
+        prisma.user.findUnique({
+          where: { email: pendingGoogle.email },
+          select: { id: true },
+        }),
+      ]);
+
+      if (googleOwner && googleOwner.id !== user?.id) {
+        return NextResponse.json(
+          {
+            error:
+              "This Google account is already linked to another DataGrid account.",
+            code: "GOOGLE_ALREADY_LINKED",
+          },
+          { status: 409 }
+        );
+      }
+      if (emailOwner && emailOwner.id !== user?.id) {
+        return NextResponse.json(
+          {
+            error:
+              "This Google email is already connected to another DataGrid account.",
+            code: "GOOGLE_EMAIL_IN_USE",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    let referredById: string | undefined;
     if (!user) {
       if (referral) {
         const ref = await prisma.user.findUnique({
@@ -41,6 +88,7 @@ export async function POST(req: Request) {
           phoneLocal: result.phoneLocal,
           referralCode: refCode(),
           referredById,
+          lastLoginAt: new Date(),
           wallets: {
             create: [
               { kind: "MAIN", balance: 0 },
@@ -60,35 +108,14 @@ export async function POST(req: Request) {
     }
 
     if (pendingGoogle) {
-      const alreadyLinked = await prisma.user.findUnique({
-        where: { googleSub: pendingGoogle.sub },
-        select: { id: true },
-      });
-      if (alreadyLinked && alreadyLinked.id !== user.id) {
-        return NextResponse.json(
-          {
-            error:
-              "This Google account is already linked to another DataGrid account.",
-            code: "GOOGLE_ALREADY_LINKED",
-          },
-          { status: 409 }
-        );
-      }
-
-      const emailOwner = await prisma.user.findUnique({
-        where: { email: pendingGoogle.email },
-        select: { id: true },
-      });
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
           googleSub: pendingGoogle.sub,
           googleAvatar: pendingGoogle.picture,
           name: user.name || pendingGoogle.name || null,
-          email:
-            !emailOwner || emailOwner.id === user.id
-              ? pendingGoogle.email
-              : user.email,
+          email: pendingGoogle.email,
+          lastLoginAt: new Date(),
         },
       });
     }

@@ -8,6 +8,8 @@ import {
   SERVICE_OPTIONS,
   type ServiceKey,
 } from "@/components/services/service-options";
+import { getSession } from "@/lib/auth/session";
+import { toLocalPhone } from "@/lib/phone";
 
 function isServiceKey(value: string | undefined): value is ServiceKey {
   return SERVICE_OPTIONS.some((service) => service.key === value);
@@ -25,6 +27,8 @@ export default async function ServicesPage({
 }) {
   const params = await searchParams;
   const active: ServiceKey = isServiceKey(params.service) ? params.service : "data";
+  const session = await getSession();
+  const selfPhone = toLocalPhone(session.phone || "") || undefined;
 
   return (
     <>
@@ -34,6 +38,7 @@ export default async function ServicesPage({
           key={`${params.phone || ""}:${params.planId || ""}`}
           initialPhone={params.phone}
           initialPlanId={params.planId}
+          selfPhone={selfPhone}
         />
       )}
       {active === "airtime" && (
@@ -41,6 +46,7 @@ export default async function ServicesPage({
           key={`${params.phone || ""}:${params.amount || ""}`}
           initialPhone={params.phone}
           initialAmount={params.amount}
+          selfPhone={selfPhone}
         />
       )}
       {active === "electricity" && <ElectricityService />}

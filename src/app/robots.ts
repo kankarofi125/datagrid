@@ -1,16 +1,24 @@
 import type { MetadataRoute } from "next";
+import { SITE_ORIGIN } from "@/lib/site";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = (
-    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-  ).replace(/\/$/, "");
-
   return {
     rules: {
       userAgent: "*",
-      allow: ["/", "/privacy", "/terms", "/about", "/support"],
+      allow: [
+        "/",
+        "/about",
+        "/privacy",
+        "/rates",
+        "/rates/",
+        "/support",
+        "/terms",
+      ],
       disallow: [
         "/api/",
+        "/admin",
+        "/auth/",
+        "/login",
         "/dashboard",
         "/wallet",
         "/settings",
@@ -19,9 +27,12 @@ export default function robots(): MetadataRoute.Robots {
         "/agent",
         "/referrals",
         "/schedules",
-        "/buy/",
+        "/services",
+        "/buy",
+        "/legal/",
       ],
     },
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: `${SITE_ORIGIN}/sitemap.xml`,
+    host: SITE_ORIGIN,
   };
 }

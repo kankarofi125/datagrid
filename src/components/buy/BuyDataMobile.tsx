@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { PhoneInput } from "@/components/ui/PhoneInput";
 import { Sheet } from "@/components/ui/Sheet";
 import { PinPad } from "@/components/buy/PinPad";
 import { StatusTrail } from "@/components/buy/StatusTrail";
@@ -18,6 +17,7 @@ import { isPinDenied } from "@/lib/pin-feedback";
 import { cn } from "@/lib/cn";
 import { HeroEnter, Reveal } from "@/components/motion/Reveal";
 import type { BuyDataState, TypeFilter } from "@/hooks/useBuyData";
+import { RecipientPicker } from "@/components/services/RecipientPicker";
 
 export function BuyDataMobile(s: BuyDataState) {
   return (
@@ -90,7 +90,11 @@ export function BuyDataFormBody({
         </div>
       )}
 
-      <PhoneInput value={s.phone} onChange={s.setPhone} />
+      <RecipientPicker
+        value={s.phone}
+        onChange={s.setPhone}
+        selfPhone={s.selfPhone}
+      />
       {s.network && (
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"

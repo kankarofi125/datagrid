@@ -9,11 +9,17 @@ import { SkeletonPage } from "@/components/ui/Skeleton";
 export default function DataService({
   initialPhone,
   initialPlanId,
+  selfPhone,
 }: {
   initialPhone?: string;
   initialPlanId?: string;
+  selfPhone?: string;
 }) {
-  const state = useBuyData({ phone: initialPhone, planId: initialPlanId });
+  const state = useBuyData({
+    phone: initialPhone,
+    planId: initialPlanId,
+    selfPhone,
+  });
   if (state.loading) {
     return <SkeletonPage variant="form" />;
   }

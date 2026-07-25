@@ -14,9 +14,22 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 import { prisma } from "@/lib/db";
 import type { NetworkCode } from "@/lib/phone";
 import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
+import { createPublicMetadata, SITE_DESCRIPTION } from "@/lib/site";
 
 // Live catalog data is served through the shared Redis + stale local cache.
 export const dynamic = "force-dynamic";
+export const metadata = createPublicMetadata({
+  title: "DataGrid Nigeria — Buy Data, Airtime & Pay Bills",
+  description: SITE_DESCRIPTION,
+  path: "/",
+  keywords: [
+    "buy data Nigeria",
+    "buy airtime Nigeria",
+    "pay electricity bill Nigeria",
+    "pay DStv online",
+    "VTU platform Nigeria",
+  ],
+});
 
 async function getLandingData() {
   try {

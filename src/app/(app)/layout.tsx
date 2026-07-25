@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppShell } from "@/components/layout/AppShell";
 import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
 
 export default async function AppLayout({
   children,

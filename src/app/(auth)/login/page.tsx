@@ -78,7 +78,7 @@ function LoginForm() {
         const otpRes = await fetch("/api/auth/otp/request", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone }),
+          body: JSON.stringify({ phone, googleLink: true }),
         });
         const otp = await otpRes.json().catch(() => ({}));
         if (!otpRes.ok) {
@@ -86,7 +86,7 @@ function LoginForm() {
           if (otp.cooldownSec) setCooldown(otp.cooldownSec);
           return;
         }
-        setIsNew(false);
+        setIsNew(Boolean(otp.isNew));
         setDevHint(otp.devHint);
         setCode("");
         setStep("otp");
@@ -141,6 +141,7 @@ function LoginForm() {
           phone,
           code,
           referral: params.get("ref") || undefined,
+          googleLink: googleState === "phone",
         }),
       });
       const data = await res.json().catch(() => ({}));

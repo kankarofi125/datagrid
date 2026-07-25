@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { PhoneInput } from "@/components/ui/PhoneInput";
 import { Sheet } from "@/components/ui/Sheet";
 import { PinPad } from "@/components/buy/PinPad";
 import { StatusTrail } from "@/components/buy/StatusTrail";
@@ -26,15 +25,18 @@ import { SkeletonPage } from "@/components/ui/Skeleton";
 import { isPinDenied } from "@/lib/pin-feedback";
 import { Card } from "@/components/ui/Card";
 import { useBlockingLoader } from "@/components/ui/BlockingLoader";
+import { RecipientPicker } from "@/components/services/RecipientPicker";
 
 const QUICK = [100, 200, 500, 1000, 2000, 5000];
 
 export default function AirtimeService({
   initialPhone,
   initialAmount,
+  selfPhone,
 }: {
   initialPhone?: string;
   initialAmount?: string;
+  selfPhone?: string;
 }) {
   const router = useRouter();
   const { runBlocking } = useBlockingLoader();
@@ -128,7 +130,11 @@ export default function AirtimeService({
         openSheet();
       }}
     >
-      <PhoneInput value={phone} onChange={setPhone} />
+      <RecipientPicker
+        value={phone}
+        onChange={setPhone}
+        selfPhone={selfPhone}
+      />
       {network && (
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
