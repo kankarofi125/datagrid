@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   GOOGLE_OAUTH_COOKIE_PATH,
   GOOGLE_OAUTH_COOKIES,
+  GOOGLE_OAUTH_MAX_AGE_SECONDS,
   createCodeChallenge,
   createGoogleAuthorization,
   getGoogleConfig,
@@ -9,8 +10,6 @@ import {
 } from "@/lib/auth/google";
 
 export const runtime = "nodejs";
-
-const OAUTH_MAX_AGE_SECONDS = 10 * 60;
 
 export async function GET(request: Request) {
   const config = getGoogleConfig(request.url);
@@ -33,7 +32,7 @@ export async function GET(request: Request) {
     httpOnly: true,
     secure,
     sameSite: "lax" as const,
-    maxAge: OAUTH_MAX_AGE_SECONDS,
+    maxAge: GOOGLE_OAUTH_MAX_AGE_SECONDS,
     path: GOOGLE_OAUTH_COOKIE_PATH,
     priority: "high" as const,
   };

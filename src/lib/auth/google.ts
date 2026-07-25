@@ -15,12 +15,25 @@ const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const GOOGLE_JWKS_ENDPOINT = "https://www.googleapis.com/oauth2/v3/certs";
 
 export const GOOGLE_OAUTH_COOKIE_PATH = "/api/auth/google/callback";
+/** How long the browser keeps PKCE/state cookies after "Continue with Google". */
+export const GOOGLE_OAUTH_MAX_AGE_SECONDS = 20 * 60;
 export const GOOGLE_OAUTH_COOKIES = {
   state: "datagrid_google_state",
   nonce: "datagrid_google_nonce",
   verifier: "datagrid_google_verifier",
   referral: "datagrid_google_referral",
 } as const;
+
+/** Login `?google=` reasons returned by the OAuth callback / start routes. */
+export type GoogleLoginReason =
+  | "phone"
+  | "cancelled"
+  | "expired"
+  | "mismatch"
+  | "invalid"
+  | "suspended"
+  | "config"
+  | "unavailable";
 
 type GoogleConfig = {
   clientId: string;

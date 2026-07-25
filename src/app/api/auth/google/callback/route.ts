@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import {
   GOOGLE_OAUTH_COOKIE_PATH,
   GOOGLE_OAUTH_COOKIES,
+  type GoogleLoginReason,
   exchangeGoogleCode,
   getGoogleConfig,
   secureStringEqual,
@@ -20,6 +21,10 @@ export async function GET(request: Request) {
 
   const providerError = requestUrl.searchParams.get("error");
   if (providerError) {
+    console.warn("[auth/google/callback] provider error", {
+      error: providerError,
+      description: requestUrl.searchParams.get("error_description"),
+    });
     return loginRedirect(
       request,
       providerError === "access_denied" ? "cancelled" : "unavailable"
@@ -34,27 +39,60 @@ export async function GET(request: Request) {
   const codeVerifier = cookieStore.get(GOOGLE_OAUTH_COOKIES.verifier)?.value;
   const referral = cookieStore.get(GOOGLE_OAUTH_COOKIES.referral)?.value;
 
-  if (
-    !code ||
-    !returnedState ||
-    !expectedState ||
-    !nonce ||
-    !codeVerifier ||
-    !secureStringEqual(returnedState, expectedState)
-  ) {
+  const hasCode = Boolean(code);
+  const hasReturnedState = Boolean(returnedState);
+  const hasExpectedState = Boolean(expectedState);
+  const hasNonce = Boolean(nonce);
+  const hasVerifier = Boolean(codeVerifier);
+  const hasOAuthCookies = hasExpectedState && hasNonce && hasVerifier;
+  const stateMatch =
+    hasReturnedState &&
+    hasExpectedState &&
+    secureStringEqual(returnedState!, expectedState!);
+
+  if (!hasCode || !hasReturnedState) {
+    console.warn("[auth/google/callback] incomplete provider callback", {
+      hasCode,
+      hasReturnedState,
+      hasOAuthCookies,
+    });
     return loginRedirect(request, "invalid");
+  }
+
+  if (!hasOAuthCookies) {
+    console.warn(
+      "[auth/google/callback] OAuth cookies missing (expired, blocked, or cleared)",
+      {
+        hasExpectedState,
+        hasNonce,
+        hasVerifier,
+        hasReturnedState,
+      }
+    );
+    return loginRedirect(request, "expired");
+  }
+
+  if (!stateMatch) {
+    console.warn(
+      "[auth/google/callback] state mismatch (stale tab, double-start, or tampered request)",
+      {
+        returnedStateLen: returnedState!.length,
+        expectedStateLen: expectedState!.length,
+      }
+    );
+    return loginRedirect(request, "mismatch");
   }
 
   try {
     const idToken = await exchangeGoogleCode({
       config,
-      code,
-      codeVerifier,
+      code: code!,
+      codeVerifier: codeVerifier!,
     });
     const identity = await verifyGoogleIdToken({
       idToken,
       audience: config.clientId,
-      nonce,
+      nonce: nonce!,
     });
 
     const user = await prisma.user.findUnique({
@@ -94,7 +132,8 @@ export async function GET(request: Request) {
       name: identity.name,
       picture: identity.picture,
       referral,
-      expiresAt: Date.now() + 10 * 60 * 1000,
+      // Phone-link window after a successful Google identity (separate from PKCE cookies).
+      expiresAt: Date.now() + 20 * 60 * 1000,
     };
     await session.save();
 
@@ -102,15 +141,18 @@ export async function GET(request: Request) {
       NextResponse.redirect(new URL("/login?google=phone", request.url), 303)
     );
   } catch (error) {
-    console.error(
-      "[auth/google/callback]",
-      error instanceof Error ? error.message : "Unknown Google OAuth error"
-    );
+    const message =
+      error instanceof Error ? error.message : "Unknown Google OAuth error";
+    console.error("[auth/google/callback] token exchange or verify failed", {
+      message,
+      redirectUri: config.redirectUri,
+      // Never log code, verifier, tokens, or client secret.
+    });
     return loginRedirect(request, "unavailable");
   }
 }
 
-function loginRedirect(request: Request, reason: string) {
+function loginRedirect(request: Request, reason: GoogleLoginReason) {
   return clearOAuthCookies(
     NextResponse.redirect(
       new URL(`/login?google=${encodeURIComponent(reason)}`, request.url),

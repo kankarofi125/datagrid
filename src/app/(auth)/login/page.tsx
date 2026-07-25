@@ -545,8 +545,12 @@ function googleMessage(state: string | null) {
       return "Google account verified. Add your Nigerian line once, then confirm the OTP to finish linking.";
     case "cancelled":
       return "Google sign-in was cancelled. You can try again or continue with your phone.";
+    case "expired":
+      return "That Google sign-in session expired or cookies were blocked. Allow cookies for this site, use one tab only, and tap Continue with Google again within 20 minutes.";
+    case "mismatch":
+      return "This Google sign-in no longer matches the original request (often from opening Google login in two tabs). Close extra tabs and try Continue with Google once more.";
     case "invalid":
-      return "That Google sign-in request expired or could not be verified. Please try again.";
+      return "That Google sign-in request was incomplete or could not be verified. Tap Continue with Google again to start a fresh sign-in.";
     case "suspended":
       return "This DataGrid account is suspended. Contact support for help.";
     case "config":
