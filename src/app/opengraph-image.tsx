@@ -205,7 +205,7 @@ export default function OpenGraphImage() {
                 fontWeight: 700,
               }}
             >
-              datagrid-gilt.vercel.app
+              datagrid-ng.com
             </div>
           </div>
         </div>

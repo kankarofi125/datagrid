@@ -13,13 +13,13 @@ function resolveSiteOrigin() {
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       : "") ||
-    "https://datagrid-gilt.vercel.app";
+    "https://datagrid-ng.com";
 
   try {
     const url = new URL(configured);
     return url.origin;
   } catch {
-    return "https://datagrid-gilt.vercel.app";
+    return "https://datagrid-ng.com";
   }
 }
 
