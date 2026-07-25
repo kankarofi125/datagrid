@@ -98,6 +98,9 @@ export default async function LandingPage() {
             <Link href="/about" className="link-draw text-ink/70 hover:text-ink">
               Trust
             </Link>
+            <Link href="/privacy" className="link-draw text-ink/70 hover:text-ink">
+              Privacy
+            </Link>
           </nav>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <Link href="/rates" className="md:hidden">
@@ -167,6 +170,35 @@ export default async function LandingPage() {
                     <span>✓ Auto-refund</span>
                   </div>
                 </HeroEnter>
+              </div>
+
+              {/* Always-visible copy for users and OAuth reviewers (no animation wrapper). */}
+              <div className="max-w-xl rounded-2xl border border-line bg-white/80 p-4 text-sm leading-relaxed text-ink/70 shadow-sm">
+                <p>
+                  <strong className="font-semibold text-ink">DataGrid</strong> is a
+                  Nigerian digital services platform for buying mobile data, airtime,
+                  electricity tokens, cable TV, and exam pins with wallet payments and
+                  order receipts.
+                </p>
+                <p className="mt-2">
+                  Optional <strong className="font-semibold text-ink">Google sign-in</strong>{" "}
+                  uses only OpenID Connect scopes <code className="text-xs">openid</code>,{" "}
+                  <code className="text-xs">email</code>, and{" "}
+                  <code className="text-xs">profile</code> to authenticate you and link
+                  your Google identity to a verified Nigerian phone number. We do not
+                  access Gmail, Drive, or other Google product content.
+                </p>
+                <p className="mt-2">
+                  Read our{" "}
+                  <Link href="/privacy" className="font-semibold text-green underline">
+                    Privacy Policy
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="/terms" className="font-semibold text-green underline">
+                    Terms of Service
+                  </Link>
+                  .
+                </p>
               </div>
 
               <HeroEnter delay={300}>

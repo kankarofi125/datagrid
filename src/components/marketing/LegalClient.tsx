@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { HeroEnter, Reveal } from "@/components/motion/Reveal";
 
+/**
+ * Static legal document layout (no client animation).
+ * Google OAuth verification requires privacy policies as accessible HTML
+ * plain/rich text in the page body — not PDFs, iframes, or content that
+ * only appears after JS animation.
+ * @see https://support.google.com/cloud/answer/13806988
+ */
 export type LegalSection = {
   id: string;
   title: string;
@@ -26,183 +32,150 @@ export function LegalClient({
   sections: LegalSection[];
 }) {
   return (
-    <div className="min-h-screen bg-paper">
-      <header className="sticky top-0 z-40 px-3 pt-3 sm:px-4 lg:px-6">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between rounded-2xl border border-ink/10 bg-white/95 px-3 shadow-[0_16px_42px_-28px_rgba(7,31,23,.55)] backdrop-blur-xl sm:px-4">
+    <div className="min-h-screen bg-paper text-ink">
+      <header className="border-b border-line bg-white">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
           <Link
             href="/"
             className="flex items-center gap-2"
             aria-label="DataGrid home"
           >
             <BrandLogo variant="mark" className="w-8" alt="" />
-            <span className="font-display text-lg tracking-[0.025em] text-green-deep">
-              DATAGRID
+            <span className="text-base font-semibold tracking-wide text-green-deep">
+              DataGrid
             </span>
           </Link>
           <nav
-            className="flex items-center gap-1 text-[11px] font-semibold sm:gap-2 sm:text-xs"
+            className="flex items-center gap-4 text-sm text-ink/70"
             aria-label="Legal navigation"
           >
-            <Link
-              href="/privacy"
-              className="rounded-lg px-2.5 py-2 text-ink/60 transition hover:bg-ink/[0.04] hover:text-green"
-            >
+            <Link href="/" className="hover:text-green">
+              Home
+            </Link>
+            <Link href="/privacy" className="hover:text-green">
               Privacy
             </Link>
-            <Link
-              href="/terms"
-              className="rounded-lg px-2.5 py-2 text-ink/60 transition hover:bg-ink/[0.04] hover:text-green"
-            >
+            <Link href="/terms" className="hover:text-green">
               Terms
             </Link>
-            <Link
-              href="/support"
-              className="hidden rounded-lg px-2.5 py-2 text-ink/60 transition hover:bg-ink/[0.04] hover:text-green sm:block"
-            >
+            <Link href="/support" className="hover:text-green">
               Support
             </Link>
           </nav>
         </div>
       </header>
 
-      <main>
-        <section className="mx-auto max-w-6xl px-4 pb-10 pt-12 sm:pt-16 lg:px-6 lg:pb-14 lg:pt-20">
-          <HeroEnter delay={0}>
-            <p className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.2em] text-green">
-              {documentLabel}
-            </p>
-          </HeroEnter>
-          <HeroEnter delay={70}>
-            <h1 className="font-display mt-4 max-w-4xl text-5xl leading-[0.94] text-ink sm:text-6xl lg:text-7xl">
-              {title}
-            </h1>
-          </HeroEnter>
-          <HeroEnter delay={130}>
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-ink/62 sm:text-lg">
-              {summary}
-            </p>
-          </HeroEnter>
-          <HeroEnter delay={180}>
-            <div className="mt-7 flex flex-wrap gap-2 font-mono-num text-[9px] uppercase tracking-[0.13em] text-ink/48">
-              <span className="rounded-full border border-line bg-white px-3 py-1.5">
-                Effective · {effectiveDate}
-              </span>
-              <span className="rounded-full border border-line bg-white px-3 py-1.5">
-                Nigeria · English
-              </span>
-              <span className="rounded-full border border-green/15 bg-green/[0.055] px-3 py-1.5 text-green">
-                Public document
-              </span>
-            </div>
-          </HeroEnter>
-        </section>
+      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+        <p className="text-xs font-semibold uppercase tracking-wider text-green">
+          {documentLabel}
+        </p>
+        <h1 className="mt-3 text-3xl font-semibold leading-tight text-ink sm:text-4xl">
+          {title}
+        </h1>
+        <p className="mt-4 text-base leading-relaxed text-ink/75">{summary}</p>
+        <p className="mt-4 text-sm text-ink/55">
+          Effective date: {effectiveDate}. Language: English. Jurisdiction:
+          Nigeria. This is a public HTML document.
+        </p>
 
-        <section className="border-y border-white/8 bg-green-deep text-paper">
-          <div className="mx-auto grid max-w-6xl gap-4 px-4 py-5 sm:grid-cols-3 sm:px-6 sm:py-6">
-            <TrustPoint index="01" text="Clear data collection and use" />
-            <TrustPoint index="02" text="Google account disclosure" />
-            <TrustPoint index="03" text="Access and deletion instructions" />
-          </div>
-        </section>
-
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:py-14 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-6">
-          <aside className="hidden lg:block">
-            <div className="sticky top-24 rounded-2xl border border-line bg-white p-4 shadow-[0_18px_44px_-36px_rgba(7,31,23,.48)]">
-              <p className="font-mono-num text-[9px] uppercase tracking-[0.18em] text-ink/38">
-                In this document
-              </p>
-              <ol className="mt-4 space-y-1">
-                {sections.map((section, index) => (
-                  <li key={section.id}>
-                    <a
-                      href={`#${section.id}`}
-                      className="flex gap-2 rounded-lg px-2 py-2 text-xs leading-snug text-ink/55 transition hover:bg-green/[0.055] hover:text-green"
-                    >
-                      <span className="font-mono-num text-[9px] text-ink/30">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      {section.title}
-                    </a>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </aside>
-
-          <article className="min-w-0 space-y-3">
-            {sections.map((section, index) => (
-              <Reveal key={section.id} delay={Math.min(index * 35, 180)}>
-                <section
-                  id={section.id}
-                  className={
-                    section.highlight
-                      ? "scroll-mt-24 rounded-2xl border border-green/18 bg-green/[0.055] p-5 shadow-[0_18px_42px_-36px_rgba(7,31,23,.45)] sm:p-7"
-                      : "scroll-mt-24 rounded-2xl border border-line bg-white p-5 shadow-[0_18px_42px_-38px_rgba(7,31,23,.4)] sm:p-7"
-                  }
-                >
-                  <div className="flex items-baseline gap-3">
-                    <span className="font-mono-num text-[9px] font-semibold text-green">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <h2 className="text-lg font-semibold tracking-[-0.01em] text-ink sm:text-xl">
-                      {section.title}
-                    </h2>
-                  </div>
-                  <div className="mt-4 space-y-3 text-sm leading-[1.75] text-ink/66 sm:text-[15px]">
-                    {section.paragraphs.map((paragraph) => (
-                      <p key={paragraph}>{paragraph}</p>
-                    ))}
-                    {section.bullets && (
-                      <ul className="space-y-2.5 pl-1">
-                        {section.bullets.map((bullet) => (
-                          <li key={bullet} className="flex gap-3">
-                            <span
-                              className="mt-[0.65em] h-1.5 w-1.5 shrink-0 rounded-full bg-green"
-                              aria-hidden
-                            />
-                            <span>{bullet}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </section>
-              </Reveal>
+        <nav
+          className="mt-8 rounded-lg border border-line bg-white p-4"
+          aria-label="Table of contents"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink/45">
+            Contents
+          </p>
+          <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-ink/80">
+            {sections.map((section) => (
+              <li key={section.id}>
+                <a href={`#${section.id}`} className="hover:text-green">
+                  {section.title}
+                </a>
+              </li>
             ))}
-          </article>
-        </div>
-      </main>
+          </ol>
+        </nav>
 
-      <footer className="border-t border-line bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-6">
-          <div>
-            <p className="font-mono-num text-[9px] uppercase tracking-[0.17em] text-ink/38">
-              Privacy or legal questions
-            </p>
+        <article className="mt-10 space-y-10">
+          {sections.map((section, index) => (
+            <section
+              key={section.id}
+              id={section.id}
+              className={
+                section.highlight
+                  ? "scroll-mt-20 rounded-lg border border-green/25 bg-green/[0.04] p-5 sm:p-6"
+                  : "scroll-mt-20 border-b border-line pb-10 last:border-b-0"
+              }
+            >
+              <h2 className="text-xl font-semibold text-ink">
+                <span className="mr-2 text-sm font-normal text-ink/40">
+                  {index + 1}.
+                </span>
+                {section.title}
+              </h2>
+              <div className="mt-4 space-y-3 text-[15px] leading-relaxed text-ink/80">
+                {section.paragraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+                {section.bullets && section.bullets.length > 0 && (
+                  <ul className="list-disc space-y-2 pl-5">
+                    {section.bullets.map((bullet) => (
+                      <li key={bullet}>{bullet}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+          ))}
+        </article>
+
+        <aside className="mt-12 rounded-lg border border-line bg-white p-5 text-sm leading-relaxed text-ink/70">
+          <p>
+            Questions about this document or your personal data:{" "}
             <a
               href={`mailto:${contactEmail}`}
-              className="link-draw mt-1 inline-block text-sm font-semibold text-green"
+              className="font-semibold text-green underline"
             >
               {contactEmail}
             </a>
-          </div>
-          <div className="flex gap-4 text-xs text-ink/50">
-            <Link href="/">Home</Link>
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/terms">Terms</Link>
-            <Link href="/support">Support</Link>
+            .
+          </p>
+          <p className="mt-2">
+            Related pages:{" "}
+            <Link href="/privacy" className="underline hover:text-green">
+              Privacy Policy
+            </Link>
+            {" · "}
+            <Link href="/terms" className="underline hover:text-green">
+              Terms of Service
+            </Link>
+            {" · "}
+            <Link href="/" className="underline hover:text-green">
+              Home
+            </Link>
+          </p>
+        </aside>
+      </main>
+
+      <footer className="border-t border-line bg-white">
+        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-8 text-sm text-ink/55 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>© {new Date().getFullYear()} DataGrid · Nigeria</p>
+          <div className="flex flex-wrap gap-4">
+            <Link href="/" className="hover:text-green">
+              Home
+            </Link>
+            <Link href="/privacy" className="hover:text-green">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-green">
+              Terms
+            </Link>
+            <Link href="/support" className="hover:text-green">
+              Support
+            </Link>
           </div>
         </div>
       </footer>
-    </div>
-  );
-}
-
-function TrustPoint({ index, text }: { index: string; text: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="font-mono-num text-[9px] text-amber">{index}</span>
-      <p className="text-xs font-medium text-paper/72 sm:text-sm">{text}</p>
     </div>
   );
 }
