@@ -1,27 +1,20 @@
-import type { Metadata } from "next";
 import {
   LegalClient,
   type LegalSection,
 } from "@/components/marketing/LegalClient";
+import { createPublicMetadata } from "@/lib/site";
 
 const effectiveDate = "25 July 2026";
 const contactEmail =
   process.env.NEXT_PUBLIC_LEGAL_EMAIL || "privacy@datagrid.ng";
 
-export const metadata: Metadata = {
-  title: "Terms of Service",
+export const metadata = createPublicMetadata({
+  title: "DataGrid Terms of Service",
   description:
     "The terms governing DataGrid accounts, Google login, wallets, digital-service transactions, refunds, reseller tools, and acceptable use.",
-  alternates: { canonical: "/terms" },
-  robots: { index: true, follow: true },
-  openGraph: {
-    title: "DataGrid Terms of Service",
-    description:
-      "Terms for DataGrid accounts, wallets, transactions, receipts, and Google login.",
-    url: "/terms",
-    type: "website",
-  },
-};
+  path: "/terms",
+  keywords: ["DataGrid terms", "DataGrid terms of service"],
+});
 
 const sections: LegalSection[] = [
   {

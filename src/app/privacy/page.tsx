@@ -1,27 +1,20 @@
-import type { Metadata } from "next";
 import {
   LegalClient,
   type LegalSection,
 } from "@/components/marketing/LegalClient";
+import { createPublicMetadata } from "@/lib/site";
 
 const effectiveDate = "25 July 2026";
 const contactEmail =
   process.env.NEXT_PUBLIC_LEGAL_EMAIL || "privacy@datagrid.ng";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy",
+export const metadata = createPublicMetadata({
+  title: "DataGrid Privacy Policy",
   description:
     "How DataGrid collects, uses, shares, protects, retains, and deletes personal information, including Google sign-in data.",
-  alternates: { canonical: "/privacy" },
-  robots: { index: true, follow: true },
-  openGraph: {
-    title: "DataGrid Privacy Policy",
-    description:
-      "A clear explanation of how DataGrid handles personal information and Google sign-in data.",
-    url: "/privacy",
-    type: "website",
-  },
-};
+  path: "/privacy",
+  keywords: ["DataGrid privacy policy", "DataGrid Google login privacy"],
+});
 
 const sections: LegalSection[] = [
   {

@@ -148,15 +148,15 @@ export default function OpenGraphImage() {
             <div
               style={{
                 display: "flex",
-                fontSize: 72,
+                flexDirection: "column",
+                fontSize: 67,
                 fontWeight: 800,
-                lineHeight: 1.02,
+                lineHeight: 1.04,
                 letterSpacing: -3,
               }}
             >
-              Everyday essentials.
-              <br />
-              Delivered clearly.
+              <div style={{ display: "flex" }}>Everyday essentials.</div>
+              <div style={{ display: "flex" }}>Delivered clearly.</div>
             </div>
             <div
               style={{
