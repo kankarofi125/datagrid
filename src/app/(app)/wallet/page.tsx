@@ -378,6 +378,7 @@ export default function WalletPage() {
           <PinPad
             value={xferPin}
             onChange={setXferPin}
+            onDeniedReset={() => setXferError(null)}
             disabled={pending}
             denied={transferPinDenied}
           />
@@ -427,6 +428,7 @@ export default function WalletPage() {
       <PinPad
         value={payoutPin}
         onChange={setPayoutPin}
+        onDeniedReset={() => setPayoutError(null)}
         disabled={pending}
         denied={payoutPinDenied}
       />

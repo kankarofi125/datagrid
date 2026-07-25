@@ -164,6 +164,12 @@ export function useBuyData(initial?: { phone?: string; planId?: string }) {
     if (status !== "processing") setOpen(false);
   }
 
+  function resetPinDenial() {
+    setError(null);
+    setStatus("idle");
+    setTrail([]);
+  }
+
   function goToReceipt() {
     setOpen(false);
     if (orderRef) router.push(`/history/${orderRef}`);
@@ -195,6 +201,7 @@ export function useBuyData(initial?: { phone?: string; planId?: string }) {
     filtered,
     openConfirm,
     pay,
+    resetPinDenial,
     closeSheet,
     goToReceipt,
   };

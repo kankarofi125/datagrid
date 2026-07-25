@@ -162,6 +162,11 @@ export default function ExamPinsService() {
       balanceAfter={balance != null ? Math.max(0, balance - amount) : null}
       pin={pin}
       onPinChange={setPin}
+      onPinDeniedReset={() => {
+        setError(null);
+        setStatus("idle");
+        setTrail([]);
+      }}
       status={status}
       trail={trail}
       error={error}

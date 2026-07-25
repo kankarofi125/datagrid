@@ -3,6 +3,7 @@ import { Anton, Instrument_Sans, IBM_Plex_Mono } from "next/font/google";
 import { RegisterSW } from "@/components/pwa/RegisterSW";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { BlockingLoaderProvider } from "@/components/ui/BlockingLoader";
+import { HapticFeedback } from "@/components/ui/HapticFeedback";
 import "./globals.css";
 
 const anton = Anton({
@@ -103,6 +104,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-paper text-ink">
         <BlockingLoaderProvider>
+          <HapticFeedback />
           <a href="#main" className="skip-link">
             Skip to content
           </a>

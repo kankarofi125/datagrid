@@ -249,6 +249,7 @@ export function BuyDataConfirmSheet({ s }: { s: BuyDataState }) {
           <PinPad
             value={s.pin}
             onChange={s.setPin}
+            onDeniedReset={s.resetPinDenial}
             disabled={s.pending || s.status === "processing"}
             denied={pinDenied}
           />

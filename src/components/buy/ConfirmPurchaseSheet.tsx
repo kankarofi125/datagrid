@@ -18,6 +18,7 @@ export function ConfirmPurchaseSheet({
   balanceAfter,
   pin,
   onPinChange,
+  onPinDeniedReset,
   status,
   trail,
   error,
@@ -33,6 +34,7 @@ export function ConfirmPurchaseSheet({
   balanceAfter?: number | null;
   pin: string;
   onPinChange: (v: string) => void;
+  onPinDeniedReset?: () => void;
   status: "idle" | "processing" | "delivered" | "failed";
   trail: { at: string; status: string; note?: string }[];
   error: string | null;
@@ -81,6 +83,7 @@ export function ConfirmPurchaseSheet({
           <PinPad
             value={pin}
             onChange={onPinChange}
+            onDeniedReset={onPinDeniedReset}
             disabled={pending || status === "processing"}
             denied={pinDenied}
           />

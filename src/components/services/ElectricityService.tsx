@@ -246,6 +246,11 @@ export default function ElectricityService() {
       balanceAfter={balance != null ? Math.max(0, balance - n) : null}
       pin={pin}
       onPinChange={setPin}
+      onPinDeniedReset={() => {
+        setError(null);
+        setStatus("idle");
+        setTrail([]);
+      }}
       status={status}
       trail={trail}
       error={error}

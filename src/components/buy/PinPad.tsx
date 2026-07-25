@@ -1,8 +1,9 @@
 "use client";
 
 import { motion, useAnimationControls, useReducedMotion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { triggerHaptic } from "@/lib/haptics";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
 
@@ -12,25 +13,40 @@ export function PinPad({
   maxLength = 4,
   disabled,
   denied = false,
+  onDeniedReset,
 }: {
   value: string;
   onChange: (v: string) => void;
   maxLength?: number;
   disabled?: boolean;
   denied?: boolean;
+  onDeniedReset?: () => void;
 }) {
   const controls = useAnimationControls();
   const reduced = useReducedMotion();
   const [showDenial, setShowDenial] = useState(false);
+  const [denialLocked, setDenialLocked] = useState(false);
+  const onChangeRef = useRef(onChange);
+  const onDeniedResetRef = useRef(onDeniedReset);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onDeniedResetRef.current = onDeniedReset;
+  }, [onChange, onDeniedReset]);
 
   useEffect(() => {
     if (!denied) {
-      const frame = window.requestAnimationFrame(() => setShowDenial(false));
+      const frame = window.requestAnimationFrame(() => {
+        setShowDenial(false);
+        setDenialLocked(false);
+      });
       return () => window.cancelAnimationFrame(frame);
     }
 
     const frame = window.requestAnimationFrame(() => {
       setShowDenial(true);
+      setDenialLocked(true);
+      triggerHaptic("error");
       if (!reduced) {
         void controls.start({
           x: [0, -9, 8, -6, 5, -3, 0],
@@ -39,17 +55,21 @@ export function PinPad({
       }
     });
 
-    const clearPin = window.setTimeout(() => onChange(""), 180);
-    const clearState = window.setTimeout(() => setShowDenial(false), 900);
+    const clearPin = window.setTimeout(() => onChangeRef.current(""), 180);
+    const unlock = window.setTimeout(() => {
+      setShowDenial(false);
+      setDenialLocked(false);
+    }, 560);
     return () => {
       window.cancelAnimationFrame(frame);
       window.clearTimeout(clearPin);
-      window.clearTimeout(clearState);
+      window.clearTimeout(unlock);
     };
-  }, [controls, denied, onChange, reduced]);
+  }, [controls, denied, reduced]);
 
   function press(k: string) {
-    if (disabled) return;
+    if (disabled || denialLocked) return;
+    if (denied) onDeniedResetRef.current?.();
     if (k === "⌫") {
       onChange(value.slice(0, -1));
       return;
@@ -96,8 +116,9 @@ export function PinPad({
           <button
             key={`${k}-${i}`}
             type="button"
-            disabled={disabled || k === ""}
+            disabled={disabled || denialLocked || k === ""}
             onClick={() => press(k)}
+            data-haptic="key"
             className={cn(
               "pressable font-mono-num h-14 rounded-lg text-xl font-semibold",
               k === ""

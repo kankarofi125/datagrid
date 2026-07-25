@@ -495,12 +495,13 @@ select:focus-visible {
 .mobile-nav-surface {
   position: absolute;
   inset: 0;
-  border: 1px solid rgba(14, 33, 26, 0.1);
+  border: 1px solid rgba(14, 33, 26, 0.18);
   border-radius: 1.45rem;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.975);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 18px 42px -20px rgba(10, 46, 34, 0.48);
+    0 8px 20px -12px rgba(10, 46, 34, 0.5),
+    0 22px 46px -20px rgba(10, 46, 34, 0.62);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   -webkit-mask-image: radial-gradient(
@@ -523,7 +524,7 @@ select:focus-visible {
   width: 80px;
   height: 40px;
   transform: translateX(-50%);
-  border: 1px solid rgba(14, 33, 26, 0.1);
+  border: 1px solid rgba(14, 33, 26, 0.18);
   border-top: 0;
   border-radius: 0 0 42px 42px;
   pointer-events: none;

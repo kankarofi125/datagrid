@@ -209,6 +209,11 @@ export default function AirtimeService({
           <PinPad
             value={pin}
             onChange={setPin}
+            onDeniedReset={() => {
+              setError(null);
+              setStatus("idle");
+              setTrail([]);
+            }}
             disabled={pending}
             denied={pinDenied}
           />

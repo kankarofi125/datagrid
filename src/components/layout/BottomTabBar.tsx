@@ -55,8 +55,9 @@ export function ShellBottomNav({
                 <li key={tab.href} className="relative flex h-full flex-1 justify-center">
                   <Link
                     href={tab.href}
+                    data-haptic="navigation"
                     className={cn(
-                      "pressable absolute -top-[30px] flex h-[62px] w-[62px] flex-col items-center justify-center rounded-full border-[5px] border-paper bg-green-deep text-white shadow-[0_14px_28px_-10px_rgba(10,46,34,.78)] transition-transform",
+                      "pressable absolute -top-[30px] flex h-[62px] w-[62px] flex-col items-center justify-center rounded-full border-[5px] border-paper bg-green-deep text-white shadow-[0_18px_34px_-10px_rgba(10,46,34,.9),0_5px_12px_-5px_rgba(10,46,34,.7)] transition-transform",
                       active &&
                         "ring-2 ring-amber/60 ring-offset-1 ring-offset-paper"
                     )}
@@ -76,9 +77,12 @@ export function ShellBottomNav({
               <li key={tab.href} className="flex h-full flex-1">
                 <Link
                   href={tab.href}
+                  data-haptic="navigation"
                   className={cn(
-                    "relative flex h-full w-full flex-col items-center justify-center gap-0.5 pt-1 text-[9px] tracking-wide transition-colors",
-                    active ? "text-green" : "text-ink/38"
+                    "relative mx-0.5 my-1.5 flex h-[52px] w-full flex-col items-center justify-center gap-0.5 rounded-xl border pt-0.5 text-[9px] font-medium tracking-wide transition-[color,background-color,border-color,box-shadow]",
+                    active
+                      ? "border-green/10 bg-green/[0.075] text-green shadow-[0_1px_0_rgba(255,255,255,.8)_inset]"
+                      : "border-transparent text-ink/58 hover:bg-ink/[0.035]"
                   )}
                   aria-current={active ? "page" : undefined}
                 >
