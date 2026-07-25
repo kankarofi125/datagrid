@@ -67,20 +67,58 @@ type GoogleJwk = JsonWebKey & {
   use?: string;
 };
 
+/** Trim and strip accidental surrounding quotes from env values (common on Vercel paste). */
+export function cleanEnv(value: string | undefined | null): string | undefined {
+  if (value == null) return undefined;
+  let v = value.trim();
+  if (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'"))
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  return v || undefined;
+}
+
 export function getGoogleConfig(requestUrl: string): GoogleConfig | null {
-  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  const clientId = cleanEnv(process.env.GOOGLE_CLIENT_ID);
+  const clientSecret = cleanEnv(process.env.GOOGLE_CLIENT_SECRET);
   if (!clientId || !clientSecret) return null;
 
-  const configuredBase = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const configuredBase = cleanEnv(process.env.NEXT_PUBLIC_APP_URL);
   const redirectUri =
-    process.env.GOOGLE_REDIRECT_URI?.trim() ||
+    cleanEnv(process.env.GOOGLE_REDIRECT_URI) ||
     new URL(
       "/api/auth/google/callback",
       configuredBase || new URL(requestUrl).origin
     ).toString();
 
   return { clientId, clientSecret, redirectUri };
+}
+
+/** Non-secret snapshot for ops debugging (never includes secret value). */
+export function getGoogleConfigPublic(requestUrl: string) {
+  const config = getGoogleConfig(requestUrl);
+  const clientId = cleanEnv(process.env.GOOGLE_CLIENT_ID);
+  const clientSecret = cleanEnv(process.env.GOOGLE_CLIENT_SECRET);
+  const redirectUri =
+    cleanEnv(process.env.GOOGLE_REDIRECT_URI) ||
+    (config?.redirectUri ?? null);
+
+  return {
+    configured: Boolean(config),
+    hasClientId: Boolean(clientId),
+    hasClientSecret: Boolean(clientSecret),
+    clientIdSuffix: clientId ? clientId.slice(-24) : null,
+    clientSecretLooksValid: Boolean(
+      clientSecret &&
+        clientSecret.startsWith("GOCSPX-") &&
+        clientSecret.length >= 20
+    ),
+    clientSecretLength: clientSecret?.length ?? 0,
+    redirectUri,
+    appUrl: cleanEnv(process.env.NEXT_PUBLIC_APP_URL) ?? null,
+  };
 }
 
 export function createGoogleAuthorization({
@@ -152,7 +190,25 @@ export async function exchangeGoogleCode({
   });
 
   if (!response.ok) {
-    throw new Error(`Google token exchange failed (${response.status})`);
+    let googleError = "";
+    try {
+      const body = (await response.json()) as {
+        error?: unknown;
+        error_description?: unknown;
+      };
+      const err =
+        typeof body.error === "string" ? body.error : "unknown_error";
+      const desc =
+        typeof body.error_description === "string"
+          ? body.error_description
+          : "";
+      googleError = desc ? `${err}: ${desc}` : err;
+    } catch {
+      googleError = (await response.text().catch(() => "")).slice(0, 200);
+    }
+    throw new Error(
+      `Google token exchange failed (${response.status})${googleError ? ` — ${googleError}` : ""}`
+    );
   }
 
   const payload = (await response.json()) as { id_token?: unknown };

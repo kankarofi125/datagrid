@@ -14,6 +14,17 @@ import { getSession } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
+type FailureDetail =
+  | "incomplete"
+  | "cookies"
+  | "mismatch"
+  | "token"
+  | "verify"
+  | "session"
+  | "db"
+  | "provider"
+  | "unknown";
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const config = getGoogleConfig(request.url);
@@ -27,7 +38,8 @@ export async function GET(request: Request) {
     });
     return loginRedirect(
       request,
-      providerError === "access_denied" ? "cancelled" : "unavailable"
+      providerError === "access_denied" ? "cancelled" : "unavailable",
+      "provider"
     );
   }
 
@@ -56,7 +68,7 @@ export async function GET(request: Request) {
       hasReturnedState,
       hasOAuthCookies,
     });
-    return loginRedirect(request, "invalid");
+    return loginRedirect(request, "invalid", "incomplete");
   }
 
   if (!hasOAuthCookies) {
@@ -69,7 +81,7 @@ export async function GET(request: Request) {
         hasReturnedState,
       }
     );
-    return loginRedirect(request, "expired");
+    return loginRedirect(request, "expired", "cookies");
   }
 
   if (!stateMatch) {
@@ -80,21 +92,42 @@ export async function GET(request: Request) {
         expectedStateLen: expectedState!.length,
       }
     );
-    return loginRedirect(request, "mismatch");
+    return loginRedirect(request, "mismatch", "mismatch");
   }
 
+  let idToken: string;
   try {
-    const idToken = await exchangeGoogleCode({
+    idToken = await exchangeGoogleCode({
       config,
       code: code!,
       codeVerifier: codeVerifier!,
     });
-    const identity = await verifyGoogleIdToken({
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown token exchange error";
+    console.error("[auth/google/callback] token exchange failed", {
+      message,
+      redirectUri: config.redirectUri,
+      clientIdSuffix: config.clientId.slice(-24),
+    });
+    return loginRedirect(request, "unavailable", "token");
+  }
+
+  let identity: Awaited<ReturnType<typeof verifyGoogleIdToken>>;
+  try {
+    identity = await verifyGoogleIdToken({
       idToken,
       audience: config.clientId,
       nonce: nonce!,
     });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown ID token error";
+    console.error("[auth/google/callback] ID token verify failed", { message });
+    return loginRedirect(request, "unavailable", "verify");
+  }
 
+  try {
     const user = await prisma.user.findUnique({
       where: { googleSub: identity.sub },
     });
@@ -143,22 +176,29 @@ export async function GET(request: Request) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown Google OAuth error";
-    console.error("[auth/google/callback] token exchange or verify failed", {
-      message,
-      redirectUri: config.redirectUri,
-      // Never log code, verifier, tokens, or client secret.
+    const isDb =
+      /prisma|database|postgres|neon|P\d{4}/i.test(message) ||
+      (error != null &&
+        typeof error === "object" &&
+        "code" in error &&
+        typeof (error as { code: unknown }).code === "string" &&
+        String((error as { code: string }).code).startsWith("P"));
+    console.error("[auth/google/callback] post-auth persistence failed", {
+      message: message.slice(0, 280),
+      kind: isDb ? "db" : "session",
     });
-    return loginRedirect(request, "unavailable");
+    return loginRedirect(request, "unavailable", isDb ? "db" : "session");
   }
 }
 
-function loginRedirect(request: Request, reason: GoogleLoginReason) {
-  return clearOAuthCookies(
-    NextResponse.redirect(
-      new URL(`/login?google=${encodeURIComponent(reason)}`, request.url),
-      303
-    )
-  );
+function loginRedirect(
+  request: Request,
+  reason: GoogleLoginReason,
+  detail?: FailureDetail
+) {
+  const url = new URL(`/login?google=${encodeURIComponent(reason)}`, request.url);
+  if (detail) url.searchParams.set("detail", detail);
+  return clearOAuthCookies(NextResponse.redirect(url, 303));
 }
 
 function clearOAuthCookies(response: NextResponse) {
