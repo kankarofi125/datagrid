@@ -46,27 +46,31 @@ export async function POST(req: Request) {
           where: { googleSub: pendingGoogle.sub },
           select: { id: true },
         }),
-        prisma.user.findUnique({
-          where: { email: pendingGoogle.email },
+        prisma.user.findFirst({
+          where: {
+            email: { equals: pendingGoogle.email, mode: "insensitive" },
+          },
           select: { id: true },
         }),
       ]);
 
+      // Google identity already belongs to a different phone account.
       if (googleOwner && googleOwner.id !== user?.id) {
         return NextResponse.json(
           {
             error:
-              "This Google account is already linked to another DataGrid account.",
+              "This Google account is already linked to another DataGrid account. Use Continue with Google to sign in.",
             code: "GOOGLE_ALREADY_LINKED",
           },
           { status: 409 }
         );
       }
+      // Email already on a different account — that account should sign in via Google.
       if (emailOwner && emailOwner.id !== user?.id) {
         return NextResponse.json(
           {
             error:
-              "This Google email is already connected to another DataGrid account.",
+              "This Google email is already on another DataGrid account. Use Continue with Google to sign in to that account.",
             code: "GOOGLE_EMAIL_IN_USE",
           },
           { status: 409 }

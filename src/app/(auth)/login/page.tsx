@@ -32,7 +32,6 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const googleState = params.get("google");
-  const googleDetail = params.get("detail");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [pin, setPin] = useState("");
@@ -55,7 +54,7 @@ function LoginForm() {
         : stepTitle(step),
     [googleState, step]
   );
-  const googleNotice = googleMessage(googleState, googleDetail);
+  const googleNotice = googleMessage(googleState);
   const referral = params.get("ref");
   const googleHref = `/api/auth/google/start${
     referral ? `?ref=${encodeURIComponent(referral)}` : ""
@@ -540,43 +539,26 @@ function LoginForm() {
   );
 }
 
-function googleMessage(state: string | null, detail: string | null) {
+function googleMessage(state: string | null) {
   switch (state) {
     case "phone":
       return "Google account verified. Add your Nigerian line once, then confirm the OTP to finish linking.";
     case "cancelled":
       return "Google sign-in was cancelled. You can try again or continue with your phone.";
     case "expired":
-      return "That Google sign-in session expired or cookies were blocked. Allow cookies for this site, use one tab only, and tap Continue with Google again within 20 minutes.";
+      return "That Google sign-in session expired or cookies were blocked. Allow cookies for this site, use one tab only, and try again.";
     case "mismatch":
-      return "This Google sign-in no longer matches the original request (often from opening Google login in two tabs). Close extra tabs and try Continue with Google once more.";
+      return "This Google sign-in no longer matches the original request. Close extra tabs and try Continue with Google once more.";
     case "invalid":
-      return "That Google sign-in request was incomplete or could not be verified. Tap Continue with Google again to start a fresh sign-in.";
+      return "That Google sign-in request could not be verified. Please try again.";
     case "suspended":
       return "This DataGrid account is suspended. Contact support for help.";
     case "config":
       return "Google sign-in is not configured yet. Continue with your phone for now.";
     case "unavailable":
-      return unavailableMessage(detail);
+      return "Google sign-in is temporarily unavailable. Please try again or use your phone.";
     default:
       return null;
-  }
-}
-
-function unavailableMessage(detail: string | null) {
-  switch (detail) {
-    case "token":
-      return "Google accepted your account, but DataGrid could not finish the token exchange (often a wrong client secret or redirect URI on the server). Try once more; if it persists, the server Google credentials need a redeploy check.";
-    case "verify":
-      return "Google returned a sign-in token that DataGrid could not verify. Start Google sign-in again in a single tab.";
-    case "db":
-      return "Google sign-in worked, but saving your session failed on the database side. Please try again shortly.";
-    case "session":
-      return "Google sign-in worked, but creating your app session failed. Please try again.";
-    case "provider":
-      return "Google rejected this sign-in attempt. Please try again or use your phone.";
-    default:
-      return "Google sign-in is temporarily unavailable. Please try again or use your phone.";
   }
 }
 

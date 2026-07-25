@@ -5,6 +5,7 @@ import {
   GOOGLE_OAUTH_COOKIE_PATH,
   GOOGLE_OAUTH_COOKIES,
   type GoogleLoginReason,
+  type GoogleIdentity,
   exchangeGoogleCode,
   getGoogleConfig,
   secureStringEqual,
@@ -13,17 +14,6 @@ import {
 import { getSession } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
-
-type FailureDetail =
-  | "incomplete"
-  | "cookies"
-  | "mismatch"
-  | "token"
-  | "verify"
-  | "session"
-  | "db"
-  | "provider"
-  | "unknown";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -38,8 +28,7 @@ export async function GET(request: Request) {
     });
     return loginRedirect(
       request,
-      providerError === "access_denied" ? "cancelled" : "unavailable",
-      "provider"
+      providerError === "access_denied" ? "cancelled" : "unavailable"
     );
   }
 
@@ -51,113 +40,65 @@ export async function GET(request: Request) {
   const codeVerifier = cookieStore.get(GOOGLE_OAUTH_COOKIES.verifier)?.value;
   const referral = cookieStore.get(GOOGLE_OAUTH_COOKIES.referral)?.value;
 
-  const hasCode = Boolean(code);
-  const hasReturnedState = Boolean(returnedState);
-  const hasExpectedState = Boolean(expectedState);
-  const hasNonce = Boolean(nonce);
-  const hasVerifier = Boolean(codeVerifier);
-  const hasOAuthCookies = hasExpectedState && hasNonce && hasVerifier;
-  const stateMatch =
-    hasReturnedState &&
-    hasExpectedState &&
-    secureStringEqual(returnedState!, expectedState!);
-
-  if (!hasCode || !hasReturnedState) {
-    console.warn("[auth/google/callback] incomplete provider callback", {
-      hasCode,
-      hasReturnedState,
-      hasOAuthCookies,
-    });
-    return loginRedirect(request, "invalid", "incomplete");
+  if (
+    !code ||
+    !returnedState ||
+    !expectedState ||
+    !nonce ||
+    !codeVerifier ||
+    !secureStringEqual(returnedState, expectedState)
+  ) {
+    const hasCookies = Boolean(expectedState && nonce && codeVerifier);
+    const reason: GoogleLoginReason = !code || !returnedState
+      ? "invalid"
+      : !hasCookies
+        ? "expired"
+        : "mismatch";
+    console.warn("[auth/google/callback] request not verifiable", { reason });
+    return loginRedirect(request, reason);
   }
 
-  if (!hasOAuthCookies) {
-    console.warn(
-      "[auth/google/callback] OAuth cookies missing (expired, blocked, or cleared)",
-      {
-        hasExpectedState,
-        hasNonce,
-        hasVerifier,
-        hasReturnedState,
-      }
-    );
-    return loginRedirect(request, "expired", "cookies");
-  }
-
-  if (!stateMatch) {
-    console.warn(
-      "[auth/google/callback] state mismatch (stale tab, double-start, or tampered request)",
-      {
-        returnedStateLen: returnedState!.length,
-        expectedStateLen: expectedState!.length,
-      }
-    );
-    return loginRedirect(request, "mismatch", "mismatch");
-  }
-
-  let idToken: string;
   try {
-    idToken = await exchangeGoogleCode({
+    const idToken = await exchangeGoogleCode({
       config,
-      code: code!,
-      codeVerifier: codeVerifier!,
+      code,
+      codeVerifier,
     });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown token exchange error";
-    console.error("[auth/google/callback] token exchange failed", {
-      message,
-      redirectUri: config.redirectUri,
-      clientIdSuffix: config.clientId.slice(-24),
-    });
-    return loginRedirect(request, "unavailable", "token");
-  }
-
-  let identity: Awaited<ReturnType<typeof verifyGoogleIdToken>>;
-  try {
-    identity = await verifyGoogleIdToken({
+    const identity = await verifyGoogleIdToken({
       idToken,
       audience: config.clientId,
-      nonce: nonce!,
+      nonce,
     });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown ID token error";
-    console.error("[auth/google/callback] ID token verify failed", { message });
-    return loginRedirect(request, "unavailable", "verify");
-  }
 
-  try {
-    const user = await prisma.user.findUnique({
+    // Returning users: googleSub first, then verified Google email (case-insensitive).
+    // Email match logs them in without asking for phone again.
+    const bySub = await prisma.user.findUnique({
       where: { googleSub: identity.sub },
     });
-
-    if (user) {
-      if (!user.isActive) return loginRedirect(request, "suspended");
-
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          lastLoginAt: new Date(),
-          name: user.name || identity.name || null,
-          googleAvatar: identity.picture || user.googleAvatar,
+    const byEmail =
+      bySub ||
+      (await prisma.user.findFirst({
+        where: {
+          email: { equals: identity.email, mode: "insensitive" },
         },
-      });
+      }));
 
-      const session = await getSession();
-      session.userId = user.id;
-      session.phone = user.phone;
-      session.role = user.role;
-      session.isLoggedIn = true;
-      delete session.adminUsername;
-      delete session.pendingGoogle;
-      await session.save();
+    if (byEmail) {
+      if (!byEmail.isActive) return loginRedirect(request, "suspended");
 
+      // Email already tied to a different Google subject — do not hijack.
+      if (byEmail.googleSub && byEmail.googleSub !== identity.sub) {
+        console.warn("[auth/google/callback] email owned by different googleSub");
+        return loginRedirect(request, "unavailable");
+      }
+
+      await establishSession(byEmail, identity);
       return clearOAuthCookies(
         NextResponse.redirect(new URL("/dashboard", request.url), 303)
       );
     }
 
+    // Brand-new Google identity: collect + verify Nigerian line once.
     const session = await getSession();
     session.pendingGoogle = {
       sub: identity.sub,
@@ -165,7 +106,6 @@ export async function GET(request: Request) {
       name: identity.name,
       picture: identity.picture,
       referral,
-      // Phone-link window after a successful Google identity (separate from PKCE cookies).
       expiresAt: Date.now() + 20 * 60 * 1000,
     };
     await session.save();
@@ -174,31 +114,54 @@ export async function GET(request: Request) {
       NextResponse.redirect(new URL("/login?google=phone", request.url), 303)
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown Google OAuth error";
-    const isDb =
-      /prisma|database|postgres|neon|P\d{4}/i.test(message) ||
-      (error != null &&
-        typeof error === "object" &&
-        "code" in error &&
-        typeof (error as { code: unknown }).code === "string" &&
-        String((error as { code: string }).code).startsWith("P"));
-    console.error("[auth/google/callback] post-auth persistence failed", {
-      message: message.slice(0, 280),
-      kind: isDb ? "db" : "session",
-    });
-    return loginRedirect(request, "unavailable", isDb ? "db" : "session");
+    console.error(
+      "[auth/google/callback]",
+      error instanceof Error ? error.message : "Unknown Google OAuth error"
+    );
+    return loginRedirect(request, "unavailable");
   }
 }
 
-function loginRedirect(
-  request: Request,
-  reason: GoogleLoginReason,
-  detail?: FailureDetail
+async function establishSession(
+  user: {
+    id: string;
+    phone: string;
+    role: string;
+    name: string | null;
+    googleAvatar: string | null;
+    googleSub: string | null;
+    email: string | null;
+  },
+  identity: GoogleIdentity
 ) {
-  const url = new URL(`/login?google=${encodeURIComponent(reason)}`, request.url);
-  if (detail) url.searchParams.set("detail", detail);
-  return clearOAuthCookies(NextResponse.redirect(url, 303));
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      lastLoginAt: new Date(),
+      googleSub: identity.sub,
+      googleAvatar: identity.picture || user.googleAvatar,
+      name: user.name || identity.name || null,
+      email: user.email || identity.email,
+    },
+  });
+
+  const session = await getSession();
+  session.userId = user.id;
+  session.phone = user.phone;
+  session.role = user.role;
+  session.isLoggedIn = true;
+  delete session.adminUsername;
+  delete session.pendingGoogle;
+  await session.save();
+}
+
+function loginRedirect(request: Request, reason: GoogleLoginReason) {
+  return clearOAuthCookies(
+    NextResponse.redirect(
+      new URL(`/login?google=${encodeURIComponent(reason)}`, request.url),
+      303
+    )
+  );
 }
 
 function clearOAuthCookies(response: NextResponse) {

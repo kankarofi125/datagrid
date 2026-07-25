@@ -96,31 +96,6 @@ export function getGoogleConfig(requestUrl: string): GoogleConfig | null {
   return { clientId, clientSecret, redirectUri };
 }
 
-/** Non-secret snapshot for ops debugging (never includes secret value). */
-export function getGoogleConfigPublic(requestUrl: string) {
-  const config = getGoogleConfig(requestUrl);
-  const clientId = cleanEnv(process.env.GOOGLE_CLIENT_ID);
-  const clientSecret = cleanEnv(process.env.GOOGLE_CLIENT_SECRET);
-  const redirectUri =
-    cleanEnv(process.env.GOOGLE_REDIRECT_URI) ||
-    (config?.redirectUri ?? null);
-
-  return {
-    configured: Boolean(config),
-    hasClientId: Boolean(clientId),
-    hasClientSecret: Boolean(clientSecret),
-    clientIdSuffix: clientId ? clientId.slice(-24) : null,
-    clientSecretLooksValid: Boolean(
-      clientSecret &&
-        clientSecret.startsWith("GOCSPX-") &&
-        clientSecret.length >= 20
-    ),
-    clientSecretLength: clientSecret?.length ?? 0,
-    redirectUri,
-    appUrl: cleanEnv(process.env.NEXT_PUBLIC_APP_URL) ?? null,
-  };
-}
-
 export function createGoogleAuthorization({
   config,
   state,

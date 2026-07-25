@@ -169,9 +169,5 @@ GOOGLE_REDIRECT_URI="http://localhost:3000/api/auth/google/callback"
 
 Add that exact callback URL to the client’s **Authorized redirect URIs**. Use
 `https://your-domain.com/api/auth/google/callback` in production. New Google
-users verify a Nigerian phone once before their wallet account is linked.
-
-PKCE/state cookies last **20 minutes**. If login fails, check Vercel/server logs for
-`[auth/google/callback]` (reasons: missing cookies → `google=expired`, state
-mismatch → `google=mismatch`, incomplete callback → `google=invalid`, token
-errors → `google=unavailable`).
+users verify a Nigerian phone once; returning users (matched by Google id or
+email) go straight to the dashboard.
