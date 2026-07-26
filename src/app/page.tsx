@@ -85,8 +85,16 @@ export default async function LandingPage() {
 
       <header className="sticky top-2 z-30 mx-3 mt-2 rounded-2xl border border-white/80 bg-paper/92 shadow-[0_18px_48px_-30px_rgba(14,33,26,.38)] backdrop-blur-xl sm:mx-5 lg:mx-auto lg:w-[calc(100%-4rem)] lg:max-w-6xl">
         <div className="mx-auto flex items-center justify-between gap-2 px-3 py-2 sm:px-4 lg:px-5">
-          <Link href="/" className="flex min-w-0 items-center gap-2">
-            <BrandLogo priority className="w-9 sm:w-10" />
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-2.5"
+            aria-label="DataGrid home"
+          >
+            <BrandLogo priority className="w-9 sm:w-10" alt="DataGrid" />
+            {/* Visible wordmark — must match Google OAuth consent app name */}
+            <span className="font-display min-w-0 text-[1.15rem] leading-none tracking-tight text-ink sm:text-[1.35rem]">
+              DataGrid
+            </span>
           </Link>
           <nav className="hidden items-center gap-7 rounded-full border border-line bg-white/60 px-5 py-2 text-sm font-medium md:flex">
             <Link href="#services" className="link-draw text-ink/70 hover:text-ink">
@@ -114,7 +122,7 @@ export default async function LandingPage() {
               </Button>
             </Link>
             <Link href="/login">
-              <Button size="sm">Open grid</Button>
+              <Button size="sm">Open DataGrid</Button>
             </Link>
           </div>
         </div>
@@ -126,33 +134,35 @@ export default async function LandingPage() {
           <div className="mx-auto grid max-w-7xl items-start gap-8 px-3 py-10 sm:px-4 sm:py-14 lg:grid-cols-12 lg:gap-14 lg:px-8 lg:py-20">
             <div className="space-y-6 sm:space-y-8 lg:col-span-7 lg:pt-3">
               <div>
-                <HeroEnter delay={0}>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-green/15 bg-white/65 px-3 py-1.5 shadow-sm backdrop-blur">
-                    <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-green" />
-                    <p className="font-mono-num text-[9px] font-semibold uppercase tracking-[0.16em] text-green sm:text-[10px]">
-                      All Nigerian networks operational
-                    </p>
-                  </div>
-                </HeroEnter>
+                {/*
+                  Static (no animation) brand + purpose first for Google OAuth branding review.
+                  App name must match consent screen: "DataGrid".
+                */}
+                <p className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.18em] text-green">
+                  DataGrid · Nigeria
+                </p>
+                <h1 className="font-display mt-3 text-[clamp(2.35rem,8.5vw,4.75rem)] leading-[0.95] tracking-tight text-ink">
+                  DataGrid
+                </h1>
+                <p className="mt-3 max-w-xl text-lg font-semibold leading-snug text-ink sm:text-xl">
+                  Buy data, airtime &amp; pay bills in Nigeria
+                </p>
+                <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink/70 sm:text-base">
+                  DataGrid is a Nigerian digital services platform for mobile data and
+                  airtime, electricity tokens, cable TV (DStv/GOtv), and exam pins—with a
+                  prepaid wallet, clear order status, instant receipts, and automatic
+                  refunds when a provider fails.
+                </p>
+
                 <HeroEnter delay={80}>
-                  <h1 className="font-display mt-5 text-[clamp(2.6rem,10vw,5.9rem)] leading-[0.92] text-ink">
-                    DATA IN TEN
-                    <br />
-                    SECONDS.
-                    <br />
-                    <span className="text-green">LIGHT IN TWENTY.</span>
-                  </h1>
-                </HeroEnter>
-                <HeroEnter delay={160}>
-                  <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-ink/65 sm:mt-6 sm:text-lg">
-                    Data, airtime, electricity, cable TV and exam pins—delivered with
-                    clear status tracking, instant receipts and automatic refunds when
-                    a provider fails.
+                  <p className="font-display mt-6 text-[clamp(1.35rem,4vw,2rem)] leading-tight text-ink/80">
+                    Data in ten seconds.{" "}
+                    <span className="text-green">Light in twenty.</span>
                   </p>
                 </HeroEnter>
 
-                <HeroEnter delay={220}>
-                  <div className="mt-6 flex flex-col gap-2.5 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                <HeroEnter delay={140}>
+                  <div className="mt-6 flex flex-col gap-2.5 sm:mt-7 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                     <Link href="#buy" className="w-full sm:w-auto">
                       <Button size="lg" className="w-full px-6 sm:w-auto">
                         Buy now
@@ -172,21 +182,28 @@ export default async function LandingPage() {
                 </HeroEnter>
               </div>
 
-              {/* Always-visible copy for users and OAuth reviewers (no animation wrapper). */}
-              <div className="max-w-xl rounded-2xl border border-line bg-white/80 p-4 text-sm leading-relaxed text-ink/70 shadow-sm">
-                <p>
-                  <strong className="font-semibold text-ink">DataGrid</strong> is a
-                  Nigerian digital services platform for buying mobile data, airtime,
-                  electricity tokens, cable TV, and exam pins with wallet payments and
-                  order receipts.
+              {/* Always-visible OAuth / privacy summary (no animation). */}
+              <div className="max-w-xl rounded-2xl border border-line bg-white/90 p-4 text-sm leading-relaxed text-ink/70 shadow-sm">
+                <p className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/45">
+                  About this app
+                </p>
+                <p className="mt-2">
+                  <strong className="font-semibold text-ink">DataGrid</strong> helps
+                  people and small businesses in Nigeria buy{" "}
+                  <strong className="font-semibold text-ink">
+                    data, airtime, electricity, cable TV and exam pins
+                  </strong>{" "}
+                  online, fund a wallet, and track every order with a receipt.
                 </p>
                 <p className="mt-2">
                   Optional <strong className="font-semibold text-ink">Google sign-in</strong>{" "}
-                  uses only OpenID Connect scopes <code className="text-xs">openid</code>,{" "}
-                  <code className="text-xs">email</code>, and{" "}
-                  <code className="text-xs">profile</code> to authenticate you and link
-                  your Google identity to a verified Nigerian phone number. We do not
-                  access Gmail, Drive, or other Google product content.
+                  uses only OpenID Connect scopes{" "}
+                  <code className="rounded bg-paper px-1 text-xs">openid</code>,{" "}
+                  <code className="rounded bg-paper px-1 text-xs">email</code>, and{" "}
+                  <code className="rounded bg-paper px-1 text-xs">profile</code> to
+                  authenticate you and link your Google identity to a verified Nigerian
+                  phone number on your DataGrid account. We do not access Gmail, Drive,
+                  contacts, or other Google product content.
                 </p>
                 <p className="mt-2">
                   Read our{" "}
@@ -399,9 +416,14 @@ export default async function LandingPage() {
       <footer className="border-t border-line bg-green-deep text-paper">
         <div className="mx-auto grid max-w-7xl gap-8 px-3 py-10 sm:grid-cols-2 sm:gap-10 sm:px-4 sm:py-14 lg:grid-cols-4 lg:px-8">
           <div>
-            <BrandLogo tone="inverse" className="w-14" alt="DataGrid" />
+            <div className="flex items-center gap-3">
+              <BrandLogo tone="inverse" className="w-14" alt="DataGrid" />
+              <span className="font-display text-xl tracking-tight text-paper">
+                DataGrid
+              </span>
+            </div>
             <p className="mt-3 text-sm leading-relaxed text-paper/60">
-              The national grid for your phone.
+              DataGrid — buy data, airtime and pay bills in Nigeria.
             </p>
           </div>
           <div>
