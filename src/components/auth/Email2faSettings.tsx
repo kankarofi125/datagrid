@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -11,26 +11,44 @@ import { cn } from "@/lib/cn";
  */
 export function Email2faSettings({
   enabled: initial,
-  email,
+  email: emailProp,
 }: {
   enabled: boolean;
   email: string | null;
 }) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(initial);
+  const [email, setEmail] = useState(emailProp);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, start] = useTransition();
+
+  useEffect(() => {
+    setEnabled(initial);
+    setEmail(emailProp);
+  }, [initial, emailProp]);
+
   const hasEmail = Boolean(email?.includes("@"));
 
   function set2fa(next: boolean) {
     start(async () => {
       setError(null);
       setMessage(null);
-      if (next && !hasEmail) {
-        setError("Add and save an email on your profile before enabling 2FA.");
-        return;
+
+      // Re-check email from server — settings cache can lag behind a just-saved email.
+      if (next) {
+        const check = await fetch("/api/auth/2fa", { method: "GET" })
+          .then((r) => r.json())
+          .catch(() => ({}));
+        if (check.email) setEmail(check.email);
+        if (!check.email && !hasEmail) {
+          setError(
+            "Add and verify an email under Personal details first, then enable 2FA."
+          );
+          return;
+        }
       }
+
       const res = await fetch("/api/auth/2fa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,6 +60,7 @@ export function Email2faSettings({
         return;
       }
       setEnabled(Boolean(data.enabled));
+      if (data.email) setEmail(data.email);
       setMessage(
         data.enabled
           ? "Email 2FA is on. You’ll get a code by email each time you sign in."
@@ -63,7 +82,7 @@ export function Email2faSettings({
             ) : (
               <span className="text-danger">no email on file</span>
             )}
-            . Codes use the branded DataGrid template via Brevo.
+            .
           </p>
         </div>
         <button
@@ -88,7 +107,8 @@ export function Email2faSettings({
       </div>
       {!hasEmail && (
         <p className="text-xs text-amber">
-          Save an email address in your profile first, then enable 2FA.
+          Verify an email under Personal details (code to inbox), then enable 2FA.
+          If you just saved one, wait a moment or refresh.
         </p>
       )}
       {error && (

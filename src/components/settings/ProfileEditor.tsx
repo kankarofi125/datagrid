@@ -24,13 +24,18 @@ export function ProfileEditor({
   const [savedName, setSavedName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
   const [savedEmail, setSavedEmail] = useState(initialEmail);
+  /** Ignore stale server props briefly after a successful local save. */
+  const [localSaveAt, setLocalSaveAt] = useState(0);
 
   useEffect(() => {
+    // Don't clobber a fresher local save with stale cached RSC props.
+    if (localSaveAt && Date.now() - localSaveAt < 15_000) return;
     setName(initialName);
     setSavedName(initialName);
     setEmail(initialEmail);
     setSavedEmail(initialEmail);
-  }, [initialName, initialEmail]);
+  }, [initialName, initialEmail, localSaveAt]);
+
   const [emailStep, setEmailStep] = useState<EmailStep>("idle");
   const [destinationHint, setDestinationHint] = useState<string | null>(null);
   const [expiresInSec, setExpiresInSec] = useState(120);
@@ -39,7 +44,6 @@ export function ProfileEditor({
   const [pending, startTransition] = useTransition();
 
   const nameChanged = name.trim() !== savedName;
-  // Compare against last saved email on server (updates after verify).
   const emailChanged =
     email.trim().toLowerCase() !== (savedEmail || "").toLowerCase();
   const emailLooksValid =
@@ -60,6 +64,7 @@ export function ProfileEditor({
         return;
       }
       setSavedName(name.trim());
+      setLocalSaveAt(Date.now());
       setMessage("Name updated.");
       router.refresh();
     });
@@ -70,7 +75,6 @@ export function ProfileEditor({
       setMessage(null);
       setError(null);
       if (!email.trim()) {
-        // Clearing email — no OTP
         const response = await fetch("/api/profile", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -82,6 +86,7 @@ export function ProfileEditor({
           return;
         }
         setSavedEmail("");
+        setLocalSaveAt(Date.now());
         setMessage("Email removed. Email 2FA was turned off if it was on.");
         router.refresh();
         return;
@@ -94,7 +99,10 @@ export function ProfileEditor({
       const res = await fetch("/api/security/otp/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ purpose: "email_change", email: email.trim() }),
+        body: JSON.stringify({
+          purpose: "email_change",
+          email: email.trim().toLowerCase(),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -113,7 +121,7 @@ export function ProfileEditor({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         purpose: "email_change",
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         resend: true,
       }),
     });
@@ -129,6 +137,10 @@ export function ProfileEditor({
     };
   }
 
+  /**
+   * Verify OTP — server also persists the email (atomic).
+   * Returns success only when saved (or verified for legacy retry).
+   */
   async function verifyEmailOtp(code: string) {
     const res = await fetch("/api/security/otp/verify", {
       method: "POST",
@@ -137,35 +149,66 @@ export function ProfileEditor({
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      // Code OK but DB save failed — try one PATCH recovery.
+      if (data.code === "SAVE_FAILED" && data.targetEmail) {
+        const patch = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: data.targetEmail }),
+        });
+        const patchData = await patch.json().catch(() => ({}));
+        if (patch.ok) {
+          const saved = String(patchData.user?.email || data.targetEmail);
+          setSavedEmail(saved);
+          setEmail(saved);
+          setLocalSaveAt(Date.now());
+          setEmailStep("done");
+          setMessage("Email verified and saved. You can enable email 2FA now.");
+          router.refresh();
+          window.setTimeout(() => setEmailStep("idle"), 2000);
+          return { ok: true as const };
+        }
+      }
       return { ok: false as const, error: data.error || "Incorrect code" };
     }
-    return { ok: true as const };
-  }
 
-  function commitEmail() {
-    startTransition(async () => {
-      setError(null);
-      const response = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setError(data.error || "Could not save email.");
-        if (data.code === "OTP_REQUIRED") setEmailStep("otp");
-        return;
-      }
-      setSavedEmail(email.trim().toLowerCase());
+    if (data.saved && data.email) {
+      const saved = String(data.email).toLowerCase();
+      setSavedEmail(saved);
+      setEmail(saved);
+      setLocalSaveAt(Date.now());
       setEmailStep("done");
       setMessage(
-        data.emailVerified
-          ? "Email verified and saved. You can enable email 2FA in Security."
-          : "Profile updated."
+        data.message ||
+          "Email verified and saved. You can enable email 2FA now."
       );
       router.refresh();
-      window.setTimeout(() => setEmailStep("idle"), 2000);
+      window.setTimeout(() => setEmailStep("idle"), 2500);
+      return { ok: true as const };
+    }
+
+    // Fallback: verified but not auto-saved (pin path style) — PATCH.
+    const patch = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
     });
+    const patchData = await patch.json().catch(() => ({}));
+    if (!patch.ok) {
+      return {
+        ok: false as const,
+        error: patchData.error || "Could not save email after verification",
+      };
+    }
+    const saved = String(patchData.user?.email || email).toLowerCase();
+    setSavedEmail(saved);
+    setEmail(saved);
+    setLocalSaveAt(Date.now());
+    setEmailStep("done");
+    setMessage("Email verified and saved. You can enable email 2FA now.");
+    router.refresh();
+    window.setTimeout(() => setEmailStep("idle"), 2500);
+    return { ok: true as const };
   }
 
   return (
@@ -177,7 +220,6 @@ export function ProfileEditor({
       />
 
       <div className="space-y-5">
-        {/* Name — no OTP */}
         <div className="space-y-3">
           <Input
             name="name"
@@ -218,7 +260,10 @@ export function ProfileEditor({
 
           {emailStep === "otp" && (
             <div className="mb-4">
-              <SecurityStepRail steps={["Email", "Verify", "Save"]} activeIndex={1} />
+              <SecurityStepRail
+                steps={["Email", "Verify", "Saved"]}
+                activeIndex={1}
+              />
             </div>
           )}
 
@@ -234,8 +279,8 @@ export function ProfileEditor({
                 placeholder="you@example.com"
                 hint={
                   savedEmail
-                    ? `Current: ${savedEmail}`
-                    : "No email on file yet"
+                    ? `Saved on account: ${savedEmail}`
+                    : "No email on file yet — verify to save"
                 }
                 onChange={(event) => setEmail(event.target.value)}
               />
@@ -257,10 +302,12 @@ export function ProfileEditor({
           ) : (
             <SecurityOtpStep
               title="Confirm your email"
-              description="We emailed a 4-digit code to the new address. Enter it to prove you own this inbox."
+              description="We emailed a 4-digit code. Enter it to save this address on your account."
               destinationHint={destinationHint}
               initialExpiresInSec={expiresInSec}
-              onVerified={commitEmail}
+              onVerified={() => {
+                // Save already happened inside verifyEmailOtp when ok.
+              }}
               onCancel={() => {
                 setEmailStep("idle");
                 setError(null);

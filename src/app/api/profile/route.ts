@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import {
   consumeSecurityAction,
@@ -97,7 +98,9 @@ export async function PATCH(request: Request) {
     await invalidate([
       CacheKeys.userProfile(session.userId),
       CacheKeys.dashboard(session.userId),
+      CacheKeys.appShell(session.userId),
     ]);
+    revalidatePath("/settings");
 
     return NextResponse.json({
       ok: true,

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { cached, CacheKeys, CacheTTL } from "@/lib/cache";
+import { cached, CacheKeys } from "@/lib/cache";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { PinSettings } from "@/components/auth/PinSettings";
 import { Email2faSettings } from "@/components/auth/Email2faSettings";
@@ -61,10 +61,12 @@ export default async function SettingsPage() {
   const session = await getSession();
   if (!session.userId) redirect("/login");
 
+  // Short TTL + low stale so email/2FA changes show immediately after save.
+  // Long stale-if-error was keeping empty email for ~15 minutes after updates.
   const profile = await cached(
     CacheKeys.userProfile(session.userId),
     () => loadProfile(session.userId!),
-    { ttl: CacheTTL.settings, staleTtl: 900 }
+    { ttl: 15, staleTtl: 30 }
   );
   if (!profile) redirect("/login");
 
