@@ -237,7 +237,7 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
           ? `••••${e164.slice(-4)}`
           : undefined;
 
-      // Branded HTML via Brevo SMTP (preferred). Falls back only if not configured.
+      // Branded HTML via Brevo (API or SMTP).
       if (isBrevoConfigured()) {
         const emailSend = await sendBrevoOtpEmail({
           to: resolvedEmail,
@@ -251,10 +251,23 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
           anyOk = true;
         } else {
           console.error("[otp] Brevo branded email failed", emailSend.error);
+          // Email-only requests (e.g. login 2FA) must surface the real failure.
+          if (!sendPhone) {
+            return {
+              ok: false as const,
+              error: emailSend.error,
+            };
+          }
         }
+      } else if (!sendPhone) {
+        return {
+          ok: false as const,
+          error:
+            "Email delivery is not configured. Set BREVO_API_KEY or Brevo SMTP credentials.",
+        };
       } else {
         console.error(
-          "[otp] Email requested but Brevo SMTP is not configured (BREVO_SMTP_*)"
+          "[otp] Email requested but Brevo is not configured (BREVO_API_KEY / SMTP)"
         );
       }
     }

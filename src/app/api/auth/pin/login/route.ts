@@ -55,9 +55,12 @@ export async function POST(req: Request) {
         firstName: user.name?.split(" ")[0] || "Customer",
       });
       if (!otp.ok) {
+        console.error("[auth/pin/login] 2FA email failed", otp.error);
         return NextResponse.json(
           {
-            error: otp.error || "Could not send your 2FA email code.",
+            error:
+              otp.error ||
+              "Could not send your 2FA email code. Check Brevo settings.",
             code: "2FA_SEND_FAILED",
           },
           { status: 502 }

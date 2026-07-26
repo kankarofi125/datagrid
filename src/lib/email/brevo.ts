@@ -10,10 +10,13 @@ import {
 
 /**
  * Brevo transactional email.
- * Prefer HTTP API (api-key) on Vercel; SMTP is a fallback.
+ *
+ * IMPORTANT: If Brevo → Security → Authorised IPs is enabled, the HTTP API
+ * rejects every call from Vercel/unknown IPs. Either:
+ *  - Disable authorised-IP restriction, or
+ *  - Prefer SMTP (BREVO_TRANSPORT=smtp) which is not IP-locked the same way.
  *
  * API: POST https://api.brevo.com/v3/smtp/email
- * Docs: https://developers.brevo.com/reference/sendtransacemail
  */
 
 const BREVO_API = "https://api.brevo.com/v3/smtp/email";
@@ -44,6 +47,13 @@ export function isBrevoConfigured(): boolean {
   return Boolean(apiKey() || (user && pass));
 }
 
+/** smtp | api | auto (default: try API then SMTP) */
+function transportMode(): "smtp" | "api" | "auto" {
+  const raw = (process.env.BREVO_TRANSPORT || "auto").trim().toLowerCase();
+  if (raw === "smtp" || raw === "api") return raw;
+  return "auto";
+}
+
 function fromAddress(): { email: string; name: string } {
   const email =
     process.env.BREVO_FROM_EMAIL?.trim() ||
@@ -69,6 +79,31 @@ function getTransporter(): nodemailer.Transporter | null {
     auth: { user, pass },
   });
   return transporter;
+}
+
+function humanizeBrevoError(message: string): string {
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("unrecognised ip") ||
+    lower.includes("unrecognized ip") ||
+    lower.includes("authorised_ips") ||
+    lower.includes("authorized_ips")
+  ) {
+    return (
+      "Brevo blocked this server IP. Open https://app.brevo.com/security/authorised_ips " +
+      "and either add this IP or turn off IP restriction (required for Vercel)."
+    );
+  }
+  if (lower.includes("sender") && (lower.includes("valid") || lower.includes("not"))) {
+    return (
+      "Brevo rejected the from-address. Verify auth@datagrid-ng.com under " +
+      "Senders, domains & dedicated IPs."
+    );
+  }
+  if (lower.includes("authentication failed") || lower.includes("invalid login")) {
+    return "Brevo SMTP login failed. Regenerate the SMTP key in Brevo and update BREVO_SMTP_PASSWORD.";
+  }
+  return message;
 }
 
 async function sendViaApi(input: {
@@ -113,18 +148,16 @@ async function sendViaApi(input: {
     };
 
     if (!response.ok) {
-      const error =
-        body.message ||
-        body.code ||
-        `Brevo API failed (${response.status})`;
-      return { ok: false, error };
+      const raw =
+        body.message || body.code || `Brevo API failed (${response.status})`;
+      return { ok: false, error: humanizeBrevoError(String(raw)) };
     }
 
     return { ok: true, messageId: body.messageId };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Brevo API network error";
-    return { ok: false, error: message };
+    return { ok: false, error: humanizeBrevoError(message) };
   }
 }
 
@@ -156,7 +189,7 @@ async function sendViaSmtp(input: {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Brevo SMTP send failed";
-    return { ok: false, error: message };
+    return { ok: false, error: humanizeBrevoError(message) };
   }
 }
 
@@ -171,31 +204,43 @@ export async function sendBrevoEmail(input: {
       ? { email: input.to }
       : { email: input.to.email, name: input.to.name };
 
-  // Prefer HTTP API on serverless (Vercel); SMTP as fallback.
-  if (apiKey()) {
-    const viaApi = await sendViaApi({
-      to,
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-    });
-    if (viaApi.ok) return viaApi;
-    console.error("[email/brevo] API send failed", viaApi.error);
-
-    // Fall through to SMTP if configured
-    if (!getTransporter()) return viaApi;
-  }
-
-  const viaSmtp = await sendViaSmtp({
+  const mode = transportMode();
+  const payload = {
     to,
     subject: input.subject,
     html: input.html,
     text: input.text,
-  });
-  if (!viaSmtp.ok) {
-    console.error("[email/brevo] SMTP send failed", viaSmtp.error);
+  };
+
+  if (mode === "smtp") {
+    return sendViaSmtp(payload);
   }
-  return viaSmtp;
+
+  if (mode === "api") {
+    return sendViaApi(payload);
+  }
+
+  // auto: API first, then SMTP
+  if (apiKey()) {
+    const viaApi = await sendViaApi(payload);
+    if (viaApi.ok) return viaApi;
+    console.error("[email/brevo] API send failed", viaApi.error);
+    if (getTransporter()) {
+      const viaSmtp = await sendViaSmtp(payload);
+      if (viaSmtp.ok) return viaSmtp;
+      console.error("[email/brevo] SMTP fallback failed", viaSmtp.error);
+      // Prefer the more actionable error (often IP restriction on API)
+      return {
+        ok: false,
+        error: viaApi.error.includes("authorised_ips") || viaApi.error.includes("IP")
+          ? viaApi.error
+          : viaSmtp.error,
+      };
+    }
+    return viaApi;
+  }
+
+  return sendViaSmtp(payload);
 }
 
 /** Branded DataGrid OTP email via Brevo. */
