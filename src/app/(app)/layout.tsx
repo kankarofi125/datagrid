@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import {
-  clearLoggedInSession,
-  getSession,
-  isLoggedInIdle,
-  touchSessionActivity,
-} from "@/lib/auth/session";
+import { getSession, isLoggedInIdle } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppShell } from "@/components/layout/AppShell";
 import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
@@ -28,14 +23,14 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  // 10‑minute idle timeout (server-side).
+  // Idle check is read-only here. Cookie writes are forbidden in RSC layouts
+  // (they throw and surface "This page couldn't finish loading").
+  // Clearing the cookie happens in /api/auth/session/expire.
   if (isLoggedInIdle(session)) {
-    await clearLoggedInSession(session);
-    redirect("/login?session=expired");
+    redirect("/api/auth/session/expire?next=/login?session=expired");
   }
-  await touchSessionActivity(session);
 
-  // Force PIN setup before the main app (server-side, not only login UI).
+  // Force PIN setup before the main app (no session.save in layout).
   if (session.needsPinSetup) {
     redirect("/login?setup=pin");
   }
@@ -50,13 +45,18 @@ export default async function AppLayout({
           where: { id: session.userId },
           include: { wallets: true },
         });
-        // DB is source of truth if session flag was lost
         if (user && !user.pinHash) {
-          return { phoneLocal: user.phoneLocal || "", balance: 0, needsPin: true as const };
+          return {
+            phoneLocal: user.phoneLocal || "",
+            balance: 0,
+            needsPin: true as const,
+          };
         }
         return {
           phoneLocal: user?.phoneLocal || "",
-          balance: Number(user?.wallets.find((w) => w.kind === "MAIN")?.balance ?? 0),
+          balance: Number(
+            user?.wallets.find((w) => w.kind === "MAIN")?.balance ?? 0
+          ),
           needsPin: false as const,
         };
       },
@@ -67,8 +67,7 @@ export default async function AppLayout({
       }
     );
     if (shell.needsPin) {
-      session.needsPinSetup = true;
-      await session.save();
+      // Don't session.save() here — RSC cookie mutation breaks the page.
       redirect("/login?setup=pin");
     }
     phoneLocal = shell.phoneLocal;

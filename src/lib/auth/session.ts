@@ -26,42 +26,28 @@ export type SessionData = {
   adminUsername?: string;
   /**
    * After correct PIN/Google, before email 2FA (or phone OTP fallback) finishes.
-   * Identity window is longer than a single OTP code (see PENDING_2FA_SESSION_MS).
-   * Phone/email here are cache; DB User row is source of truth for "Use OTP instead".
    */
   pendingLogin2fa?: {
     userId: string;
     phone: string;
     email: string;
-    /** Google OpenID subject when login started via Google (optional). */
     googleSub?: string;
     name?: string | null;
     role: string;
-    /** When this pending identity expires (not the OTP code TTL). */
     expiresAt: number;
   };
-  /**
-   * In-app security actions (PIN reset, email change) after OTP is sent/verified.
-   * Completing the action consumes this slot.
-   */
   pendingSecurity?: {
     purpose: "pin_change" | "email_change";
     userId: string;
-    /** New email awaiting proof (email_change only). */
     targetEmail?: string;
-    /** Delivery hint for UI (masked phone/email). */
     destinationHint?: string;
     verified: boolean;
     expiresAt: number;
   };
-  /**
-   * User is authenticated but must create a transaction/login PIN
-   * before using the main app shell.
-   */
   needsPinSetup?: boolean;
   /**
    * Last user activity timestamp (ms). Used for 10‑minute idle logout.
-   * Updated on each authenticated request / page load.
+   * Updated in Route Handlers / Server Actions only (not RSC layouts).
    */
   lastActivityAt?: number;
   isLoggedIn: boolean;
@@ -76,7 +62,7 @@ export const sessionOptions: SessionOptions = {
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,
     sameSite: "lax",
-    // Cookie lifetime matches idle window; refreshed whenever session is saved.
+    // Cookie lifetime matches idle window; refreshed when session is saved in APIs.
     maxAge: SESSION_IDLE_SEC,
   },
 };
@@ -86,17 +72,21 @@ export async function getSession() {
   return getIronSession<SessionData>(cookieStore, sessionOptions);
 }
 
+/**
+ * True when a logged-in session is past the idle window.
+ * Missing lastActivityAt: not treated as idle (legacy / first paint after login)
+ * — cookie maxAge still enforces absolute expiry.
+ */
 export function isLoggedInIdle(
   session: Pick<SessionData, "isLoggedIn" | "lastActivityAt">
 ): boolean {
   if (!session.isLoggedIn) return false;
   const last = session.lastActivityAt;
-  // Missing timestamp (legacy sessions): treat as expired so they re-auth once.
-  if (!last || typeof last !== "number") return true;
+  if (!last || typeof last !== "number") return false;
   return Date.now() - last > SESSION_IDLE_MS;
 }
 
-/** Clear full login fields; keep short-lived pending* if needed for auth flows. */
+/** Clear full login fields. Call only from Route Handlers / Server Actions. */
 export async function clearLoggedInSession(
   session: IronSession<SessionData>
 ) {
@@ -112,7 +102,10 @@ export async function clearLoggedInSession(
   await session.save();
 }
 
-/** Mark activity and refresh the cookie maxAge (sliding 10‑minute window). */
+/**
+ * Mark activity and refresh cookie maxAge.
+ * Call only from Route Handlers / Server Actions — never from RSC layouts.
+ */
 export async function touchSessionActivity(
   session: IronSession<SessionData>
 ) {
@@ -123,7 +116,7 @@ export async function touchSessionActivity(
 
 /**
  * Require an active (non-idle) logged-in user.
- * Updates lastActivityAt on success (sliding expiry).
+ * Updates lastActivityAt on success (sliding expiry). Safe in API routes.
  */
 export async function requireUser() {
   const session = await getSession();
@@ -144,7 +137,7 @@ export async function requireAdmin() {
   return session;
 }
 
-/** Call when establishing a full login. */
+/** Call when establishing a full login (Route Handlers only). */
 export function markSessionLogin(
   session: IronSession<SessionData>,
   data: {

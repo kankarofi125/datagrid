@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 
 /** Must match server SESSION_IDLE_MS (10 minutes). */
 const IDLE_MS = 10 * 60 * 1000;
@@ -18,7 +17,6 @@ export function SessionIdleGuard({
   /** Where to send the user after idle logout */
   loginPath?: string;
 }) {
-  const router = useRouter();
   const lastActive = useRef(Date.now());
   const loggingOut = useRef(false);
 
@@ -29,14 +27,10 @@ export function SessionIdleGuard({
   const logoutIdle = useCallback(async () => {
     if (loggingOut.current) return;
     loggingOut.current = true;
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {
-      /* still redirect */
-    }
-    router.replace(loginPath);
-    router.refresh();
-  }, [router, loginPath]);
+    // Route Handler may mutate cookies; then land on login.
+    const next = encodeURIComponent(loginPath);
+    window.location.assign(`/api/auth/session/expire?next=${next}`);
+  }, [loginPath]);
 
   useEffect(() => {
     const windowEvents = [

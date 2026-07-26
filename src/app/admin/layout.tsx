@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import {
-  clearLoggedInSession,
-  getSession,
-  isLoggedInIdle,
-  touchSessionActivity,
-} from "@/lib/auth/session";
+import { getSession, isLoggedInIdle } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { SessionIdleGuard } from "@/components/auth/SessionIdleGuard";
@@ -39,11 +34,10 @@ export default async function AdminLayout({
     notFound();
   }
 
+  // Read-only idle check — no cookie writes in RSC.
   if (isLoggedInIdle(session)) {
-    await clearLoggedInSession(session);
-    redirect("/auth/admin?session=expired");
+    redirect("/api/auth/session/expire?next=/auth/admin?session=expired");
   }
-  await touchSessionActivity(session);
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -59,10 +53,7 @@ export default async function AdminLayout({
     notFound();
   }
 
-  if (session.role !== user.role) {
-    session.role = user.role;
-    await session.save();
-  }
+  // Role drift: do not save session in layout (cookie mutation). Rely on next API touch.
 
   return (
     <>
