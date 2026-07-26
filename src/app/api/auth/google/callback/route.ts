@@ -208,7 +208,6 @@ async function finishReturningGoogleUser(
 
     const path = email2faLoginPath({
       emailHint: challenge.emailHint,
-      devHint: challenge.devHint,
       source: "google",
     });
     // Rebuild redirect with full query; re-apply session on the final response

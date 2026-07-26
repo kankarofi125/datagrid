@@ -50,7 +50,6 @@ export async function POST() {
   return NextResponse.json({
     ok: true,
     emailHint: hint,
-    devHint: otp.devHint,
     message: `Code resent to ${hint}`,
   });
 }

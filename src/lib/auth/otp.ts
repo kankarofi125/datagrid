@@ -187,16 +187,25 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
   const phoneLive = canSendPhone();
   const emailLive = canSendEmail();
   const explicitSim = isExplicitSimulateMode();
-  const allowDevFallback =
-    process.env.NODE_ENV !== "production" ||
-    process.env.OTP_EMAIL_DEV_FALLBACK === "1";
+  const isProd = process.env.NODE_ENV === "production";
 
-  // Fixed code only when fully simulating (no real provider path will run).
-  // Email-only 2FA with Brevo must use a random code.
-  const willAttemptLive =
-    (sendPhone && phoneLive) || (sendEmail && emailLive);
-  const useFixedDevCode = explicitSim || (!willAttemptLive && allowDevFallback);
-  const code = generateOtpCode(useFixedDevCode);
+  // Production: real providers only. No simulate, no fixed codes, no email-dev.
+  if (isProd && explicitSim) {
+    console.error(
+      "[otp] OTP_MODE=simulate is not allowed in production. Set OTP_MODE=sendchamp."
+    );
+    return {
+      ok: false as const,
+      error: "Authentication is misconfigured. Contact support.",
+    };
+  }
+
+  // Local-only console fallback when Brevo is missing/failing (never in production).
+  const allowDevFallback =
+    !isProd && process.env.OTP_EMAIL_DEV_FALLBACK === "1";
+
+  // Fixed 1234 only for local OTP_MODE=simulate. Live paths always use random codes.
+  const code = generateOtpCode(explicitSim);
   const codeHash = await bcrypt.hash(code, 8);
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
@@ -216,7 +225,7 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
     channelsRequested: input.channels || process.env.OTP_CHANNELS || "whatsapp",
   });
 
-  // ---- Explicit simulate: console-only, no provider calls ----
+  // ---- Local simulate only (blocked in production above) ----
   if (explicitSim) {
     console.info(
       `[DataGrid OTP simulate] phone=${e164 || "—"} email=${resolvedEmail || "—"} via=${phoneTransport || "—"} → ${code}`
@@ -352,9 +361,6 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
   }
 
   const channelLabel = deliveredVia.join("+") || "whatsapp";
-  const usedEmailDevFallback = deliveredVia.includes("email-dev");
-  // Surface code only for simulate / local fallback — never for real Brevo success.
-  const exposeDevHint = explicitSim || usedEmailDevFallback;
 
   await prisma.otpChallenge.create({
     data: {
@@ -367,13 +373,13 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
     },
   });
 
+  // Never return the OTP code to clients — real delivery only (Brevo / Sendchamp).
   return {
     ok: true as const,
     phone: e164 || destinationKey,
     phoneLocal: local || null,
     email: resolvedEmail,
     channels: deliveredVia,
-    devHint: exposeDevHint ? code : undefined,
   };
 }
 

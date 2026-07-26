@@ -50,7 +50,6 @@ function LoginForm() {
   const [step, setStep] = useState<Step>("phone");
   const [isNew, setIsNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [devHint, setDevHint] = useState<string | undefined>();
   const [emailHint, setEmailHint] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
@@ -63,9 +62,7 @@ function LoginForm() {
       setCode("");
       setError(null);
       const hint = params.get("emailHint");
-      const hintDev = params.get("devHint");
       if (hint) setEmailHint(hint);
-      if (hintDev) setDevHint(hintDev);
     }
   }, [googleState, params]);
 
@@ -113,7 +110,6 @@ function LoginForm() {
           return;
         }
         setIsNew(Boolean(otp.isNew));
-        setDevHint(otp.devHint);
         setCode("");
         setStep("otp");
         return;
@@ -151,7 +147,6 @@ function LoginForm() {
         if (otp.cooldownSec) setCooldown(otp.cooldownSec);
         return;
       }
-      setDevHint(otp.devHint);
       setCode("");
       setStep("otp");
     });
@@ -207,7 +202,6 @@ function LoginForm() {
       }
       if (data.needs2fa) {
         setEmailHint(data.emailHint || null);
-        setDevHint(data.devHint);
         setStatusMessage(
           data.message ||
             (data.emailHint
@@ -262,7 +256,6 @@ function LoginForm() {
         setError(otp.error || "Could not send OTP");
         return;
       }
-      setDevHint(otp.devHint);
       setCode("");
       setStep("otp");
     });
@@ -379,11 +372,7 @@ function LoginForm() {
             value={code}
             onChange={setCode}
             autoFocus
-            hint={
-              devHint
-                ? `Dev code: ${devHint}`
-                : `Sent to ${local || phone}`
-            }
+            hint={`Sent to ${local || phone}`}
             aria-label="One-time password"
           />
           <Button
@@ -426,11 +415,6 @@ function LoginForm() {
                 · subject “DataGrid verification code”. Check spam/promotions if
                 it’s not in the inbox.
               </p>
-              {devHint && (
-                <p className="mt-2 font-mono-num text-xs text-amber">
-                  Dev fallback code: {devHint}
-                </p>
-              )}
             </div>
           )}
           <DigitField
@@ -471,7 +455,6 @@ function LoginForm() {
                   return;
                 }
                 if (data.emailHint) setEmailHint(data.emailHint);
-                if (data.devHint) setDevHint(data.devHint);
                 setStatusMessage(
                   data.message ||
                     (data.emailHint
@@ -636,11 +619,6 @@ function LoginForm() {
         <Reveal delay={200}>
           <div className="surface mt-6 p-5">{form}</div>
         </Reveal>
-        <HeroEnter delay={260}>
-          <p className="font-mono-num mt-10 text-[11px] text-ink/40">
-            DEMO · 08030000000 · OTP 1234 · PIN 1234
-          </p>
-        </HeroEnter>
       </div>
 
       <div className="mx-auto hidden min-h-[calc(100vh-3rem)] max-w-6xl overflow-hidden lg:grid lg:grid-cols-2">
@@ -673,11 +651,6 @@ function LoginForm() {
               </p>
             </HeroEnter>
           </div>
-          <HeroEnter delay={300}>
-            <p className="font-mono-num text-[11px] text-paper/40">
-              DEMO · 08030000000 · OTP 1234 · PIN 1234
-            </p>
-          </HeroEnter>
         </div>
         <div className="flex flex-col justify-center bg-paper p-12">
           <HeroEnter delay={120}>

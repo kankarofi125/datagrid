@@ -25,7 +25,6 @@ export async function startEmail2faChallenge(
   | {
       ok: true;
       emailHint: string;
-      devHint?: string;
       email: string;
     }
   | { ok: false; error: string }
@@ -82,9 +81,6 @@ export async function startEmail2faChallenge(
     userId: user.id,
     emailHint,
     delivered: otp.channels,
-    // hasDevHint=true means NO real Brevo send (simulate or email-dev fallback).
-    // Real delivery should be delivered:['email'] and hasDevHint:false.
-    hasDevHint: Boolean(otp.devHint),
     realEmail:
       otp.channels.includes("email") && !otp.channels.includes("email-dev"),
   });
@@ -92,14 +88,12 @@ export async function startEmail2faChallenge(
   return {
     ok: true,
     emailHint,
-    devHint: otp.devHint,
     email,
   };
 }
 
 export function email2faLoginPath(result: {
   emailHint: string;
-  devHint?: string;
   source?: "google" | "pin";
 }): string {
   const qs = new URLSearchParams({
@@ -110,6 +104,5 @@ export function email2faLoginPath(result: {
   if (result.source === "pin") {
     qs.set("login", "2fa");
   }
-  if (result.devHint) qs.set("devHint", result.devHint);
   return `/login?${qs.toString()}`;
 }

@@ -48,8 +48,6 @@ export async function POST(req: Request) {
       exists: Boolean(user),
       hasPin: Boolean(user?.pinHash),
       isNew: !user,
-      // only in simulate mode
-      devHint: result.devHint,
     });
   } catch (err) {
     console.error("[otp/request]", err);

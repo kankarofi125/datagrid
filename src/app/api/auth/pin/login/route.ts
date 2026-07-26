@@ -74,7 +74,6 @@ export async function POST(req: Request) {
         ok: true,
         needs2fa: true,
         emailHint: challenge.emailHint,
-        devHint: challenge.devHint,
         message: `We sent a verification code to ${challenge.emailHint}`,
       });
     }
