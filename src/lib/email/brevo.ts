@@ -153,6 +153,11 @@ async function sendViaApi(input: {
       return { ok: false, error: humanizeBrevoError(String(raw)) };
     }
 
+    console.info("[email/brevo] API accepted", {
+      messageId: body.messageId,
+      to: input.to.email,
+      from: from.email,
+    });
     return { ok: true, messageId: body.messageId };
   } catch (error) {
     const message =

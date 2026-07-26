@@ -52,6 +52,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [devHint, setDevHint] = useState<string | undefined>();
   const [emailHint, setEmailHint] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [pending, start] = useTransition();
 
@@ -207,6 +208,12 @@ function LoginForm() {
       if (data.needs2fa) {
         setEmailHint(data.emailHint || null);
         setDevHint(data.devHint);
+        setStatusMessage(
+          data.message ||
+            (data.emailHint
+              ? `We sent a 4-digit code to ${data.emailHint}. Check inbox and spam.`
+              : "We sent a 4-digit code to your email. Check inbox and spam.")
+        );
         setCode("");
         setStep("login-2fa");
         return;
@@ -403,6 +410,29 @@ function LoginForm() {
 
       {step === "login-2fa" && (
         <>
+          {(statusMessage || emailHint) && (
+            <div
+              className="rounded-xl border border-green/20 bg-green/[0.06] px-3.5 py-3 text-sm leading-relaxed text-green-deep"
+              role="status"
+            >
+              <p className="font-semibold">
+                {statusMessage ||
+                  (emailHint
+                    ? `Code sent to ${emailHint}`
+                    : "Code sent to your email")}
+              </p>
+              <p className="mt-1 text-xs text-ink/55">
+                From <span className="font-mono-num">auth@datagrid-ng.com</span>
+                · subject “DataGrid verification code”. Check spam/promotions if
+                it’s not in the inbox.
+              </p>
+              {devHint && (
+                <p className="mt-2 font-mono-num text-xs text-amber">
+                  Dev fallback code: {devHint}
+                </p>
+              )}
+            </div>
+          )}
           <DigitField
             label="Email code"
             length={4}
@@ -410,11 +440,9 @@ function LoginForm() {
             onChange={setCode}
             autoFocus
             hint={
-              devHint
-                ? `Dev code: ${devHint}`
-                : emailHint
-                  ? `Sent to ${emailHint}`
-                  : "Check your email for the DataGrid code"
+              emailHint
+                ? `Enter the 4 digits sent to ${emailHint}`
+                : "Enter the 4-digit code from your email"
             }
             aria-label="Email two-factor code"
           />
@@ -433,6 +461,7 @@ function LoginForm() {
             onClick={() => {
               start(async () => {
                 setError(null);
+                setStatusMessage(null);
                 const res = await fetch("/api/auth/2fa/resend", {
                   method: "POST",
                 });
@@ -443,6 +472,12 @@ function LoginForm() {
                 }
                 if (data.emailHint) setEmailHint(data.emailHint);
                 if (data.devHint) setDevHint(data.devHint);
+                setStatusMessage(
+                  data.message ||
+                    (data.emailHint
+                      ? `New code sent to ${data.emailHint}`
+                      : "New code sent to your email")
+                );
                 setCode("");
               });
             }}

@@ -82,6 +82,8 @@ export async function startEmail2faChallenge(
     userId: user.id,
     emailHint,
     delivered: otp.channels,
+    // Never log the raw OTP code in production logs.
+    hasDevHint: Boolean(otp.devHint),
   });
 
   return {
