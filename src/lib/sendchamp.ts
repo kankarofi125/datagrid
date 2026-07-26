@@ -161,21 +161,16 @@ export async function sendchampSendOtp(
   // - sender  = YOUR business identity on Sendchamp (not the customer)
   // - customer_mobile_number = the user logging in (passed as input.phone)
   //
-  // SMS sender ID (alphanumeric, usually ≤11 chars) must be registered/approved
-  // on the Sendchamp dashboard → SENDCHAMP_SMS_SENDER (e.g. "DataGrid").
+  // SMS sender ID must be registered/approved on Sendchamp.
+  // Use "Sendchamp" until a custom brand ID (e.g. DataGrid) is approved.
   // Do NOT use NEXT_PUBLIC_WHATSAPP (support chat) as the Sendchamp sender.
   // Leave SENDCHAMP_WHATSAPP_SENDER empty to use Sendchamp account default.
   const smsSender =
     input.sender ||
     process.env.SENDCHAMP_SMS_SENDER?.trim() ||
-    process.env.NEXT_PUBLIC_APP_NAME?.trim() ||
-    "DataGrid";
+    "Sendchamp";
   const waSenderEnv = process.env.SENDCHAMP_WHATSAPP_SENDER?.trim();
-  const whatsappSender =
-    input.sender ||
-    waSenderEnv ||
-    process.env.NEXT_PUBLIC_APP_NAME?.trim() ||
-    "DataGrid";
+  const whatsappSender = input.sender || waSenderEnv || "Sendchamp";
   const emailSender =
     input.sender ||
     process.env.SENDCHAMP_EMAIL_FROM?.trim() ||
@@ -300,8 +295,7 @@ export async function sendchampSendSms(input: {
     sender_name:
       input.senderName ||
       process.env.SENDCHAMP_SMS_SENDER?.trim() ||
-      process.env.NEXT_PUBLIC_APP_NAME?.trim() ||
-      "DataGrid",
+      "Sendchamp",
     route: input.route || process.env.SENDCHAMP_SMS_ROUTE?.trim() || "dnd",
   });
   if (!res.ok) return { ok: false, error: res.error };

@@ -75,6 +75,8 @@ export async function POST(req: Request) {
     session.role = user.role;
     session.adminUsername = user.username || username;
     session.isLoggedIn = true;
+    session.lastActivityAt = Date.now();
+    delete session.needsPinSetup;
     await session.save();
 
     return NextResponse.json(

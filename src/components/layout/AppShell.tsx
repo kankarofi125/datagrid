@@ -6,6 +6,7 @@ import { DesktopSidebar } from "@/components/layout/DesktopSidebar";
 import { DesktopTopBar } from "@/components/layout/DesktopTopBar";
 import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import { AppProviders } from "@/components/providers/AppProviders";
+import { SessionIdleGuard } from "@/components/auth/SessionIdleGuard";
 
 /**
  * Single content tree; chrome adapts:
@@ -23,6 +24,7 @@ export function AppShell({
 }) {
   return (
     <AppProviders>
+      <SessionIdleGuard />
       <div className="customer-app min-h-screen bg-paper lg:flex">
         <div className="hidden lg:sticky lg:top-0 lg:block lg:h-screen lg:shrink-0">
           <DesktopSidebar />

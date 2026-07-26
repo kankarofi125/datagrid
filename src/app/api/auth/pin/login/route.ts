@@ -129,6 +129,7 @@ export async function POST(req: Request) {
     session.phone = user.phone;
     session.role = user.role;
     session.isLoggedIn = true;
+    session.lastActivityAt = Date.now();
     session.needsPinSetup = false;
     await session.save();
 

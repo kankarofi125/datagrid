@@ -72,6 +72,7 @@ export async function POST(req: Request) {
       session.phone = pending2fa.phone;
       session.role = pending2fa.role;
       session.isLoggedIn = true;
+      session.lastActivityAt = Date.now();
       session.needsPinSetup = !user.pinHash;
       await session.save();
 
@@ -268,6 +269,7 @@ export async function POST(req: Request) {
     delete session.pendingGoogle;
     delete session.pendingLogin2fa;
     session.isLoggedIn = true;
+    session.lastActivityAt = Date.now();
     session.needsPinSetup = needsPinSetup;
     await session.save();
 

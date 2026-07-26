@@ -153,7 +153,10 @@ function LoginForm() {
         : stepTitle(step),
     [googleState, step]
   );
-  const googleNotice = googleMessage(googleState);
+  const googleNotice =
+    params.get("session") === "expired"
+      ? "Your session expired after 10 minutes of inactivity. Sign in again."
+      : googleMessage(googleState);
   const referral = params.get("ref");
   const googleHref = `/api/auth/google/start${
     referral ? `?ref=${encodeURIComponent(referral)}` : ""

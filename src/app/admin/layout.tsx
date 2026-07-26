@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { notFound, redirect } from "next/navigation";
+import {
+  clearLoggedInSession,
+  getSession,
+  isLoggedInIdle,
+  touchSessionActivity,
+} from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { SessionIdleGuard } from "@/components/auth/SessionIdleGuard";
 
 export async function generateMetadata(): Promise<Metadata> {
   const session = await getSession();
@@ -33,6 +39,12 @@ export default async function AdminLayout({
     notFound();
   }
 
+  if (isLoggedInIdle(session)) {
+    await clearLoggedInSession(session);
+    redirect("/auth/admin?session=expired");
+  }
+  await touchSessionActivity(session);
+
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: {
@@ -53,12 +65,15 @@ export default async function AdminLayout({
   }
 
   return (
-    <AdminShell
-      phone={user.phoneLocal}
-      username={user.username}
-      name={user.name}
-    >
-      {children}
-    </AdminShell>
+    <>
+      <SessionIdleGuard loginPath="/auth/admin?session=expired" />
+      <AdminShell
+        phone={user.phoneLocal}
+        username={user.username}
+        name={user.name}
+      >
+        {children}
+      </AdminShell>
+    </>
   );
 }

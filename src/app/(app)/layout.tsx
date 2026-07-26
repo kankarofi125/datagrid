@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import {
+  clearLoggedInSession,
+  getSession,
+  isLoggedInIdle,
+  touchSessionActivity,
+} from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { AppShell } from "@/components/layout/AppShell";
 import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
@@ -22,6 +27,13 @@ export default async function AppLayout({
   if (!session.isLoggedIn || !session.userId) {
     redirect("/login");
   }
+
+  // 10‑minute idle timeout (server-side).
+  if (isLoggedInIdle(session)) {
+    await clearLoggedInSession(session);
+    redirect("/login?session=expired");
+  }
+  await touchSessionActivity(session);
 
   // Force PIN setup before the main app (server-side, not only login UI).
   if (session.needsPinSetup) {

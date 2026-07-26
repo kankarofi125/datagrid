@@ -284,6 +284,7 @@ async function finishReturningGoogleUser(
   session.phone = user.phone;
   session.role = user.role;
   session.isLoggedIn = true;
+  session.lastActivityAt = Date.now();
   session.needsPinSetup = needsPin;
   delete session.adminUsername;
   delete session.pendingGoogle;
