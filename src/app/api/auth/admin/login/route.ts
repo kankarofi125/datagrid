@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getSession } from "@/lib/auth/session";
+import {
+  clearLoginFailures,
+  getLoginLockStatus,
+  recordLoginFailure,
+} from "@/lib/auth/login-lockout";
 import { prisma } from "@/lib/db";
 
 /**
  * Staff ERP login — username + password.
  * Only ADMIN / SUPER_ADMIN with passwordHash may sign in here.
+ * 5 failed attempts → 15 minute lockout (per username key).
  */
 export async function POST(req: Request) {
   try {
@@ -29,6 +35,19 @@ export async function POST(req: Request) {
       );
     }
 
+    const lockKey = username;
+    const lock = await getLoginLockStatus("admin", lockKey);
+    if (lock.locked) {
+      return NextResponse.json(
+        {
+          error: `Too many failed sign-in attempts. Try again in ${lock.retryAfterSec}s.`,
+          code: "ADMIN_LOCKED",
+          retryAfterSec: lock.retryAfterSec,
+        },
+        { status: 429, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
     const user = await prisma.user.findFirst({
       where: {
         username: { equals: username, mode: "insensitive" },
@@ -38,19 +57,49 @@ export async function POST(req: Request) {
     });
 
     if (!user?.passwordHash) {
+      const fail = await recordLoginFailure("admin", lockKey);
+      if (fail.locked) {
+        return NextResponse.json(
+          {
+            error: `Too many failed sign-in attempts. Try again in ${fail.retryAfterSec}s.`,
+            code: "ADMIN_LOCKED",
+            retryAfterSec: fail.retryAfterSec,
+          },
+          { status: 429, headers: { "Cache-Control": "no-store" } }
+        );
+      }
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        {
+          error: "Invalid credentials",
+          attemptsLeft: fail.attemptsLeft,
+        },
         { status: 401, headers: { "Cache-Control": "no-store" } }
       );
     }
 
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) {
+      const fail = await recordLoginFailure("admin", lockKey);
+      if (fail.locked) {
+        return NextResponse.json(
+          {
+            error: `Too many failed sign-in attempts. Try again in ${fail.retryAfterSec}s.`,
+            code: "ADMIN_LOCKED",
+            retryAfterSec: fail.retryAfterSec,
+          },
+          { status: 429, headers: { "Cache-Control": "no-store" } }
+        );
+      }
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        {
+          error: "Invalid credentials",
+          attemptsLeft: fail.attemptsLeft,
+        },
         { status: 401, headers: { "Cache-Control": "no-store" } }
       );
     }
+
+    await clearLoginFailures("admin", lockKey);
 
     await prisma.user.update({
       where: { id: user.id },

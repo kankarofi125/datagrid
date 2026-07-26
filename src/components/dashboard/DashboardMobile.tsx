@@ -194,7 +194,7 @@ export function DashboardMobile({
                 amount={balance}
                 variant="card"
                 className="mt-1.5 text-paper"
-                eyeClassName="mt-1.5 border-white/15 bg-white/[0.08] text-paper/80 hover:bg-white/[0.14]"
+                eyeClassName="border-white/20 bg-white/15 text-paper hover:bg-white/25"
               />
             </div>
             <Link

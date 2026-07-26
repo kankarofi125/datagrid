@@ -97,7 +97,7 @@ export function DashboardDesktop({
                 <BalanceWithEye
                   amount={balance}
                   className="mt-3 text-paper"
-                  eyeClassName="mt-3 border-white/15 bg-white/[0.08] text-paper/80 hover:bg-white/[0.14]"
+                  eyeClassName="border-white/20 bg-white/15 text-paper hover:bg-white/25"
                 />
               </div>
               <span className="rounded-full border border-white/10 bg-white/[0.07] px-3 py-1 font-mono-num text-[9px] tracking-wider text-paper/60">

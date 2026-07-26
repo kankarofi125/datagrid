@@ -43,11 +43,17 @@ export function BalanceEyeButton({
   return (
     <button
       type="button"
-      onClick={toggle}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggle();
+      }}
       aria-label={hidden ? "Show balance" : "Hide balance"}
       aria-pressed={hidden}
+      title={hidden ? "Show balance" : "Hide balance"}
       className={cn(
         "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition pressable",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green/40",
         className
       )}
     >
@@ -60,7 +66,10 @@ export function BalanceEyeButton({
   );
 }
 
-/** Amount + eye toggle; respects the shared hide preference. */
+/**
+ * Amount + eye toggle; respects the shared hide preference.
+ * Eye is always vertically centered beside the amount (no stray top margin).
+ */
 export function BalanceWithEye({
   amount,
   variant = "hero",
@@ -78,7 +87,12 @@ export function BalanceWithEye({
 }) {
   const { hidden } = useBalanceHidden();
   return (
-    <div className={cn("flex min-w-0 items-center gap-2", rowClassName)}>
+    <div
+      className={cn(
+        "flex min-w-0 items-center gap-2.5",
+        rowClassName
+      )}
+    >
       <BalanceAmount
         amount={amount}
         hidden={hidden}
@@ -86,7 +100,12 @@ export function BalanceWithEye({
         compact={compact}
         className={className}
       />
-      <BalanceEyeButton className={eyeClassName} />
+      <BalanceEyeButton
+        className={cn(
+          "border-line bg-white/90 text-ink/60 shadow-sm hover:bg-white hover:text-ink",
+          eyeClassName
+        )}
+      />
     </div>
   );
 }

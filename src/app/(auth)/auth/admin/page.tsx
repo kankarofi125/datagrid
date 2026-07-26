@@ -1,55 +1,72 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { cn } from "@/lib/cn";
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
+  const params = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
 
-  const canSubmit = username.trim().length > 0 && password.length > 0 && !pending;
+  useEffect(() => {
+    if (params.get("session") === "expired") {
+      setNotice(
+        "Your staff session expired after 10 minutes of inactivity. Sign in again."
+      );
+    }
+  }, [params]);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const canSubmit =
+    username.trim().length > 0 && password.length > 0 && !busy;
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || busyRef.current) return;
 
-    start(async () => {
-      setError(null);
+    busyRef.current = true;
+    setBusy(true);
+    setError(null);
 
-      try {
-        const response = await fetch("/api/auth/admin/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: username.trim(),
-            password,
-          }),
-        });
-        const data = await response.json().catch(() => ({}));
+    try {
+      const response = await fetch("/api/auth/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
 
-        if (!response.ok) {
-          setError(
-            response.status >= 500
-              ? "Staff sign-in is temporarily unavailable. Please try again."
-              : data.error || "We could not verify those credentials."
-          );
-          return;
-        }
-
-        router.replace("/admin");
-        router.refresh();
-      } catch {
-        setError("Could not reach the secure gateway. Check your connection and retry.");
+      if (!response.ok) {
+        setError(
+          response.status >= 500
+            ? "Staff sign-in is temporarily unavailable. Please try again."
+            : data.error || "We could not verify those credentials."
+        );
+        return;
       }
-    });
+
+      // Avoid router.refresh() — full RSC reload feels heavy after auth.
+      router.replace("/admin");
+    } catch {
+      setError(
+        "Could not reach the secure gateway. Check your connection and retry."
+      );
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
   }
 
   return (
@@ -144,12 +161,20 @@ export default function AdminLoginPage() {
                 Sign in with your assigned staff username and password to enter the
                 operations console.
               </p>
+              {notice && (
+                <div
+                  className="mt-4 rounded-xl border border-amber/25 bg-amber/[0.08] px-3.5 py-3 text-sm leading-relaxed text-[#7a4e0a]"
+                  role="status"
+                >
+                  {notice}
+                </div>
+              )}
             </div>
 
             <form
               onSubmit={submit}
               className="rounded-[22px] border border-line bg-white p-5 shadow-[0_24px_60px_-42px_rgba(14,33,26,.62)] sm:p-6"
-              aria-busy={pending}
+              aria-busy={busy}
               noValidate
             >
               <div className="mb-5 flex items-center justify-between gap-4 border-b border-line pb-4">
@@ -238,10 +263,10 @@ export default function AdminLoginPage() {
                 disabled={!canSubmit}
                 className="pressable mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-green text-[15px] font-bold text-white shadow-[0_12px_24px_-16px_rgba(22,134,83,.85)] transition hover:bg-[#117548] disabled:pointer-events-none disabled:opacity-45"
               >
-                {pending ? (
+                {busy ? (
                   <>
                     <Spinner />
-                    Verifying access…
+                    Signing in…
                   </>
                 ) : (
                   <>
@@ -288,6 +313,20 @@ export default function AdminLoginPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="grid min-h-screen place-items-center bg-canvas text-sm text-ink/50">
+          Loading staff gateway…
+        </div>
+      }
+    >
+      <AdminLoginForm />
+    </Suspense>
   );
 }
 

@@ -25,7 +25,6 @@ export function DesktopTopBar({
   const navItem = APP_NAV.find(
     (item) => path === item.href || (item.href !== "/dashboard" && path.startsWith(item.href))
   );
-  const onDashboard = path === "/dashboard";
 
   return (
     <FloatingDesktopHeader
@@ -43,12 +42,10 @@ export function DesktopTopBar({
             {phone}
           </span>
           <NotificationBell />
-          {!onDashboard && (
-            <div className="flex h-9 items-center gap-1.5 rounded-xl border border-line bg-white pl-3 pr-1.5 text-ink shadow-sm">
-              <BalanceAmount amount={balance} hidden={hidden} variant="compact" />
-              <BalanceEyeButton className="h-8 w-8 border-0 bg-transparent text-ink/55 hover:bg-ink/[0.04] hover:text-ink" />
-            </div>
-          )}
+          <div className="flex h-9 items-center gap-1 rounded-xl border border-line bg-white pl-3 pr-1 text-ink shadow-sm">
+            <BalanceAmount amount={balance} hidden={hidden} variant="compact" />
+            <BalanceEyeButton className="h-8 w-8 border-0 bg-transparent text-ink/55 hover:bg-ink/[0.04] hover:text-ink" />
+          </div>
           <Link
             href="/wallet"
             className="flex h-9 items-center gap-1.5 rounded-xl bg-green px-3.5 text-sm font-semibold text-white shadow-[0_8px_18px_-12px_rgba(22,134,83,.8)] pressable"
