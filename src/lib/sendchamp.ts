@@ -104,6 +104,18 @@ async function sendchampFetch<T>(
   return { ok: true, data: (raw.data ?? ({} as T)) as T, raw };
 }
 
+/** Sendchamp OTP channel strings (API is case-sensitive; use lowercase). */
+export function normalizeOtpChannel(
+  channel: string
+): SendchampOtpChannel | null {
+  const c = channel.trim().toLowerCase();
+  if (c === "sms" || c === "email" || c === "voice" || c === "whatsapp") {
+    return c;
+  }
+  if (c === "wa" || c === "whats-app") return "whatsapp";
+  return null;
+}
+
 export type SendOtpInput = {
   channel: SendchampOtpChannel;
   /** E.164 or local NG phone — required for sms/voice/whatsapp */
@@ -115,7 +127,7 @@ export type SendOtpInput = {
   tokenLength?: number;
   expirationMinutes?: number;
   firstName?: string;
-  /** SMS sender ID or WhatsApp number; email uses SENDCHAMP_EMAIL_FROM */
+  /** SMS sender ID, WhatsApp business number, or email from-name */
   sender?: string;
 };
 
@@ -137,23 +149,45 @@ export async function sendchampSendOtp(
   | { ok: true; result: SendOtpResult }
   | { ok: false; error: string }
 > {
-  const channel = input.channel;
+  const channel = normalizeOtpChannel(input.channel);
+  if (!channel) {
+    return { ok: false, error: `Unsupported OTP channel: ${input.channel}` };
+  }
   const tokenLength = input.tokenLength ?? 4;
   const expirationMinutes = input.expirationMinutes ?? 10;
 
+  // Two different numbers in OTP:
+  // - sender  = YOUR business identity on Sendchamp (not the customer)
+  // - customer_mobile_number = the user logging in (passed as input.phone)
+  //
+  // Do NOT use NEXT_PUBLIC_WHATSAPP (support chat link) as the Sendchamp sender.
+  // Leave SENDCHAMP_WHATSAPP_SENDER empty to use Sendchamp account default.
   const smsSender =
     input.sender ||
     process.env.SENDCHAMP_SMS_SENDER?.trim() ||
     "Sendchamp";
+  const waSenderEnv = process.env.SENDCHAMP_WHATSAPP_SENDER?.trim();
+  const whatsappSender = input.sender || waSenderEnv || "Sendchamp";
   const emailSender =
     input.sender ||
     process.env.SENDCHAMP_EMAIL_FROM?.trim() ||
-    process.env.SENDCHAMP_SMS_SENDER?.trim() ||
+    process.env.SENDCHAMP_EMAIL_FROM_NAME?.trim() ||
     "DataGrid";
 
+  const sender =
+    channel === "email"
+      ? emailSender
+      : channel === "whatsapp"
+        ? // Only normalize if it looks like a phone; brand names stay as-is
+          /^\+?\d{10,15}$/.test(whatsappSender.replace(/\s/g, ""))
+            ? toSendchampMsisdn(whatsappSender)
+            : whatsappSender
+        : smsSender;
+
   const body: Record<string, unknown> = {
+    // API rejects "WhatsApp"; must be lowercase "whatsapp" | "sms" | "email" | "voice"
     channel,
-    sender: channel === "email" ? emailSender : smsSender,
+    sender,
     token_type: "numeric",
     token_length: tokenLength,
     expiration_time: expirationMinutes,
@@ -172,7 +206,10 @@ export async function sendchampSendOtp(
     body.customer_email_address = input.email.trim().toLowerCase();
   } else {
     if (!input.phone) {
-      return { ok: false, error: "A phone number is required for SMS OTP" };
+      return {
+        ok: false,
+        error: "A phone number is required for WhatsApp/SMS OTP",
+      };
     }
     body.customer_mobile_number = toSendchampMsisdn(input.phone);
   }

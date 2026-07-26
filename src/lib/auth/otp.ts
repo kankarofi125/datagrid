@@ -1,15 +1,13 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { toE164, toLocalPhone } from "@/lib/phone";
-import {
-  buildOtpEmailHtml,
-  buildOtpEmailSubject,
-} from "@/lib/email/templates/otp";
+import { isBrevoConfigured, sendBrevoOtpEmail } from "@/lib/email/brevo";
 import {
   isSendchampLive,
+  normalizeOtpChannel,
   sendchampConfirmOtp,
-  sendchampSendEmail,
   sendchampSendOtp,
+  type SendchampOtpChannel,
 } from "@/lib/sendchamp";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
@@ -18,12 +16,46 @@ const MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_MS = 45_000;
 const TOKEN_LENGTH = 4;
 
-export type OtpChannel = "sms" | "email" | "both";
+/**
+ * Delivery config via OTP_CHANNELS (comma-separated):
+ *   whatsapp (default) — phone OTP over WhatsApp
+ *   sms — classic SMS
+ *   email — branded email
+ *   whatsapp,email | sms,email | both (= whatsapp+email)
+ */
+export type PhoneOtpTransport = "whatsapp" | "sms";
 
-function configuredChannels(): OtpChannel {
-  const raw = (process.env.OTP_CHANNELS || "sms").trim().toLowerCase();
-  if (raw === "email" || raw === "sms" || raw === "both") return raw;
-  return "sms";
+function parseChannels(raw?: string): {
+  phone: PhoneOtpTransport | null;
+  email: boolean;
+} {
+  const value = (raw || process.env.OTP_CHANNELS || "whatsapp")
+    .trim()
+    .toLowerCase();
+
+  if (value === "both") {
+    return { phone: "whatsapp", email: true };
+  }
+  if (value === "email") {
+    return { phone: null, email: true };
+  }
+  if (value === "sms") {
+    return { phone: "sms", email: false };
+  }
+  if (value === "whatsapp" || value === "wa") {
+    return { phone: "whatsapp", email: false };
+  }
+
+  const parts = value.split(/[,\s|]+/).filter(Boolean);
+  let phone: PhoneOtpTransport | null = null;
+  let email = false;
+  for (const p of parts) {
+    if (p === "email") email = true;
+    else if (p === "sms") phone = "sms";
+    else if (p === "whatsapp" || p === "wa") phone = "whatsapp";
+  }
+  if (!phone && !email) phone = "whatsapp";
+  return { phone, email };
 }
 
 function isSimulateMode(): boolean {
@@ -51,13 +83,13 @@ function normalizeEmail(raw: string | undefined | null): string | null {
 export type RequestOtpInput = {
   phone?: string;
   email?: string;
-  /** Override env OTP_CHANNELS for this request */
-  channels?: OtpChannel;
+  /** Override env OTP_CHANNELS for this request (e.g. "whatsapp", "sms,email") */
+  channels?: string;
   firstName?: string;
 };
 
 /**
- * Request an OTP via Sendchamp (SMS and/or email) or simulate in dev.
+ * Request an OTP via Sendchamp (WhatsApp/SMS and/or branded email) or simulate.
  */
 export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
   const input: RequestOtpInput =
@@ -69,34 +101,22 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
   const local = input.phone ? toLocalPhone(input.phone) : null;
   const email = normalizeEmail(input.email);
 
-  const channels = input.channels || configuredChannels();
-  const wantSms = channels === "sms" || channels === "both";
-  const wantEmail = channels === "email" || channels === "both";
+  const { phone: phoneTransport, email: wantEmail } = parseChannels(
+    input.channels
+  );
+  const wantPhone = Boolean(phoneTransport);
 
-  if (wantSms && (!e164 || !local)) {
+  if (wantPhone && (!e164 || !local)) {
     return { ok: false as const, error: "Enter a valid Nigerian phone number" };
   }
   if (wantEmail && !email) {
-    // When both: try load email from existing user if only phone provided
-    if (wantSms && e164) {
-      const user = await prisma.user.findUnique({
-        where: { phone: e164 },
-        select: { email: true, name: true },
-      });
-      if (!user?.email) {
-        // SMS-only if no email on file for "both"
-        if (channels === "both") {
-          // fall through with SMS only
-        } else {
-          return { ok: false as const, error: "Enter a valid email address" };
-        }
-      }
-    } else if (!wantSms) {
+    if (wantPhone && e164) {
+      // resolve later from user record
+    } else if (!wantPhone) {
       return { ok: false as const, error: "Enter a valid email address" };
     }
   }
 
-  // Resolve email from user when channels=both and phone-only request
   let resolvedEmail = email;
   let firstName = input.firstName || "Customer";
   if (wantEmail && !resolvedEmail && e164) {
@@ -108,14 +128,14 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
     if (user?.name) firstName = user.name.split(" ")[0] || firstName;
   }
 
-  const sendSms = wantSms && Boolean(e164);
+  const sendPhone = wantPhone && Boolean(e164);
   const sendEmail = wantEmail && Boolean(resolvedEmail);
 
-  if (!sendSms && !sendEmail) {
+  if (!sendPhone && !sendEmail) {
     return {
       ok: false as const,
       error:
-        channels === "email"
+        wantEmail && !wantPhone
           ? "Enter a valid email address"
           : "Enter a valid Nigerian phone number",
     };
@@ -152,32 +172,61 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
 
   if (isSimulateMode()) {
     console.info(
-      `[DataGrid OTP simulate] phone=${e164 || "—"} email=${resolvedEmail || "—"} → ${code}`
+      `[DataGrid OTP simulate] phone=${e164 || "—"} email=${resolvedEmail || "—"} via=${phoneTransport || "—"} → ${code}`
     );
     deliveredVia = [
-      ...(sendSms ? ["sms"] : []),
+      ...(sendPhone ? [phoneTransport!] : []),
       ...(sendEmail ? ["email"] : []),
     ];
   } else {
-    // SMS: Sendchamp Verification API (reference for optional remote confirm).
-    // Email: branded HTML via /email/send so inbox shows DataGrid logo + theme.
     let anyOk = false;
 
-    if (sendSms && e164) {
-      const smsSend = await sendchampSendOtp({
-        channel: "sms",
+    // Phone OTP: WhatsApp preferred (SMS often blocked / not provisioned).
+    if (sendPhone && e164 && phoneTransport) {
+      const channel: SendchampOtpChannel =
+        normalizeOtpChannel(phoneTransport) || "whatsapp";
+
+      const phoneSend = await sendchampSendOtp({
+        channel,
         phone: e164,
         token: code,
         tokenLength: TOKEN_LENGTH,
         expirationMinutes: OTP_TTL_MINUTES,
         firstName,
       });
-      if (smsSend.ok) {
-        providerRef = smsSend.result.reference;
-        deliveredVia.push("sms");
+
+      if (phoneSend.ok) {
+        providerRef = phoneSend.result.reference;
+        deliveredVia.push(channel);
         anyOk = true;
       } else {
-        console.error("[otp] Sendchamp SMS failed", smsSend.error);
+        console.error(
+          `[otp] Sendchamp ${channel} failed`,
+          phoneSend.error
+        );
+
+        // If WhatsApp fails and we didn't explicitly require only WA, try SMS once.
+        if (
+          channel === "whatsapp" &&
+          (process.env.OTP_WHATSAPP_FALLBACK_SMS || "1") !== "0"
+        ) {
+          const smsFallback = await sendchampSendOtp({
+            channel: "sms",
+            phone: e164,
+            token: code,
+            tokenLength: TOKEN_LENGTH,
+            expirationMinutes: OTP_TTL_MINUTES,
+            firstName,
+          });
+          if (smsFallback.ok) {
+            providerRef = smsFallback.result.reference;
+            deliveredVia.push("sms");
+            anyOk = true;
+            console.warn("[otp] WhatsApp failed; delivered via SMS fallback");
+          } else {
+            console.error("[otp] SMS fallback also failed", smsFallback.error);
+          }
+        }
       }
     }
 
@@ -187,38 +236,41 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
         : e164
           ? `••••${e164.slice(-4)}`
           : undefined;
-      const emailSend = await sendchampSendEmail({
-        to: [{ email: resolvedEmail, name: firstName }],
-        subject: buildOtpEmailSubject(code),
-        html: buildOtpEmailHtml({
+
+      // Branded HTML via Brevo SMTP (preferred). Falls back only if not configured.
+      if (isBrevoConfigured()) {
+        const emailSend = await sendBrevoOtpEmail({
+          to: resolvedEmail,
+          name: firstName,
           code,
-          firstName,
           expiresInMinutes: OTP_TTL_MINUTES,
           phoneHint,
-        }),
-      });
-      if (emailSend.ok) {
-        deliveredVia.push("email");
-        anyOk = true;
+        });
+        if (emailSend.ok) {
+          deliveredVia.push("email");
+          anyOk = true;
+        } else {
+          console.error("[otp] Brevo branded email failed", emailSend.error);
+        }
       } else {
-        console.error("[otp] Sendchamp branded email failed", emailSend.error);
+        console.error(
+          "[otp] Email requested but Brevo SMTP is not configured (BREVO_SMTP_*)"
+        );
       }
     }
 
     if (!anyOk) {
       return {
         ok: false as const,
-        error: "Could not send verification code. Try again shortly.",
+        error:
+          phoneTransport === "whatsapp"
+            ? "Could not send WhatsApp code. Confirm Sendchamp WhatsApp is active, or try again."
+            : "Could not send verification code. Try again shortly.",
       };
     }
   }
 
-  const channelLabel =
-    deliveredVia.length === 2
-      ? "both"
-      : deliveredVia[0] === "email"
-        ? "email"
-        : "sms";
+  const channelLabel = deliveredVia.join("+") || "whatsapp";
 
   await prisma.otpChallenge.create({
     data: {
@@ -243,7 +295,7 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
 
 /**
  * Verify OTP — uses Sendchamp confirm when a provider reference exists,
- * otherwise falls back to local bcrypt match (simulate / legacy).
+ * otherwise falls back to local bcrypt match (simulate / branded email).
  */
 export async function verifyOtp(
   rawPhoneOrEmail: string,
@@ -293,7 +345,6 @@ export async function verifyOtp(
     if (confirmed.ok) {
       match = true;
     } else {
-      // Fall back to local hash (we always store our token when creating).
       match = await bcrypt.compare(trimmed, challenge.codeHash);
       if (!match) {
         await prisma.otpChallenge.update({
