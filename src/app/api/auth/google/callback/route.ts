@@ -156,15 +156,20 @@ async function establishSession(
   delete session.adminUsername;
   delete session.pendingGoogle;
 
+  // Email 2FA after Google (same as PIN login)
   if (user.totpEnabled && email) {
     const otp = await requestOtp({
       email,
       channels: "email",
-      firstName: user.name?.split(" ")[0] || identity.name?.split(" ")[0] || "Customer",
+      firstName:
+        user.name?.split(" ")[0] ||
+        identity.name?.split(" ")[0] ||
+        "Customer",
+      skipCooldown: true,
     });
     if (!otp.ok) {
       console.error("[auth/google/callback] 2FA email failed", otp.error);
-      return "/login?google=unavailable";
+      return `/login?google=unavailable&detail=${encodeURIComponent(otp.error.slice(0, 120))}`;
     }
 
     session.isLoggedIn = false;
@@ -180,7 +185,18 @@ async function establishSession(
       expiresAt: Date.now() + 10 * 60 * 1000,
     };
     await session.save();
-    return "/login?google=2fa";
+
+    const [localPart, domain] = email.split("@");
+    const hint =
+      localPart.length <= 2
+        ? `*@${domain}`
+        : `${localPart[0]}***@${domain}`;
+    const qs = new URLSearchParams({
+      google: "2fa",
+      emailHint: hint,
+    });
+    if (otp.devHint) qs.set("devHint", otp.devHint);
+    return `/login?${qs.toString()}`;
   }
 
   delete session.pendingLogin2fa;

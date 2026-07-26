@@ -53,6 +53,7 @@ export async function POST(req: Request) {
         email: user.email,
         channels: "email",
         firstName: user.name?.split(" ")[0] || "Customer",
+        skipCooldown: true,
       });
       if (!otp.ok) {
         console.error("[auth/pin/login] 2FA email failed", otp.error);

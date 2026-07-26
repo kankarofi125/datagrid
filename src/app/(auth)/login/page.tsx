@@ -60,8 +60,12 @@ function LoginForm() {
     if (googleState === "2fa") {
       setStep("login-2fa");
       setCode("");
+      const hint = params.get("emailHint");
+      const hintDev = params.get("devHint");
+      if (hint) setEmailHint(hint);
+      if (hintDev) setDevHint(hintDev);
     }
-  }, [googleState]);
+  }, [googleState, params]);
 
   const local = toLocalPhone(phone);
   const copy = useMemo(
@@ -424,14 +428,37 @@ function LoginForm() {
           <button
             type="button"
             className="font-mono-num w-full text-center text-xs tracking-wide text-ink/50"
+            disabled={pending}
             onClick={() => {
-              setStep("pin-login");
+              start(async () => {
+                setError(null);
+                const res = await fetch("/api/auth/2fa/resend", {
+                  method: "POST",
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                  setError(data.error || "Could not resend code");
+                  return;
+                }
+                if (data.emailHint) setEmailHint(data.emailHint);
+                if (data.devHint) setDevHint(data.devHint);
+                setCode("");
+              });
+            }}
+          >
+            Resend email code
+          </button>
+          <button
+            type="button"
+            className="font-mono-num w-full text-center text-xs tracking-wide text-ink/40"
+            onClick={() => {
+              setStep("phone");
               setPin("");
               setCode("");
               setError(null);
             }}
           >
-            Back to PIN
+            Start over
           </button>
         </>
       )}

@@ -69,15 +69,18 @@ export async function POST(req: Request) {
     },
   });
 
-  void import("@/lib/email/notify").then(({ emailWalletFunded }) =>
-    emailWalletFunded({
+  try {
+    const { emailWalletFunded } = await import("@/lib/email/notify");
+    await emailWalletFunded({
       userId,
       amount: amountNaira,
       orderRef,
       balance,
       method: "Paystack",
-    })
-  );
+    });
+  } catch (e) {
+    console.error("[webhooks/paystack] email", e);
+  }
 
   return NextResponse.json({ ok: true });
 }

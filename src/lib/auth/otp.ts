@@ -86,6 +86,8 @@ export type RequestOtpInput = {
   /** Override env OTP_CHANNELS for this request (e.g. "whatsapp", "sms,email") */
   channels?: string;
   firstName?: string;
+  /** Skip resend cooldown (login 2FA / Google step) */
+  skipCooldown?: boolean;
 };
 
 /**
@@ -152,7 +154,7 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
     },
     orderBy: { createdAt: "desc" },
   });
-  if (recent) {
+  if (recent && !input.skipCooldown) {
     const elapsed = Date.now() - recent.createdAt.getTime();
     if (elapsed < RESEND_COOLDOWN_MS) {
       return {
@@ -251,8 +253,18 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
           anyOk = true;
         } else {
           console.error("[otp] Brevo branded email failed", emailSend.error);
-          // Email-only requests (e.g. login 2FA) must surface the real failure.
-          if (!sendPhone) {
+          // Local/dev: still create challenge so 2FA can be tested without Brevo.
+          if (
+            process.env.NODE_ENV !== "production" ||
+            process.env.OTP_EMAIL_DEV_FALLBACK === "1"
+          ) {
+            console.info(
+              `[DataGrid OTP email fallback] ${resolvedEmail} → ${code}\n` +
+                `  (Brevo error: ${emailSend.error})`
+            );
+            deliveredVia.push("email-dev");
+            anyOk = true;
+          } else if (!sendPhone) {
             return {
               ok: false as const,
               error: emailSend.error,
@@ -260,11 +272,22 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
           }
         }
       } else if (!sendPhone) {
-        return {
-          ok: false as const,
-          error:
-            "Email delivery is not configured. Set BREVO_API_KEY or Brevo SMTP credentials.",
-        };
+        if (
+          process.env.NODE_ENV !== "production" ||
+          process.env.OTP_EMAIL_DEV_FALLBACK === "1"
+        ) {
+          console.info(
+            `[DataGrid OTP email fallback] ${resolvedEmail} → ${code} (Brevo not configured)`
+          );
+          deliveredVia.push("email-dev");
+          anyOk = true;
+        } else {
+          return {
+            ok: false as const,
+            error:
+              "Email delivery is not configured. Set BREVO_API_KEY or Brevo SMTP credentials.",
+          };
+        }
       } else {
         console.error(
           "[otp] Email requested but Brevo is not configured (BREVO_API_KEY / SMTP)"
@@ -284,6 +307,7 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
   }
 
   const channelLabel = deliveredVia.join("+") || "whatsapp";
+  const usedEmailDevFallback = deliveredVia.includes("email-dev");
 
   await prisma.otpChallenge.create({
     data: {
@@ -302,7 +326,9 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
     phoneLocal: local || null,
     email: resolvedEmail,
     channels: deliveredVia,
-    devHint: isSimulateMode() ? code : undefined,
+    // Show code in UI when simulate OR when Brevo failed and we fell back locally.
+    devHint:
+      isSimulateMode() || usedEmailDevFallback ? code : undefined,
   };
 }
 

@@ -243,8 +243,9 @@ async function runWalletPurchase(opts: {
     },
   });
 
-  void import("@/lib/email/notify").then(({ emailPurchaseDelivered }) =>
-    emailPurchaseDelivered({
+  try {
+    const { emailPurchaseDelivered } = await import("@/lib/email/notify");
+    await emailPurchaseDelivered({
       userId: opts.userId,
       amount,
       orderRef,
@@ -256,8 +257,10 @@ async function runWalletPurchase(opts: {
       planName: opts.fields.packageCode,
       token: deliveredToken,
       customerName: result.customerName || opts.fields.customerName,
-    })
-  );
+    });
+  } catch (e) {
+    console.error("[purchase-bills] email notify", e);
+  }
 
   try {
     const { invalidate, CacheKeys, CacheTags } = await import("@/lib/cache");

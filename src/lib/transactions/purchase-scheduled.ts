@@ -163,15 +163,18 @@ export async function purchaseScheduled(input: {
     transactionId: delivered.id,
   });
 
-  void import("@/lib/email/notify").then(({ emailPurchaseDelivered }) =>
-    emailPurchaseDelivered({
+  try {
+    const { emailPurchaseDelivered } = await import("@/lib/email/notify");
+    await emailPurchaseDelivered({
       userId: input.userId,
       amount,
       orderRef: delivered.orderRef,
       service: delivered.service,
       phone: delivered.phone,
-    })
-  );
+    });
+  } catch (e) {
+    console.error("[purchase-scheduled] email notify", e);
+  }
 
   return {
     ok: true as const,

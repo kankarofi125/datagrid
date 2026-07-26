@@ -255,9 +255,10 @@ export async function purchaseWithWallet(input: PurchaseInput) {
     },
   });
 
-  // Branded email receipt (non-blocking)
-  void import("@/lib/email/notify").then(({ emailPurchaseDelivered }) =>
-    emailPurchaseDelivered({
+  // Branded email receipt — must await so serverless/dev doesn't drop the send
+  try {
+    const { emailPurchaseDelivered } = await import("@/lib/email/notify");
+    await emailPurchaseDelivered({
       userId: input.userId,
       amount,
       orderRef,
@@ -266,8 +267,10 @@ export async function purchaseWithWallet(input: PurchaseInput) {
       planName,
       networkCode,
       token: vtuResult.token,
-    })
-  );
+    });
+  } catch (e) {
+    console.error("[purchase] email notify", e);
+  }
 
   // Cache bust + realtime fan-out
   try {

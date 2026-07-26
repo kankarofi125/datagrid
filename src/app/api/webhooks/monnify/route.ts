@@ -66,15 +66,18 @@ export async function POST(req: Request) {
     memo: "Monnify transfer",
   });
 
-  void import("@/lib/email/notify").then(({ emailWalletFunded }) =>
-    emailWalletFunded({
+  try {
+    const { emailWalletFunded } = await import("@/lib/email/notify");
+    await emailWalletFunded({
       userId: va.userId,
       amount,
       orderRef,
       balance,
       method: "Monnify",
-    })
-  );
+    });
+  } catch (e) {
+    console.error("[webhooks/monnify] email", e);
+  }
 
   return NextResponse.json({ ok: true, orderRef });
 }

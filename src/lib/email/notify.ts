@@ -14,8 +14,8 @@ import {
 } from "@/lib/email/templates/purchase";
 
 /**
- * Fire-and-forget branded emails. Never throws to callers.
- * Skips users without email or when Brevo is not configured.
+ * Branded transactional emails via Brevo.
+ * Safe to await — never throws. Skips if no email / Brevo not configured.
  */
 
 async function userEmail(userId: string) {
@@ -31,11 +31,17 @@ export async function emailWalletFunded(opts: {
   orderRef: string;
   balance?: number;
   method?: string;
-}): Promise<void> {
+}): Promise<{ sent: boolean; reason?: string }> {
   try {
-    if (!isBrevoConfigured()) return;
+    if (!isBrevoConfigured()) {
+      console.warn("[email/notify] fund skipped: Brevo not configured");
+      return { sent: false, reason: "brevo_not_configured" };
+    }
     const user = await userEmail(opts.userId);
-    if (!user?.email) return;
+    if (!user?.email) {
+      console.warn("[email/notify] fund skipped: user has no email", opts.userId);
+      return { sent: false, reason: "no_email" };
+    }
 
     const firstName = user.name?.split(" ")[0];
     const payload = {
@@ -55,12 +61,22 @@ export async function emailWalletFunded(opts: {
 
     if (!result.ok) {
       console.error("[email/notify] fund failed", result.error);
+      return { sent: false, reason: result.error };
     }
+    console.info("[email/notify] fund sent", {
+      to: user.email,
+      orderRef: opts.orderRef,
+    });
+    return { sent: true };
   } catch (error) {
     console.error(
       "[email/notify] fund error",
       error instanceof Error ? error.message : error
     );
+    return {
+      sent: false,
+      reason: error instanceof Error ? error.message : "error",
+    };
   }
 }
 
@@ -74,11 +90,20 @@ export async function emailPurchaseDelivered(opts: {
   networkCode?: string | null;
   token?: string | null;
   customerName?: string | null;
-}): Promise<void> {
+}): Promise<{ sent: boolean; reason?: string }> {
   try {
-    if (!isBrevoConfigured()) return;
+    if (!isBrevoConfigured()) {
+      console.warn("[email/notify] purchase skipped: Brevo not configured");
+      return { sent: false, reason: "brevo_not_configured" };
+    }
     const user = await userEmail(opts.userId);
-    if (!user?.email) return;
+    if (!user?.email) {
+      console.warn(
+        "[email/notify] purchase skipped: user has no email",
+        opts.userId
+      );
+      return { sent: false, reason: "no_email" };
+    }
 
     const firstName = user.name?.split(" ")[0];
     const payload = {
@@ -102,11 +127,21 @@ export async function emailPurchaseDelivered(opts: {
 
     if (!result.ok) {
       console.error("[email/notify] purchase failed", result.error);
+      return { sent: false, reason: result.error };
     }
+    console.info("[email/notify] purchase sent", {
+      to: user.email,
+      orderRef: opts.orderRef,
+    });
+    return { sent: true };
   } catch (error) {
     console.error(
       "[email/notify] purchase error",
       error instanceof Error ? error.message : error
     );
+    return {
+      sent: false,
+      reason: error instanceof Error ? error.message : "error",
+    };
   }
 }
