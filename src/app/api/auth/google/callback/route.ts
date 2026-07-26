@@ -1,5 +1,5 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getIronSession } from "iron-session";
 import { prisma } from "@/lib/db";
 import {
   GOOGLE_OAUTH_COOKIE_PATH,
@@ -11,11 +11,21 @@ import {
   secureStringEqual,
   verifyGoogleIdToken,
 } from "@/lib/auth/google";
-import { requestOtp } from "@/lib/auth/otp";
-import { getSession } from "@/lib/auth/session";
+import {
+  email2faLoginPath,
+  startEmail2faChallenge,
+} from "@/lib/auth/login-2fa";
+import {
+  sessionOptions,
+  type SessionData,
+} from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
+/**
+ * Google OAuth callback.
+ * Uses getIronSession(request, response) so pendingLogin2fa cookies stick on redirects.
+ */
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const config = getGoogleConfig(request.url);
@@ -35,11 +45,14 @@ export async function GET(request: Request) {
 
   const code = requestUrl.searchParams.get("code");
   const returnedState = requestUrl.searchParams.get("state");
-  const cookieStore = await cookies();
-  const expectedState = cookieStore.get(GOOGLE_OAUTH_COOKIES.state)?.value;
-  const nonce = cookieStore.get(GOOGLE_OAUTH_COOKIES.nonce)?.value;
-  const codeVerifier = cookieStore.get(GOOGLE_OAUTH_COOKIES.verifier)?.value;
-  const referral = cookieStore.get(GOOGLE_OAUTH_COOKIES.referral)?.value;
+
+  // Read OAuth cookies from the incoming request
+  const cookieHeader = request.headers.get("cookie") || "";
+  const cookieMap = parseCookieHeader(cookieHeader);
+  const expectedState = cookieMap.get(GOOGLE_OAUTH_COOKIES.state);
+  const nonce = cookieMap.get(GOOGLE_OAUTH_COOKIES.nonce);
+  const codeVerifier = cookieMap.get(GOOGLE_OAUTH_COOKIES.verifier);
+  const referral = cookieMap.get(GOOGLE_OAUTH_COOKIES.referral);
 
   if (
     !code ||
@@ -50,11 +63,12 @@ export async function GET(request: Request) {
     !secureStringEqual(returnedState, expectedState)
   ) {
     const hasCookies = Boolean(expectedState && nonce && codeVerifier);
-    const reason: GoogleLoginReason = !code || !returnedState
-      ? "invalid"
-      : !hasCookies
-        ? "expired"
-        : "mismatch";
+    const reason: GoogleLoginReason =
+      !code || !returnedState
+        ? "invalid"
+        : !hasCookies
+          ? "expired"
+          : "mismatch";
     console.warn("[auth/google/callback] request not verifiable", { reason });
     return loginRedirect(request, reason);
   }
@@ -71,8 +85,6 @@ export async function GET(request: Request) {
       nonce,
     });
 
-    // Returning users: googleSub first, then verified Google email (case-insensitive).
-    // Email match logs them in without asking for phone again.
     const bySub = await prisma.user.findUnique({
       where: { googleSub: identity.sub },
     });
@@ -87,20 +99,26 @@ export async function GET(request: Request) {
     if (byEmail) {
       if (!byEmail.isActive) return loginRedirect(request, "suspended");
 
-      // Email already tied to a different Google subject — do not hijack.
       if (byEmail.googleSub && byEmail.googleSub !== identity.sub) {
-        console.warn("[auth/google/callback] email owned by different googleSub");
+        console.warn(
+          "[auth/google/callback] email owned by different googleSub"
+        );
         return loginRedirect(request, "unavailable");
       }
 
-      const dest = await establishSession(byEmail, identity);
-      return clearOAuthCookies(
-        NextResponse.redirect(new URL(dest, request.url), 303)
-      );
+      return await finishReturningGoogleUser(request, byEmail, identity);
     }
 
-    // Brand-new Google identity: collect + verify Nigerian line once.
-    const session = await getSession();
+    // Brand-new Google identity → phone link
+    const response = NextResponse.redirect(
+      new URL("/login?google=phone", request.url),
+      303
+    );
+    const session = await getIronSession<SessionData>(
+      request,
+      response,
+      sessionOptions
+    );
     session.pendingGoogle = {
       sub: identity.sub,
       email: identity.email,
@@ -109,11 +127,11 @@ export async function GET(request: Request) {
       referral,
       expiresAt: Date.now() + 20 * 60 * 1000,
     };
+    session.isLoggedIn = false;
+    delete session.userId;
+    delete session.pendingLogin2fa;
     await session.save();
-
-    return clearOAuthCookies(
-      NextResponse.redirect(new URL("/login?google=phone", request.url), 303)
-    );
+    return clearOAuthCookies(response);
   } catch (error) {
     console.error(
       "[auth/google/callback]",
@@ -123,7 +141,8 @@ export async function GET(request: Request) {
   }
 }
 
-async function establishSession(
+async function finishReturningGoogleUser(
+  request: Request,
   user: {
     id: string;
     phone: string;
@@ -133,10 +152,11 @@ async function establishSession(
     googleSub: string | null;
     email: string | null;
     totpEnabled: boolean;
+    isActive: boolean;
   },
   identity: GoogleIdentity
-): Promise<string> {
-  const email = user.email || identity.email;
+) {
+  const email = (user.email || identity.email).trim().toLowerCase();
 
   await prisma.user.update({
     where: { id: user.id },
@@ -145,38 +165,66 @@ async function establishSession(
       googleAvatar: identity.picture || user.googleAvatar,
       name: user.name || identity.name || null,
       email,
-      // lastLoginAt set after full 2FA when enabled
-      ...(!user.totpEnabled || !email
-        ? { lastLoginAt: new Date() }
-        : {}),
+      ...(!user.totpEnabled || !email ? { lastLoginAt: new Date() } : {}),
     },
   });
 
-  const session = await getSession();
-  delete session.adminUsername;
-  delete session.pendingGoogle;
-
-  // Email 2FA after Google (same as PIN login)
+  // --- Email 2FA required ---
   if (user.totpEnabled && email) {
-    const otp = await requestOtp({
-      email,
-      channels: "email",
-      firstName:
-        user.name?.split(" ")[0] ||
-        identity.name?.split(" ")[0] ||
-        "Customer",
-      skipCooldown: true,
-    });
-    if (!otp.ok) {
-      console.error("[auth/google/callback] 2FA email failed", otp.error);
-      return `/login?google=unavailable&detail=${encodeURIComponent(otp.error.slice(0, 120))}`;
+    // Build response first so iron-session can attach Set-Cookie to it
+    const provisional = NextResponse.redirect(
+      new URL("/login?google=2fa", request.url),
+      303
+    );
+    const session = await getIronSession<SessionData>(
+      request,
+      provisional,
+      sessionOptions
+    );
+
+    const challenge = await startEmail2faChallenge(
+      session,
+      {
+        id: user.id,
+        phone: user.phone,
+        email,
+        name: user.name || identity.name || null,
+        role: user.role,
+        totpEnabled: true,
+      },
+      {
+        emailOverride: email,
+        firstName:
+          user.name?.split(" ")[0] ||
+          identity.name?.split(" ")[0] ||
+          "Customer",
+      }
+    );
+
+    if (!challenge.ok) {
+      console.error("[auth/google/callback] 2FA start failed", challenge.error);
+      return loginRedirect(request, "unavailable");
     }
 
-    session.isLoggedIn = false;
-    delete session.userId;
-    delete session.phone;
-    delete session.role;
-    session.pendingLogin2fa = {
+    const path = email2faLoginPath({
+      emailHint: challenge.emailHint,
+      devHint: challenge.devHint,
+      source: "google",
+    });
+    // Rebuild redirect with full query; re-apply session on the final response
+    const response = NextResponse.redirect(new URL(path, request.url), 303);
+    const session2 = await getIronSession<SessionData>(
+      request,
+      response,
+      sessionOptions
+    );
+    session2.isLoggedIn = false;
+    delete session2.userId;
+    delete session2.phone;
+    delete session2.role;
+    delete session2.adminUsername;
+    delete session2.pendingGoogle;
+    session2.pendingLogin2fa = {
       userId: user.id,
       phone: user.phone,
       email,
@@ -184,28 +232,34 @@ async function establishSession(
       role: user.role,
       expiresAt: Date.now() + 10 * 60 * 1000,
     };
-    await session.save();
+    await session2.save();
 
-    const [localPart, domain] = email.split("@");
-    const hint =
-      localPart.length <= 2
-        ? `*@${domain}`
-        : `${localPart[0]}***@${domain}`;
-    const qs = new URLSearchParams({
-      google: "2fa",
-      emailHint: hint,
+    console.info("[auth/google/callback] 2FA redirect", {
+      userId: user.id,
+      emailHint: challenge.emailHint,
     });
-    if (otp.devHint) qs.set("devHint", otp.devHint);
-    return `/login?${qs.toString()}`;
+    return clearOAuthCookies(response);
   }
 
-  delete session.pendingLogin2fa;
+  // Full login (no 2FA)
+  const response = NextResponse.redirect(
+    new URL("/dashboard", request.url),
+    303
+  );
+  const session = await getIronSession<SessionData>(
+    request,
+    response,
+    sessionOptions
+  );
   session.userId = user.id;
   session.phone = user.phone;
   session.role = user.role;
   session.isLoggedIn = true;
+  delete session.adminUsername;
+  delete session.pendingGoogle;
+  delete session.pendingLogin2fa;
   await session.save();
-  return "/dashboard";
+  return clearOAuthCookies(response);
 }
 
 function loginRedirect(request: Request, reason: GoogleLoginReason) {
@@ -229,4 +283,16 @@ function clearOAuthCookies(response: NextResponse) {
   }
   response.headers.set("Cache-Control", "no-store");
   return response;
+}
+
+function parseCookieHeader(header: string): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const part of header.split(";")) {
+    const idx = part.indexOf("=");
+    if (idx === -1) continue;
+    const key = part.slice(0, idx).trim();
+    const value = part.slice(idx + 1).trim();
+    if (key) map.set(key, decodeURIComponent(value));
+  }
+  return map;
 }

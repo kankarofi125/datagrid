@@ -55,11 +55,12 @@ function LoginForm() {
   const [cooldown, setCooldown] = useState(0);
   const [pending, start] = useTransition();
 
-  // Google sign-in with email 2FA redirects here with a pending session.
+  // Google (or shared) 2FA redirect → show email code step immediately.
   useEffect(() => {
-    if (googleState === "2fa") {
+    if (googleState === "2fa" || params.get("login") === "2fa") {
       setStep("login-2fa");
       setCode("");
+      setError(null);
       const hint = params.get("emailHint");
       const hintDev = params.get("devHint");
       if (hint) setEmailHint(hint);
