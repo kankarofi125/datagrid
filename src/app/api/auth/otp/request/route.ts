@@ -125,12 +125,10 @@ export async function POST(req: Request) {
       }
     }
 
-    // Only trusted server contexts may skip resend cooldown.
+    // Only trusted *server session* state may skip cooldown — never client flags alone.
     const allowSkipCooldown =
       body.skipCooldown === true &&
-      (Boolean(pending2faLive) ||
-        Boolean(pendingGoogleLive) ||
-        body.googleLink === true);
+      (Boolean(pending2faLive) || Boolean(pendingGoogleLive));
 
     const channels =
       typeof body.channels === "string" && body.channels.trim()

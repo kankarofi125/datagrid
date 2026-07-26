@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid security purpose" }, { status: 400 });
   }
   if (!/^\d{4,8}$/.test(code)) {
-    return NextResponse.json({ error: "Enter the 4-digit code" }, { status: 400 });
+    return NextResponse.json({ error: "Enter the 6-digit code" }, { status: 400 });
   }
 
   const pending = getPendingSecurity(session, purpose);

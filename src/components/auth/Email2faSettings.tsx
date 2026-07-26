@@ -3,11 +3,12 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { DigitField } from "@/components/ui/DigitField";
 import { cn } from "@/lib/cn";
 
 /**
  * Login email 2FA (stored as User.totpEnabled).
- * When on, every sign-in requires a branded email code after PIN/Google.
+ * Disabling requires transaction PIN step-up.
  */
 export function Email2faSettings({
   enabled: initial,
@@ -22,6 +23,8 @@ export function Email2faSettings({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [confirmOff, setConfirmOff] = useState(false);
+  const [pin, setPin] = useState("");
 
   useEffect(() => {
     setEnabled(initial);
@@ -30,12 +33,11 @@ export function Email2faSettings({
 
   const hasEmail = Boolean(email?.includes("@"));
 
-  function set2fa(next: boolean) {
+  function set2fa(next: boolean, pinOverride?: string) {
     start(async () => {
       setError(null);
       setMessage(null);
 
-      // Re-check email from server — settings cache can lag behind a just-saved email.
       if (next) {
         const check = await fetch("/api/auth/2fa", { method: "GET" })
           .then((r) => r.json())
@@ -52,15 +54,21 @@ export function Email2faSettings({
       const res = await fetch("/api/auth/2fa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: next }),
+        body: JSON.stringify({
+          enabled: next,
+          ...(next ? {} : { pin: pinOverride || pin }),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error || "Could not update 2FA.");
+        if (data.code === "PIN_REQUIRED") setConfirmOff(true);
         return;
       }
       setEnabled(Boolean(data.enabled));
       if (data.email) setEmail(data.email);
+      setConfirmOff(false);
+      setPin("");
       setMessage(
         data.enabled
           ? "Email 2FA is on. You’ll get a code by email each time you sign in."
@@ -90,7 +98,14 @@ export function Email2faSettings({
           role="switch"
           aria-checked={enabled}
           disabled={pending || (!hasEmail && !enabled)}
-          onClick={() => set2fa(!enabled)}
+          onClick={() => {
+            if (enabled) {
+              setConfirmOff(true);
+              setError(null);
+            } else {
+              set2fa(true);
+            }
+          }}
           className={cn(
             "relative h-8 w-14 shrink-0 rounded-full transition pressable",
             enabled ? "bg-green" : "bg-ink/15",
@@ -105,10 +120,49 @@ export function Email2faSettings({
           />
         </button>
       </div>
+
+      {confirmOff && enabled && (
+        <div className="space-y-2 rounded-xl border border-line bg-paper/60 p-3">
+          <p className="text-xs text-ink/60">
+            Enter your 4-digit transaction PIN to turn off email 2FA.
+          </p>
+          <DigitField
+            label="PIN"
+            length={4}
+            value={pin}
+            onChange={setPin}
+            masked
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={pending || pin.length < 4}
+              onClick={() => set2fa(false, pin)}
+            >
+              {pending ? "Working…" : "Confirm turn off"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => {
+                setConfirmOff(false);
+                setPin("");
+                setError(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       {!hasEmail && (
         <p className="text-xs text-amber">
           Verify an email under Personal details (code to inbox), then enable 2FA.
-          If you just saved one, wait a moment or refresh.
         </p>
       )}
       {error && (
@@ -120,17 +174,6 @@ export function Email2faSettings({
         <p className="text-sm text-green" role="status">
           {message}
         </p>
-      )}
-      {enabled && hasEmail && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={pending}
-          onClick={() => set2fa(false)}
-        >
-          Turn off email 2FA
-        </Button>
       )}
     </div>
   );

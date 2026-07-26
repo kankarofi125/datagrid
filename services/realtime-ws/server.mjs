@@ -132,8 +132,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && url.pathname === "/publish") {
-    const hdr = req.headers["x-realtime-secret"] || "";
-    if (SECRET && hdr !== SECRET) {
+    const hdr = String(req.headers["x-realtime-secret"] || "");
+    // Fail closed: require non-empty secret in all environments that publish.
+    if (!SECRET || hdr !== SECRET) {
       res.writeHead(401, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Unauthorized" }));
       return;
@@ -169,9 +170,39 @@ const server = http.createServer(async (req, res) => {
 
 const wss = new WebSocketServer({ server, path: "/" });
 
+/**
+ * Channel rules:
+ * - public:grid — open
+ * - user:* / admin:* — require ?token= REALTIME_WS_SECRET (shared service secret)
+ *   App should pass the same secret only via server-side ticket in future;
+ *   for now gate private rooms behind the publish secret so random internet
+ *   clients cannot subscribe without knowing SECRET.
+ */
+function authorizeChannel(channel, token) {
+  if (!channel || channel === "public:grid") return true;
+  if (channel.startsWith("public:")) return true;
+  // Private channels require the service secret as token
+  if (!SECRET) return false;
+  return token === SECRET;
+}
+
 wss.on("connection", (ws, req) => {
   const url = new URL(req.url || "/", `http://${req.headers.host}`);
   const channel = url.searchParams.get("channel") || "public:grid";
+  const token =
+    url.searchParams.get("token") ||
+    String(req.headers["x-realtime-secret"] || "");
+
+  if (!authorizeChannel(channel, token)) {
+    ws.send(
+      JSON.stringify({
+        type: "error",
+        data: { message: "Unauthorized channel" },
+      })
+    );
+    ws.close(4401, "Unauthorized");
+    return;
+  }
 
   join(channel, ws);
   ws.send(
@@ -193,12 +224,23 @@ wss.on("connection", (ws, req) => {
         ws.send(JSON.stringify({ type: "pong", data: { t: Date.now() } }));
       }
       if (msg.type === "subscribe" && msg.channel) {
+        const next = String(msg.channel);
+        const tok = String(msg.token || token || "");
+        if (!authorizeChannel(next, tok)) {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              data: { message: "Unauthorized channel" },
+            })
+          );
+          return;
+        }
         leave(ws);
-        join(String(msg.channel), ws);
+        join(next, ws);
         ws.send(
           JSON.stringify({
             type: "ready",
-            data: { channel: msg.channel, switched: true },
+            data: { channel: next, switched: true },
           })
         );
       }

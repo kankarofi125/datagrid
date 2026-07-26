@@ -21,6 +21,9 @@ function step(status: string, note?: string): TrailStep {
 async function assertUserPin(userId: string, pin: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return { ok: false as const, error: "User not found", status: 404 };
+  if (!user.isActive) {
+    return { ok: false as const, error: "Account suspended", status: 403 };
+  }
   if (!user.pinHash) {
     return {
       ok: false as const,
@@ -29,9 +32,33 @@ async function assertUserPin(userId: string, pin: string) {
       code: "PIN_REQUIRED",
     };
   }
-  if (!(await verifyPin(pin, user.pinHash))) {
-    return { ok: false as const, error: "Incorrect transaction PIN", status: 401 };
+  const {
+    clearLoginFailures,
+    getLoginLockStatus,
+    recordLoginFailure,
+  } = await import("@/lib/auth/login-lockout");
+  const pinLockKey = `tx:${userId}`;
+  const lock = await getLoginLockStatus("tx-pin", pinLockKey);
+  if (lock.locked) {
+    return {
+      ok: false as const,
+      error: `Too many incorrect PINs. Try again in ${lock.retryAfterSec}s.`,
+      status: 429,
+      code: "PIN_LOCKED",
+    };
   }
+  if (!(await verifyPin(pin, user.pinHash))) {
+    const fail = await recordLoginFailure("tx-pin", pinLockKey);
+    return {
+      ok: false as const,
+      error: fail.locked
+        ? `Too many incorrect PINs. Try again in ${fail.retryAfterSec}s.`
+        : "Incorrect transaction PIN",
+      status: fail.locked ? 429 : 401,
+      code: fail.locked ? "PIN_LOCKED" : "PIN_INVALID",
+    };
+  }
+  await clearLoginFailures("tx-pin", pinLockKey);
   return { ok: true as const, user };
 }
 

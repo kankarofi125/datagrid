@@ -4,16 +4,37 @@ import {
   type SessionOptions,
 } from "iron-session";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/db";
 
 /** Idle timeout: log out after this much inactivity (sliding window). */
 export const SESSION_IDLE_MS = 10 * 60 * 1000;
 export const SESSION_IDLE_SEC = 10 * 60;
 
+function resolveSessionPassword(): string {
+  const secret = process.env.SESSION_SECRET?.trim();
+  if (process.env.NODE_ENV === "production") {
+    if (!secret || secret.length < 32) {
+      throw new Error(
+        "SESSION_SECRET must be set to a random string of at least 32 characters in production"
+      );
+    }
+    if (secret.includes("change-in-prod") || secret.includes("datagrid-dev")) {
+      throw new Error(
+        "SESSION_SECRET must not use the development default in production"
+      );
+    }
+    return secret;
+  }
+  return (
+    secret ||
+    "datagrid-dev-session-secret-change-in-prod-32b"
+  );
+}
+
 export type SessionData = {
   userId?: string;
   phone?: string;
   role?: string;
-  /** Short-lived, server-verified Google identity awaiting phone OTP linking. */
   pendingGoogle?: {
     sub: string;
     email: string;
@@ -22,11 +43,7 @@ export type SessionData = {
     referral?: string;
     expiresAt: number;
   };
-  /** Present when logged in via /auth/admin (username/password) */
   adminUsername?: string;
-  /**
-   * After correct PIN/Google, before email 2FA (or phone OTP fallback) finishes.
-   */
   pendingLogin2fa?: {
     userId: string;
     phone: string;
@@ -45,24 +62,17 @@ export type SessionData = {
     expiresAt: number;
   };
   needsPinSetup?: boolean;
-  /**
-   * Last user activity timestamp (ms). Used for 10‑minute idle logout.
-   * Updated in Route Handlers / Server Actions only (not RSC layouts).
-   */
   lastActivityAt?: number;
   isLoggedIn: boolean;
 };
 
 export const sessionOptions: SessionOptions = {
-  password:
-    process.env.SESSION_SECRET ||
-    "datagrid-dev-session-secret-change-in-prod-32b",
+  password: resolveSessionPassword(),
   cookieName: "datagrid_session",
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,
     sameSite: "lax",
-    // Cookie lifetime matches idle window; refreshed when session is saved in APIs.
     maxAge: SESSION_IDLE_SEC,
   },
 };
@@ -72,11 +82,6 @@ export async function getSession() {
   return getIronSession<SessionData>(cookieStore, sessionOptions);
 }
 
-/**
- * True when a logged-in session is past the idle window.
- * Missing lastActivityAt: not treated as idle (legacy / first paint after login)
- * — cookie maxAge still enforces absolute expiry.
- */
 export function isLoggedInIdle(
   session: Pick<SessionData, "isLoggedIn" | "lastActivityAt">
 ): boolean {
@@ -86,7 +91,6 @@ export function isLoggedInIdle(
   return Date.now() - last > SESSION_IDLE_MS;
 }
 
-/** Clear full login fields. Call only from Route Handlers / Server Actions. */
 export async function clearLoggedInSession(
   session: IronSession<SessionData>
 ) {
@@ -102,10 +106,6 @@ export async function clearLoggedInSession(
   await session.save();
 }
 
-/**
- * Mark activity and refresh cookie maxAge.
- * Call only from Route Handlers / Server Actions — never from RSC layouts.
- */
 export async function touchSessionActivity(
   session: IronSession<SessionData>
 ) {
@@ -114,30 +114,70 @@ export async function touchSessionActivity(
   await session.save();
 }
 
+export type RequireUserOpts = {
+  /** Allow session while user still must set a PIN (PIN setup APIs only). */
+  allowWithoutPin?: boolean;
+};
+
 /**
- * Require an active (non-idle) logged-in user.
- * Updates lastActivityAt on success (sliding expiry). Safe in API routes.
+ * Require active logged-in user. Re-checks isActive from DB.
+ * Enforces PIN setup unless allowWithoutPin.
  */
-export async function requireUser() {
+export async function requireUser(opts: RequireUserOpts = {}) {
   const session = await getSession();
   if (!session.isLoggedIn || !session.userId) return null;
   if (isLoggedInIdle(session)) {
     await clearLoggedInSession(session);
     return null;
   }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: {
+      id: true,
+      isActive: true,
+      pinHash: true,
+      role: true,
+      phone: true,
+    },
+  });
+
+  if (!user || !user.isActive) {
+    await clearLoggedInSession(session);
+    return null;
+  }
+
+  // Keep session role in sync with DB (no extra save unless changed later).
+  if (session.role !== user.role) {
+    session.role = user.role;
+  }
+  if (session.phone !== user.phone) {
+    session.phone = user.phone;
+  }
+
+  const needsPin = !user.pinHash || Boolean(session.needsPinSetup);
+  if (needsPin && !opts.allowWithoutPin) {
+    session.needsPinSetup = true;
+    await session.save();
+    return null;
+  }
+
+  if (!needsPin && session.needsPinSetup) {
+    delete session.needsPinSetup;
+  }
+
   await touchSessionActivity(session);
   return session;
 }
 
 export async function requireAdmin() {
-  const session = await requireUser();
+  const session = await requireUser({ allowWithoutPin: true });
   if (!session) return null;
   if (!session.adminUsername) return null;
   if (session.role !== "ADMIN" && session.role !== "SUPER_ADMIN") return null;
   return session;
 }
 
-/** Call when establishing a full login (Route Handlers only). */
 export function markSessionLogin(
   session: IronSession<SessionData>,
   data: {
@@ -157,4 +197,20 @@ export function markSessionLogin(
   else delete session.adminUsername;
   if (data.needsPinSetup) session.needsPinSetup = true;
   else delete session.needsPinSetup;
+}
+
+/** Safe relative redirect path only (blocks //evil.com open redirects). */
+export function safeInternalPath(
+  raw: string | null | undefined,
+  fallback: string
+): string {
+  if (!raw || typeof raw !== "string") return fallback;
+  const path = raw.trim();
+  if (!path.startsWith("/") || path.startsWith("//") || path.startsWith("/\\")) {
+    return fallback;
+  }
+  if (path.includes("://") || path.includes("\\")) return fallback;
+  // Disallow control characters
+  if (/[\u0000-\u001f\u007f]/.test(path)) return fallback;
+  return path;
 }

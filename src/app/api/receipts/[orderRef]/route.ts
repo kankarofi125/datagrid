@@ -12,17 +12,16 @@ export async function GET(
   const tx = await prisma.transaction.findUnique({ where: { orderRef } });
   if (!tx) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Allow owner, admin, or guest order lookup by exact ref
-  const isAdmin = session.role === "ADMIN" || session.role === "SUPER_ADMIN";
-  const isOwner = session.userId && tx.userId === session.userId;
-  if (!isAdmin && !isOwner && !tx.isGuest) {
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    // logged in but not owner
-    if (tx.userId && tx.userId !== session.userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+  // Auth required: owner or staff only (guest public lookup removed).
+  if (!session.isLoggedIn || !session.userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const isStaff =
+    Boolean(session.adminUsername) &&
+    (session.role === "ADMIN" || session.role === "SUPER_ADMIN");
+  const isOwner = tx.userId === session.userId;
+  if (!isStaff && !isOwner) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   let meta: { planName?: string } | null = null;

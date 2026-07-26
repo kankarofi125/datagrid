@@ -28,7 +28,7 @@ export async function GET(req: Request) {
           sizeMb: p.sizeMb,
           validityDays: p.validityDays,
           retailPrice: Number(p.retailPrice),
-          resellerPrice: Number(p.resellerPrice),
+          // resellerPrice omitted from public catalog (margin protection)
           networkCode: p.network.code,
           networkName: p.network.name,
           networkColor: p.network.color,

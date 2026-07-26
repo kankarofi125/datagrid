@@ -11,7 +11,7 @@ import { privateJson } from "@/lib/http-cache";
 
 /** GET — whether user has PIN set */
 export async function GET() {
-  const session = await requireUser();
+  const session = await requireUser({ allowWithoutPin: true });
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -32,7 +32,7 @@ export async function GET() {
  *   when changing an existing PIN.
  */
 export async function POST(req: Request) {
-  const session = await requireUser();
+  const session = await requireUser({ allowWithoutPin: true });
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

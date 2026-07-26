@@ -121,7 +121,7 @@ export function SecurityOtpStep({
 
       <DigitField
         label="Verification code"
-        length={4}
+        length={6}
         value={code}
         onChange={setCode}
         autoFocus
@@ -139,7 +139,7 @@ export function SecurityOtpStep({
         <Button
           type="button"
           fullWidth
-          disabled={pending || code.length < 4 || expired}
+          disabled={pending || code.length < 6 || expired}
           onClick={submit}
         >
           {pending ? "Checking…" : expired ? "Code expired" : "Verify code"}

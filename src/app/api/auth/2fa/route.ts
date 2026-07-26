@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { verifyPin } from "@/lib/auth/pin";
 import { CacheKeys, invalidate } from "@/lib/cache";
 
 /**
  * Toggle email login 2FA (User.totpEnabled).
- * Requires a verified email on the profile.
+ * Enabling requires a verified email.
+ * Disabling requires transaction PIN step-up (stolen session protection).
  */
 export async function POST(req: Request) {
   const session = await requireUser();
@@ -18,7 +20,12 @@ export async function POST(req: Request) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, email: true, totpEnabled: true },
+    select: {
+      id: true,
+      email: true,
+      totpEnabled: true,
+      pinHash: true,
+    },
   });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -32,6 +39,20 @@ export async function POST(req: Request) {
       },
       { status: 400 }
     );
+  }
+
+  // Step-up: disabling 2FA requires correct PIN
+  if (!enabled && user.totpEnabled) {
+    const pin = String(body.pin || "");
+    if (!user.pinHash || !(await verifyPin(pin, user.pinHash))) {
+      return NextResponse.json(
+        {
+          error: "Enter your transaction PIN to turn off email 2FA.",
+          code: "PIN_REQUIRED",
+        },
+        { status: 401 }
+      );
+    }
   }
 
   const updated = await prisma.user.update({
@@ -53,7 +74,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  const session = await requireUser();
+  const session = await requireUser({ allowWithoutPin: true });
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

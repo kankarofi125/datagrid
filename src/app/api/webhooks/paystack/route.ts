@@ -11,49 +11,90 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  const event = JSON.parse(raw);
+  let event: {
+    event?: string;
+    data?: {
+      reference?: string;
+      amount?: number;
+      metadata?: { userId?: string };
+    };
+  };
+  try {
+    event = JSON.parse(raw);
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
   if (event.event !== "charge.success") {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
-  const data = event.data;
-  const reference = String(data.reference || "");
+  const data = event.data || {};
+  const reference = String(data.reference || "").trim();
   const amountNaira = Number(data.amount || 0) / 100;
   const userId = data.metadata?.userId as string | undefined;
 
-  if (!reference || !userId || !amountNaira) {
+  if (!reference || !userId || !amountNaira || amountNaira <= 0) {
     return NextResponse.json({ error: "Malformed event" }, { status: 400 });
   }
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, isActive: true },
+  });
+  if (!user?.isActive) {
+    return NextResponse.json({ error: "User not fundable" }, { status: 400 });
+  }
+
   const existing = await prisma.transaction.findFirst({
-    where: { fundingRef: reference, service: "WALLET_FUND" },
+    where: { fundingRef: reference, fundingProvider: "PAYSTACK" },
   });
   if (existing?.status === "DELIVERED") {
     return NextResponse.json({ ok: true, duplicate: true });
   }
 
+  // Prefer amount on existing pending row if present
+  const creditAmount = existing
+    ? Number(existing.amount)
+    : amountNaira;
+
   const orderRef = existing?.orderRef || makeOrderRef();
-  const tx =
-    existing ||
-    (await prisma.transaction.create({
-      data: {
-        userId,
-        service: "WALLET_FUND",
-        status: "PROCESSING",
-        amount: amountNaira,
-        idempotencyKey: makeIdempotencyKey("psk_wh"),
-        orderRef,
-        fundingProvider: "PAYSTACK",
-        fundingRef: reference,
-        statusTrail: JSON.stringify([
-          { at: new Date().toISOString(), status: "PROCESSING", note: "Webhook" },
-        ]),
-      },
-    }));
+  let tx = existing;
+  if (!tx) {
+    try {
+      tx = await prisma.transaction.create({
+        data: {
+          userId,
+          service: "WALLET_FUND",
+          status: "PROCESSING",
+          amount: creditAmount,
+          idempotencyKey: makeIdempotencyKey("psk_wh"),
+          orderRef,
+          fundingProvider: "PAYSTACK",
+          fundingRef: reference,
+          statusTrail: JSON.stringify([
+            {
+              at: new Date().toISOString(),
+              status: "PROCESSING",
+              note: "Webhook",
+            },
+          ]),
+        },
+      });
+    } catch {
+      const again = await prisma.transaction.findFirst({
+        where: { fundingRef: reference, fundingProvider: "PAYSTACK" },
+      });
+      if (again?.status === "DELIVERED") {
+        return NextResponse.json({ ok: true, duplicate: true });
+      }
+      return NextResponse.json({ error: "Could not create tx" }, { status: 500 });
+    }
+  }
 
   const balance = await creditWallet({
     userId,
-    amount: amountNaira,
+    amount: creditAmount,
     transactionId: tx.id,
     memo: "Paystack webhook",
   });
@@ -64,7 +105,11 @@ export async function POST(req: Request) {
       status: "DELIVERED",
       deliveredAt: new Date(),
       statusTrail: JSON.stringify([
-        { at: new Date().toISOString(), status: "DELIVERED", note: reference },
+        {
+          at: new Date().toISOString(),
+          status: "DELIVERED",
+          note: reference,
+        },
       ]),
     },
   });
@@ -73,7 +118,7 @@ export async function POST(req: Request) {
     const { emailWalletFunded } = await import("@/lib/email/notify");
     await emailWalletFunded({
       userId,
-      amount: amountNaira,
+      amount: creditAmount,
       orderRef,
       balance,
       method: "Paystack",

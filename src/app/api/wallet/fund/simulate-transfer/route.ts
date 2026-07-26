@@ -1,19 +1,30 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { makeIdempotencyKey, makeOrderRef } from "@/lib/order-ref";
 import { creditWallet } from "@/lib/wallet/service";
 import { maybeSignupBonus } from "@/lib/commissions";
 import { CacheTags, invalidate } from "@/lib/cache";
 
-/** Dev-only: simulate Monnify bank transfer webhook credit */
+/**
+ * Simulate Monnify bank transfer credit for the logged-in user.
+ * Allowed when PAYMENT_MODE=simulate (including Vercel until live payments).
+ * Not available when payments are live.
+ */
 export async function POST(req: Request) {
-  if (process.env.PAYMENT_MODE !== "simulate" && process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "Not available" }, { status: 403 });
+  const { isPaymentSimulateMode } = await import("@/lib/payments/simulator");
+  if (!isPaymentSimulateMode()) {
+    return NextResponse.json(
+      {
+        error:
+          "Simulated transfers are only available when PAYMENT_MODE=simulate",
+      },
+      { status: 403 }
+    );
   }
 
-  const session = await getSession();
-  if (!session.isLoggedIn || !session.userId) {
+  const { requireUser } = await import("@/lib/auth/session");
+  const session = await requireUser();
+  if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

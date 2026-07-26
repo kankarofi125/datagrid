@@ -2,36 +2,79 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { creditWallet } from "@/lib/wallet/service";
 import { makeIdempotencyKey, makeOrderRef } from "@/lib/order-ref";
+import { verifyMonnifyWebhook } from "@/lib/payments/monnify";
 
 /**
  * Monnify payment notification webhook.
- * In simulate mode, use /api/wallet/fund/simulate-transfer instead.
- * Production: verify signature with MONNIFY_SECRET_KEY before trusting body.
+ * Requires signature verification. Requires unique paymentReference.
  */
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
-  const eventType = body.eventType || body.eventData?.eventType;
+  const raw = await req.text();
+  let body: Record<string, unknown> = {};
+  try {
+    body = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-  if (eventType && !String(eventType).includes("SUCCESSFUL")) {
+  const signatureHeader =
+    req.headers.get("monnify-signature") ||
+    req.headers.get("x-monnify-signature") ||
+    null;
+  const eventData = (body.eventData || body) as Record<string, unknown>;
+  const computeHash =
+    (typeof body.computeHash === "string" && body.computeHash) ||
+    (typeof eventData.transactionHash === "string" &&
+      eventData.transactionHash) ||
+    null;
+
+  if (
+    !verifyMonnifyWebhook({
+      rawBody: raw,
+      signatureHeader,
+      computeHash,
+    })
+  ) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  const eventType = String(
+    body.eventType || eventData.eventType || ""
+  );
+  if (eventType && !eventType.toUpperCase().includes("SUCCESSFUL")) {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
-  const eventData = body.eventData || body;
   const accountNumber = String(
     eventData.destinationAccountNumber || eventData.accountNumber || ""
   );
   const amount = Number(eventData.amountPaid || eventData.amount || 0);
-  const paymentRef = String(eventData.paymentReference || eventData.transactionReference || "");
+  const paymentRef = String(
+    eventData.paymentReference || eventData.transactionReference || ""
+  ).trim();
 
-  if (!accountNumber || !amount) {
-    return NextResponse.json({ error: "Missing account or amount" }, { status: 400 });
+  if (!accountNumber || !amount || amount <= 0) {
+    return NextResponse.json(
+      { error: "Missing account or amount" },
+      { status: 400 }
+    );
+  }
+  if (!paymentRef) {
+    return NextResponse.json(
+      { error: "paymentReference required" },
+      { status: 400 }
+    );
   }
 
-  if (paymentRef) {
-    const dup = await prisma.transaction.findFirst({
-      where: { fundingRef: paymentRef, service: "WALLET_FUND", status: "DELIVERED" },
-    });
-    if (dup) return NextResponse.json({ ok: true, duplicate: true });
+  const dup = await prisma.transaction.findFirst({
+    where: {
+      fundingRef: paymentRef,
+      fundingProvider: "MONNIFY",
+      service: "WALLET_FUND",
+    },
+  });
+  if (dup?.status === "DELIVERED") {
+    return NextResponse.json({ ok: true, duplicate: true });
   }
 
   const va = await prisma.virtualAccount.findFirst({
@@ -41,29 +84,61 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unknown virtual account" }, { status: 404 });
   }
 
-  const orderRef = makeOrderRef();
-  const tx = await prisma.transaction.create({
-    data: {
-      userId: va.userId,
-      service: "WALLET_FUND",
-      status: "DELIVERED",
-      amount,
-      idempotencyKey: makeIdempotencyKey("mon_wh"),
-      orderRef,
-      fundingProvider: "MONNIFY",
-      fundingRef: paymentRef || orderRef,
-      deliveredAt: new Date(),
-      statusTrail: JSON.stringify([
-        { at: new Date().toISOString(), status: "DELIVERED", note: "Monnify webhook" },
-      ]),
-    },
-  });
+  const orderRef = dup?.orderRef || makeOrderRef();
+  let tx = dup;
+  if (!tx) {
+    try {
+      tx = await prisma.transaction.create({
+        data: {
+          userId: va.userId,
+          service: "WALLET_FUND",
+          status: "PROCESSING",
+          amount,
+          idempotencyKey: makeIdempotencyKey("mon_wh"),
+          orderRef,
+          fundingProvider: "MONNIFY",
+          fundingRef: paymentRef,
+          statusTrail: JSON.stringify([
+            {
+              at: new Date().toISOString(),
+              status: "PROCESSING",
+              note: "Monnify webhook",
+            },
+          ]),
+        },
+      });
+    } catch {
+      // Unique race — treat as duplicate
+      const again = await prisma.transaction.findFirst({
+        where: { fundingRef: paymentRef, fundingProvider: "MONNIFY" },
+      });
+      if (again?.status === "DELIVERED") {
+        return NextResponse.json({ ok: true, duplicate: true });
+      }
+      throw new Error("Could not create funding transaction");
+    }
+  }
 
   const balance = await creditWallet({
     userId: va.userId,
     amount,
     transactionId: tx.id,
     memo: "Monnify transfer",
+  });
+
+  await prisma.transaction.update({
+    where: { id: tx.id },
+    data: {
+      status: "DELIVERED",
+      deliveredAt: new Date(),
+      statusTrail: JSON.stringify([
+        {
+          at: new Date().toISOString(),
+          status: "DELIVERED",
+          note: paymentRef,
+        },
+      ]),
+    },
   });
 
   try {

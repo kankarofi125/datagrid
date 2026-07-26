@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { makeIdempotencyKey, makeOrderRef } from "@/lib/order-ref";
 import { initializePaystack } from "@/lib/payments/paystack";
@@ -10,8 +10,8 @@ import { creditWallet } from "@/lib/wallet/service";
 import { maybeSignupBonus } from "@/lib/commissions";
 
 export async function POST(req: Request) {
-  const session = await getSession();
-  if (!session.isLoggedIn || !session.userId) {
+  const session = await requireUser();
+  if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

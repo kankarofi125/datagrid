@@ -18,7 +18,7 @@ export function NetworkRateClient({ network }: { network: string }) {
       </HeroEnter>
       <HeroEnter delay={140}>
         <p className="mt-3 text-ink/70">
-          Cheap {network} data reseller rates with guest checkout and one-tap repeat. Live plans
+          Cheap {network} data reseller rates with wallet checkout and one-tap repeat. Live plans
           load from the DataGrid catalog.
         </p>
       </HeroEnter>

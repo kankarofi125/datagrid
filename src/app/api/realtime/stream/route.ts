@@ -28,8 +28,10 @@ export async function GET(req: Request) {
     }
   }
   if (channel === adminChannel()) {
+    // Staff console only — require adminUsername (password staff login), not customer role cookie.
     if (
       !session.isLoggedIn ||
+      !session.adminUsername ||
       (session.role !== "ADMIN" && session.role !== "SUPER_ADMIN")
     ) {
       return new Response("Unauthorized", { status: 401 });

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { getSession, safeInternalPath } from "@/lib/auth/session";
 
 /**
  * Clear the login cookie and redirect to login.
@@ -10,10 +10,12 @@ export async function GET(request: Request) {
   session.destroy();
 
   const url = new URL(request.url);
-  const next = url.searchParams.get("next") || "/login?session=expired";
-  const target = next.startsWith("/") ? next : "/login?session=expired";
+  const next = safeInternalPath(
+    url.searchParams.get("next"),
+    "/login?session=expired"
+  );
 
-  return NextResponse.redirect(new URL(target, request.url), 303);
+  return NextResponse.redirect(new URL(next, request.url), 303);
 }
 
 export async function POST() {

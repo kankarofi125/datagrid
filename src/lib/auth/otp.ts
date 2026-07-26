@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { toE164, toLocalPhone } from "@/lib/phone";
@@ -16,7 +17,8 @@ export const OTP_TTL_MINUTES = 2;
 export const OTP_TTL_SECONDS = 120;
 const MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_MS = 45_000;
-const TOKEN_LENGTH = 4;
+/** 6-digit OTP (1_000_000 space) with CSPRNG. */
+const TOKEN_LENGTH = 6;
 
 /**
  * Provider split (fixed):
@@ -88,9 +90,11 @@ function canSendEmail(): boolean {
 
 export function generateOtpCode(useFixedDevCode: boolean): string {
   if (useFixedDevCode) {
-    return process.env.OTP_DEV_CODE || "1234";
+    const dev = (process.env.OTP_DEV_CODE || "123456").replace(/\D/g, "");
+    return dev.padStart(TOKEN_LENGTH, "0").slice(0, TOKEN_LENGTH);
   }
-  return String(Math.floor(1000 + Math.random() * 9000));
+  // CSPRNG 6-digit code (000000–999999)
+  return String(randomInt(0, 1_000_000)).padStart(TOKEN_LENGTH, "0");
 }
 
 function normalizeEmail(raw: string | undefined | null): string | null {

@@ -45,11 +45,11 @@ function stepTitle(step: Step) {
     case "phone":
       return { h: "ENTER YOUR LINE.", d: "We check if this number is already on the grid." };
     case "otp":
-      return { h: "VERIFY OTP.", d: "Enter the 4-digit code we sent to your line." };
+      return { h: "VERIFY OTP.", d: "Enter the 6-digit code we sent to your line." };
     case "login-2fa":
       return {
         h: "EMAIL 2FA.",
-        d: "We sent a one-time code to your email. Enter it to finish signing in.",
+        d: "We sent a 6-digit code to your email. Enter it to finish signing in.",
       };
     case "pin-login":
       return { h: "YOUR PIN.", d: "Welcome back. Enter your 4-digit login PIN." };
@@ -521,7 +521,7 @@ function LoginForm() {
         <>
           <DigitField
             label="OTP code"
-            length={4}
+            length={6}
             value={code}
             onChange={setCode}
             autoFocus
@@ -541,7 +541,7 @@ function LoginForm() {
             fullWidth
             size="lg"
             disabled={
-              anyBusy || code.length < 4 || otpRemainingSec <= 0
+              anyBusy || code.length < 6 || otpRemainingSec <= 0
             }
           >
             {otpVerifyBusy
@@ -589,15 +589,15 @@ function LoginForm() {
         <>
           <DigitField
             label="Email code"
-            length={4}
+            length={6}
             value={code}
             onChange={setCode}
             autoFocus
             disabled={busy === "verify2fa"}
             hint={
               emailHint
-                ? `Enter the 4 digits sent to ${emailHint}`
-                : "Enter the 4-digit code from your email"
+                ? `Enter the 6 digits sent to ${emailHint}`
+                : "Enter the 6-digit code from your email"
             }
             aria-label="Email two-factor code"
           />
@@ -606,7 +606,7 @@ function LoginForm() {
             type="submit"
             fullWidth
             size="lg"
-            disabled={anyBusy || code.length < 4 || otpRemainingSec <= 0}
+            disabled={anyBusy || code.length < 6 || otpRemainingSec <= 0}
           >
             {busy === "verify2fa"
               ? "Signing you in…"

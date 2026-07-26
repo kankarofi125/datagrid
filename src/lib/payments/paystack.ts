@@ -1,6 +1,18 @@
+import { createHmac, timingSafeEqual } from "crypto";
 import { isPaymentSimulateMode, simulatePaystackInit } from "./simulator";
 
 const BASE = "https://api.paystack.co";
+
+function timingSafeEqualHex(a: string, b: string): boolean {
+  try {
+    const ba = Buffer.from(a, "utf8");
+    const bb = Buffer.from(b, "utf8");
+    if (ba.length !== bb.length) return false;
+    return timingSafeEqual(ba, bb);
+  } catch {
+    return false;
+  }
+}
 
 export async function initializePaystack(opts: {
   amountNaira: number;
@@ -18,10 +30,9 @@ export async function initializePaystack(opts: {
     });
   }
 
-  const secret = process.env.PAYSTACK_SECRET_KEY;
+  const secret = process.env.PAYSTACK_SECRET_KEY?.trim();
   if (!secret) throw new Error("PAYSTACK_SECRET_KEY missing");
 
-  // Paystack amounts are in kobo
   const amountKobo = Math.round(opts.amountNaira * 100);
   const res = await fetch(`${BASE}/transaction/initialize`, {
     method: "POST",
@@ -46,19 +57,26 @@ export async function initializePaystack(opts: {
     reference: data.data.reference as string,
     authorization_url: data.data.authorization_url as string,
     access_code: data.data.access_code as string,
+    simulated: false as const,
   };
 }
 
+/**
+ * Verify Paystack webhook HMAC.
+ * External webhooks always require a real secret + valid signature.
+ * Simulated funding uses /api/wallet/fund (authenticated), not unsigned webhooks.
+ */
 export async function verifyPaystackSignature(
   rawBody: string,
   signature: string | null
 ): Promise<boolean> {
-  if (isPaymentSimulateMode()) return true;
-  if (!signature || !process.env.PAYSTACK_SECRET_KEY) return false;
-  const crypto = await import("crypto");
-  const hash = crypto
-    .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY)
-    .update(rawBody)
-    .digest("hex");
-  return hash === signature;
+  const secret = process.env.PAYSTACK_SECRET_KEY?.trim();
+  if (!secret) {
+    console.error("[paystack] PAYSTACK_SECRET_KEY missing; rejecting webhook");
+    return false;
+  }
+  if (!signature) return false;
+
+  const hash = createHmac("sha512", secret).update(rawBody).digest("hex");
+  return timingSafeEqualHex(hash, signature);
 }

@@ -54,6 +54,7 @@ export async function resolveApiKey(authHeader: string | null) {
     },
   });
   if (!row || row.revokedAt) return null;
+  if (!row.user?.isActive) return null;
 
   await prisma.apiKey.update({
     where: { id: row.id },

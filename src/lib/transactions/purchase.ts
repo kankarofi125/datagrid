@@ -43,6 +43,9 @@ export async function purchaseWithWallet(input: PurchaseInput) {
   if (!user) {
     return { ok: false as const, error: "User not found", status: 404 };
   }
+  if (!user.isActive) {
+    return { ok: false as const, error: "Account suspended", status: 403 };
+  }
 
   if (!user.pinHash) {
     return {
@@ -53,14 +56,43 @@ export async function purchaseWithWallet(input: PurchaseInput) {
     };
   }
 
-  const pinOk = await verifyPin(input.pin, user.pinHash);
-  if (!pinOk) {
-    return { ok: false as const, error: "Incorrect transaction PIN", status: 401 };
+  const {
+    clearLoginFailures,
+    getLoginLockStatus,
+    recordLoginFailure,
+  } = await import("@/lib/auth/login-lockout");
+  const pinLockKey = `tx:${input.userId}`;
+  const lock = await getLoginLockStatus("tx-pin", pinLockKey);
+  if (lock.locked) {
+    return {
+      ok: false as const,
+      error: `Too many incorrect PINs. Try again in ${lock.retryAfterSec}s.`,
+      status: 429,
+      code: "PIN_LOCKED",
+    };
   }
 
-  const idempotencyKey = input.idempotencyKey || makeIdempotencyKey("buy");
-  const existing = await prisma.transaction.findUnique({
-    where: { idempotencyKey },
+  const pinOk = await verifyPin(input.pin, user.pinHash);
+  if (!pinOk) {
+    const fail = await recordLoginFailure("tx-pin", pinLockKey);
+    return {
+      ok: false as const,
+      error: fail.locked
+        ? `Too many incorrect PINs. Try again in ${fail.retryAfterSec}s.`
+        : "Incorrect transaction PIN",
+      status: fail.locked ? 429 : 401,
+      code: fail.locked ? "PIN_LOCKED" : "PIN_INVALID",
+    };
+  }
+  await clearLoginFailures("tx-pin", pinLockKey);
+
+  const rawIdem = input.idempotencyKey || makeIdempotencyKey("buy");
+  // Scope idempotency to this user so keys cannot leak other users' orders.
+  const idempotencyKey = rawIdem.startsWith(`${input.userId}:`)
+    ? rawIdem
+    : `${input.userId}:${rawIdem}`;
+  const existing = await prisma.transaction.findFirst({
+    where: { idempotencyKey, userId: input.userId },
   });
   if (existing) {
     return {

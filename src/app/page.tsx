@@ -2,7 +2,7 @@ import Link from "next/link";
 import { RateTicker } from "@/components/layout/RateTicker";
 import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import { NetworkStatusBoard } from "@/components/landing/NetworkStatusBoard";
-import { GuestPurchaseWidget } from "@/components/landing/GuestPurchaseWidget";
+
 import { HeroPhoneImage } from "@/components/landing/HeroPhoneImage";
 import { RateBoard } from "@/components/landing/RateBoard";
 import { MarginCalculator } from "@/components/landing/MarginCalculator";
@@ -175,7 +175,7 @@ export default async function LandingPage() {
                     </Link>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono-num text-[9px] uppercase tracking-wide text-ink/38">
-                    <span>✓ No account required</span>
+                    <span>✓ Wallet checkout</span>
                     <span>✓ Receipt on every order</span>
                     <span>✓ Auto-refund</span>
                   </div>
@@ -259,12 +259,29 @@ export default async function LandingPage() {
               className="scroll-mt-20 lg:col-span-5 lg:sticky lg:top-24"
             >
               <HeroEnter delay={120}>
-                <div className="rounded-[24px] bg-white/55 p-2 shadow-[0_32px_80px_-38px_rgba(10,46,34,.55)] ring-1 ring-white/80 backdrop-blur-sm">
-                  <GuestPurchaseWidget plans={data.plans} />
-                </div>
-                <div className="mt-3 flex items-center justify-center gap-2 font-mono-num text-[9px] uppercase tracking-[0.12em] text-ink/38">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green" />
-                  Secure guest checkout
+                <div className="rounded-[24px] border border-line bg-white p-6 shadow-[0_32px_80px_-38px_rgba(10,46,34,.45)] sm:p-8">
+                  <p className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.16em] text-green">
+                    Secure checkout
+                  </p>
+                  <h2 className="font-display mt-2 text-2xl text-ink sm:text-3xl">
+                    Sign in to buy
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-ink/60">
+                    Guest checkout has been removed. Create an account or log in to
+                    fund your wallet and buy data, airtime, and bills securely.
+                  </p>
+                  <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
+                    <Link href="/login" className="w-full sm:w-auto">
+                      <Button size="lg" className="w-full sm:w-auto">
+                        Open DataGrid
+                      </Button>
+                    </Link>
+                    <Link href="/rates" className="w-full sm:w-auto">
+                      <Button size="lg" variant="ghost" className="w-full sm:w-auto">
+                        View rates
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
                 <div className="mt-5 lg:hidden">
                   <NetworkStatusBoard networks={data.networks} />
@@ -357,7 +374,7 @@ export default async function LandingPage() {
             </Reveal>
             <ul className="moat-grid mt-8 sm:mt-12">
               {[
-                ["Guest checkout", "Buy first. Account later — with this number."],
+                ["Wallet checkout", "Fund once, buy data and bills in seconds."],
                 ["Network auto-detect", "0803… snaps to MTN using the live prefix map."],
                 ["Status board", "Live uptime dots on landing and dashboard."],
                 ["Provider failover", "2+ VTU adapters. You never see the retry."],
@@ -387,7 +404,7 @@ export default async function LandingPage() {
             {[
               [
                 "Do I need an account?",
-                "No. Guest checkout lets you buy data or airtime immediately. After delivery, save the number to track history.",
+                "Yes for wallet purchases. Sign in with your Nigerian number (or Google + phone), set a PIN, fund your wallet, then buy.",
               ],
               [
                 "How fast is delivery?",

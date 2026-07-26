@@ -75,10 +75,20 @@ export async function PATCH(req: Request) {
   } = {};
 
   if (body.role && ["USER", "AGENT", "ADMIN"].includes(body.role)) {
-    data.role = body.role;
-    if (body.role === "AGENT" && !before.agentSince) {
-      // handled below
+    // Only SUPER_ADMIN may grant or change ADMIN role.
+    if (
+      body.role === "ADMIN" ||
+      before.role === "ADMIN" ||
+      before.role === "SUPER_ADMIN"
+    ) {
+      if (session!.role !== "SUPER_ADMIN") {
+        return NextResponse.json(
+          { error: "Only SUPER_ADMIN can change admin roles" },
+          { status: 403 }
+        );
+      }
     }
+    data.role = body.role;
   }
   if (body.isActive != null) data.isActive = Boolean(body.isActive);
   if (body.kycStatus) data.kycStatus = body.kycStatus;
