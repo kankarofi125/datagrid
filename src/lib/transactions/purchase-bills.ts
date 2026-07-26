@@ -243,6 +243,22 @@ async function runWalletPurchase(opts: {
     },
   });
 
+  void import("@/lib/email/notify").then(({ emailPurchaseDelivered }) =>
+    emailPurchaseDelivered({
+      userId: opts.userId,
+      amount,
+      orderRef,
+      service: opts.service,
+      phone:
+        opts.fields.phone ||
+        opts.fields.meterNumber ||
+        opts.fields.smartCardNumber,
+      planName: opts.fields.packageCode,
+      token: deliveredToken,
+      customerName: result.customerName || opts.fields.customerName,
+    })
+  );
+
   try {
     const { invalidate, CacheKeys, CacheTags } = await import("@/lib/cache");
     const { publishRealtime, userChannel, adminChannel } = await import(

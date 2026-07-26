@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       },
     }));
 
-  await creditWallet({
+  const balance = await creditWallet({
     userId,
     amount: amountNaira,
     transactionId: tx.id,
@@ -68,6 +68,16 @@ export async function POST(req: Request) {
       ]),
     },
   });
+
+  void import("@/lib/email/notify").then(({ emailWalletFunded }) =>
+    emailWalletFunded({
+      userId,
+      amount: amountNaira,
+      orderRef,
+      balance,
+      method: "Paystack",
+    })
+  );
 
   return NextResponse.json({ ok: true });
 }

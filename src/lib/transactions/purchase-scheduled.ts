@@ -163,6 +163,16 @@ export async function purchaseScheduled(input: {
     transactionId: delivered.id,
   });
 
+  void import("@/lib/email/notify").then(({ emailPurchaseDelivered }) =>
+    emailPurchaseDelivered({
+      userId: input.userId,
+      amount,
+      orderRef: delivered.orderRef,
+      service: delivered.service,
+      phone: delivered.phone,
+    })
+  );
+
   return {
     ok: true as const,
     transaction: {

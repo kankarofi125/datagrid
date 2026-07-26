@@ -255,6 +255,20 @@ export async function purchaseWithWallet(input: PurchaseInput) {
     },
   });
 
+  // Branded email receipt (non-blocking)
+  void import("@/lib/email/notify").then(({ emailPurchaseDelivered }) =>
+    emailPurchaseDelivered({
+      userId: input.userId,
+      amount,
+      orderRef,
+      service: input.service,
+      phone: local,
+      planName,
+      networkCode,
+      token: vtuResult.token,
+    })
+  );
+
   // Cache bust + realtime fan-out
   try {
     await invalidate([

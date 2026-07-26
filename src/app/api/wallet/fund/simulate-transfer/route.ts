@@ -66,5 +66,15 @@ export async function POST(req: Request) {
   });
   await invalidate(CacheTags.notifications(session.userId), true).catch(() => {});
 
+  void import("@/lib/email/notify").then(({ emailWalletFunded }) =>
+    emailWalletFunded({
+      userId: session.userId!,
+      amount,
+      orderRef,
+      balance,
+      method: "Monnify",
+    })
+  );
+
   return NextResponse.json({ ok: true, balance, orderRef });
 }

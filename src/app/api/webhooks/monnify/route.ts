@@ -59,12 +59,22 @@ export async function POST(req: Request) {
     },
   });
 
-  await creditWallet({
+  const balance = await creditWallet({
     userId: va.userId,
     amount,
     transactionId: tx.id,
     memo: "Monnify transfer",
   });
+
+  void import("@/lib/email/notify").then(({ emailWalletFunded }) =>
+    emailWalletFunded({
+      userId: va.userId,
+      amount,
+      orderRef,
+      balance,
+      method: "Monnify",
+    })
+  );
 
   return NextResponse.json({ ok: true, orderRef });
 }

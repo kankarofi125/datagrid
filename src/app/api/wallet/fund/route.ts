@@ -69,6 +69,15 @@ export async function POST(req: Request) {
         memo: "Paystack fund (sim)",
       });
       await maybeSignupBonus({ userId: user.id, transactionId: tx.id });
+      void import("@/lib/email/notify").then(({ emailWalletFunded }) =>
+        emailWalletFunded({
+          userId: user.id,
+          amount,
+          orderRef,
+          balance,
+          method: "Paystack",
+        })
+      );
       return NextResponse.json({
         simulated: true,
         authorization_url: init.authorization_url,
@@ -126,6 +135,15 @@ export async function POST(req: Request) {
         memo: "Flutterwave fund (sim)",
       });
       await maybeSignupBonus({ userId: user.id, transactionId: tx.id });
+      void import("@/lib/email/notify").then(({ emailWalletFunded }) =>
+        emailWalletFunded({
+          userId: user.id,
+          amount,
+          orderRef,
+          balance,
+          method: "Flutterwave",
+        })
+      );
       return NextResponse.json({
         simulated: true,
         authorization_url: init.authorization_url,
