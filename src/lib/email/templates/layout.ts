@@ -13,6 +13,31 @@ export const EMAIL_BRAND = {
   white: "#ffffff",
 } as const;
 
+/**
+ * Public base for images in email HTML.
+ * Prefer a host that serves files with HTTP 200 (no redirect).
+ * Many clients (Gmail/Outlook) block or skip redirected images.
+ */
+export function emailAssetUrl(path: string): string {
+  const configured =
+    process.env.EMAIL_ASSET_BASE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    "";
+  // Apex datagrid-ng.com 308-redirects to www — break logos in inboxes.
+  let base = configured || "https://www.datagrid-ng.com";
+  try {
+    const u = new URL(base);
+    if (u.hostname === "datagrid-ng.com") {
+      u.hostname = "www.datagrid-ng.com";
+    }
+    base = u.origin;
+  } catch {
+    base = "https://www.datagrid-ng.com";
+  }
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${p}`;
+}
+
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -24,6 +49,10 @@ export function escapeHtml(value: string): string {
 /**
  * Shared branded HTML shell for all transactional emails.
  * Table layout + inline CSS for Gmail / Outlook.
+ *
+ * Note: The small circle next to the sender name in Gmail is NOT this logo.
+ * That is BIMI / Google brand profile — see Brevo BIMI docs. This HTML logo
+ * only appears inside the opened message body.
  */
 export function brandedEmailShell(opts: {
   preheader?: string;
@@ -33,7 +62,8 @@ export function brandedEmailShell(opts: {
   ctaLabel?: string;
   ctaHref?: string;
 }): string {
-  const logoUrl = absoluteUrl("/icons/icon-192.png");
+  // PNG only (SVG often blocked). Direct www URL avoids apex 308 redirects.
+  const logoUrl = emailAssetUrl("/icons/icon-192.png");
   const homeUrl = absoluteUrl("/");
   const privacyUrl = absoluteUrl("/privacy");
   const supportUrl = absoluteUrl("/support");

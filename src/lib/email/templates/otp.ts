@@ -1,17 +1,5 @@
 import { absoluteUrl, SITE_NAME } from "@/lib/site";
-
-/** DataGrid brand tokens (mirror globals.css) */
-const BRAND = {
-  green: "#168653",
-  greenDeep: "#0a2e22",
-  greenDeep2: "#123b2a",
-  amber: "#fba907",
-  paper: "#f7f4ec",
-  ink: "#0f1f18",
-  muted: "#5c6b63",
-  line: "#d9e0db",
-  white: "#ffffff",
-} as const;
+import { emailAssetUrl, EMAIL_BRAND as BRAND } from "@/lib/email/templates/layout";
 
 export type OtpEmailContent = {
   code: string;
@@ -29,7 +17,7 @@ export type OtpEmailContent = {
 export function buildOtpEmailHtml(input: OtpEmailContent): string {
   const name = (input.firstName || "there").trim() || "there";
   const minutes = input.expiresInMinutes ?? 10;
-  const logoUrl = absoluteUrl("/icons/icon-192.png");
+  const logoUrl = emailAssetUrl("/icons/icon-192.png");
   const homeUrl = absoluteUrl("/");
   const privacyUrl = absoluteUrl("/privacy");
   const supportUrl = absoluteUrl("/support");
