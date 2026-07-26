@@ -11,7 +11,7 @@ export type OtpEmailContent = {
 };
 
 /**
- * Branded HTML OTP email for Sendchamp /email/send.
+ * Branded HTML OTP email (sent via Brevo only).
  * Table layout + inline CSS for Gmail / Outlook compatibility.
  */
 export function buildOtpEmailHtml(input: OtpEmailContent): string {

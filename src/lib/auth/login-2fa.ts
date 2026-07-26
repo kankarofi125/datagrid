@@ -82,8 +82,11 @@ export async function startEmail2faChallenge(
     userId: user.id,
     emailHint,
     delivered: otp.channels,
-    // Never log the raw OTP code in production logs.
+    // hasDevHint=true means NO real Brevo send (simulate or email-dev fallback).
+    // Real delivery should be delivered:['email'] and hasDevHint:false.
     hasDevHint: Boolean(otp.devHint),
+    realEmail:
+      otp.channels.includes("email") && !otp.channels.includes("email-dev"),
   });
 
   return {

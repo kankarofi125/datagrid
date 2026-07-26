@@ -17,10 +17,14 @@ const RESEND_COOLDOWN_MS = 45_000;
 const TOKEN_LENGTH = 4;
 
 /**
- * Delivery config via OTP_CHANNELS (comma-separated):
- *   whatsapp (default) — phone OTP over WhatsApp
- *   sms — classic SMS
- *   email — branded email
+ * Provider split (fixed):
+ *   • Email (OTP, fund, purchase, 2FA) → Brevo only
+ *   • SMS / WhatsApp OTP               → Sendchamp only
+ *
+ * OTP_CHANNELS (comma-separated):
+ *   whatsapp (default) — Sendchamp WhatsApp
+ *   sms                — Sendchamp SMS
+ *   email              — Brevo branded email
  *   whatsapp,email | sms,email | both (= whatsapp+email)
  */
 export type PhoneOtpTransport = "whatsapp" | "sms";
@@ -58,16 +62,30 @@ function parseChannels(raw?: string): {
   return { phone, email };
 }
 
-function isSimulateMode(): boolean {
-  return (
-    process.env.OTP_MODE === "simulate" ||
-    process.env.OTP_MODE === "sim" ||
-    !isSendchampLive()
-  );
+/**
+ * Explicit simulate only (OTP_MODE=simulate|sim).
+ *
+ * CRITICAL: Do NOT couple this to Sendchamp. Email 2FA uses Brevo independently.
+ * The old `!isSendchampLive()` check made prod mark delivered:['email'] without
+ * ever calling Brevo whenever SENDCHAMP_API_KEY was missing on Vercel.
+ */
+function isExplicitSimulateMode(): boolean {
+  const mode = (process.env.OTP_MODE || "").trim().toLowerCase();
+  return mode === "simulate" || mode === "sim";
 }
 
-export function generateOtpCode(): string {
-  if (isSimulateMode()) {
+/** Phone (WhatsApp/SMS) can go out via Sendchamp. */
+function canSendPhone(): boolean {
+  return isSendchampLive() && !isExplicitSimulateMode();
+}
+
+/** Email can go out via Brevo regardless of Sendchamp. */
+function canSendEmail(): boolean {
+  return isBrevoConfigured() && !isExplicitSimulateMode();
+}
+
+export function generateOtpCode(useFixedDevCode: boolean): string {
+  if (useFixedDevCode) {
     return process.env.OTP_DEV_CODE || "1234";
   }
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -91,7 +109,8 @@ export type RequestOtpInput = {
 };
 
 /**
- * Request an OTP via Sendchamp (WhatsApp/SMS and/or branded email) or simulate.
+ * Request an OTP.
+ * Phone channels → Sendchamp. Email channel → Brevo. Never mixed.
  */
 export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
   const input: RequestOtpInput =
@@ -165,14 +184,40 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
     }
   }
 
-  const code = generateOtpCode();
+  const phoneLive = canSendPhone();
+  const emailLive = canSendEmail();
+  const explicitSim = isExplicitSimulateMode();
+  const allowDevFallback =
+    process.env.NODE_ENV !== "production" ||
+    process.env.OTP_EMAIL_DEV_FALLBACK === "1";
+
+  // Fixed code only when fully simulating (no real provider path will run).
+  // Email-only 2FA with Brevo must use a random code.
+  const willAttemptLive =
+    (sendPhone && phoneLive) || (sendEmail && emailLive);
+  const useFixedDevCode = explicitSim || (!willAttemptLive && allowDevFallback);
+  const code = generateOtpCode(useFixedDevCode);
   const codeHash = await bcrypt.hash(code, 8);
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
   let providerRef: string | null = null;
   let deliveredVia: string[] = [];
+  let anyOk = false;
 
-  if (isSimulateMode()) {
+  console.info("[otp] delivery plan", {
+    explicitSim,
+    sendPhone,
+    sendEmail,
+    phoneLive,
+    emailLive,
+    brevoConfigured: isBrevoConfigured(),
+    sendchampLive: isSendchampLive(),
+    otpMode: process.env.OTP_MODE || "(unset)",
+    channelsRequested: input.channels || process.env.OTP_CHANNELS || "whatsapp",
+  });
+
+  // ---- Explicit simulate: console-only, no provider calls ----
+  if (explicitSim) {
     console.info(
       `[DataGrid OTP simulate] phone=${e164 || "—"} email=${resolvedEmail || "—"} via=${phoneTransport || "—"} → ${code}`
     );
@@ -180,58 +225,61 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
       ...(sendPhone ? [phoneTransport!] : []),
       ...(sendEmail ? ["email"] : []),
     ];
+    anyOk = deliveredVia.length > 0;
   } else {
-    let anyOk = false;
-
-    // Phone OTP: WhatsApp preferred (SMS often blocked / not provisioned).
+    // ---- Phone OTP: Sendchamp only (WhatsApp / SMS) ----
     if (sendPhone && e164 && phoneTransport) {
-      const channel: SendchampOtpChannel =
-        normalizeOtpChannel(phoneTransport) || "whatsapp";
-
-      const phoneSend = await sendchampSendOtp({
-        channel,
-        phone: e164,
-        token: code,
-        tokenLength: TOKEN_LENGTH,
-        expirationMinutes: OTP_TTL_MINUTES,
-        firstName,
-      });
-
-      if (phoneSend.ok) {
-        providerRef = phoneSend.result.reference;
-        deliveredVia.push(channel);
-        anyOk = true;
-      } else {
+      if (!phoneLive) {
         console.error(
-          `[otp] Sendchamp ${channel} failed`,
-          phoneSend.error
+          "[otp] Phone OTP requested but Sendchamp is not live " +
+            "(set SENDCHAMP_API_KEY and OTP_MODE=sendchamp). Brevo email may still send."
         );
+      } else {
+        const channel: SendchampOtpChannel =
+          normalizeOtpChannel(phoneTransport) || "whatsapp";
 
-        // If WhatsApp fails and we didn't explicitly require only WA, try SMS once.
-        if (
-          channel === "whatsapp" &&
-          (process.env.OTP_WHATSAPP_FALLBACK_SMS || "1") !== "0"
-        ) {
-          const smsFallback = await sendchampSendOtp({
-            channel: "sms",
-            phone: e164,
-            token: code,
-            tokenLength: TOKEN_LENGTH,
-            expirationMinutes: OTP_TTL_MINUTES,
-            firstName,
-          });
-          if (smsFallback.ok) {
-            providerRef = smsFallback.result.reference;
-            deliveredVia.push("sms");
-            anyOk = true;
-            console.warn("[otp] WhatsApp failed; delivered via SMS fallback");
-          } else {
-            console.error("[otp] SMS fallback also failed", smsFallback.error);
+        const phoneSend = await sendchampSendOtp({
+          channel,
+          phone: e164,
+          token: code,
+          tokenLength: TOKEN_LENGTH,
+          expirationMinutes: OTP_TTL_MINUTES,
+          firstName,
+        });
+
+        if (phoneSend.ok) {
+          providerRef = phoneSend.result.reference;
+          deliveredVia.push(channel);
+          anyOk = true;
+        } else {
+          console.error(`[otp] Sendchamp ${channel} failed`, phoneSend.error);
+
+          if (
+            channel === "whatsapp" &&
+            (process.env.OTP_WHATSAPP_FALLBACK_SMS || "1") !== "0"
+          ) {
+            const smsFallback = await sendchampSendOtp({
+              channel: "sms",
+              phone: e164,
+              token: code,
+              tokenLength: TOKEN_LENGTH,
+              expirationMinutes: OTP_TTL_MINUTES,
+              firstName,
+            });
+            if (smsFallback.ok) {
+              providerRef = smsFallback.result.reference;
+              deliveredVia.push("sms");
+              anyOk = true;
+              console.warn("[otp] WhatsApp failed; delivered via SMS fallback");
+            } else {
+              console.error("[otp] SMS fallback also failed", smsFallback.error);
+            }
           }
         }
       }
     }
 
+    // ---- Email OTP: Brevo only (never Sendchamp) ----
     if (sendEmail && resolvedEmail) {
       const phoneHint = local
         ? `••••${local.slice(-4)}`
@@ -239,8 +287,7 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
           ? `••••${e164.slice(-4)}`
           : undefined;
 
-      // Branded HTML via Brevo (API or SMTP).
-      if (isBrevoConfigured()) {
+      if (emailLive) {
         const emailSend = await sendBrevoOtpEmail({
           to: resolvedEmail,
           name: firstName,
@@ -251,43 +298,39 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
         if (emailSend.ok) {
           deliveredVia.push("email");
           anyOk = true;
+          console.info("[otp] Brevo email delivered", {
+            to: resolvedEmail,
+            // messageId logged inside brevo.ts
+          });
         } else {
           console.error("[otp] Brevo branded email failed", emailSend.error);
-          // Local/dev: still create challenge so 2FA can be tested without Brevo.
-          if (
-            process.env.NODE_ENV !== "production" ||
-            process.env.OTP_EMAIL_DEV_FALLBACK === "1"
-          ) {
+          if (allowDevFallback) {
             console.info(
               `[DataGrid OTP email fallback] ${resolvedEmail} → ${code}\n` +
                 `  (Brevo error: ${emailSend.error})`
             );
             deliveredVia.push("email-dev");
             anyOk = true;
-          } else if (!sendPhone) {
+          } else if (!anyOk) {
+            // Email-only (or phone already failed): surface Brevo error to client.
             return {
               ok: false as const,
               error: emailSend.error,
             };
           }
         }
-      } else if (!sendPhone) {
-        if (
-          process.env.NODE_ENV !== "production" ||
-          process.env.OTP_EMAIL_DEV_FALLBACK === "1"
-        ) {
-          console.info(
-            `[DataGrid OTP email fallback] ${resolvedEmail} → ${code} (Brevo not configured)`
-          );
-          deliveredVia.push("email-dev");
-          anyOk = true;
-        } else {
-          return {
-            ok: false as const,
-            error:
-              "Email delivery is not configured. Set BREVO_API_KEY or Brevo SMTP credentials.",
-          };
-        }
+      } else if (allowDevFallback) {
+        console.info(
+          `[DataGrid OTP email fallback] ${resolvedEmail} → ${code} (Brevo not configured)`
+        );
+        deliveredVia.push("email-dev");
+        anyOk = true;
+      } else if (!anyOk) {
+        return {
+          ok: false as const,
+          error:
+            "Email delivery is not configured. Set BREVO_API_KEY or Brevo SMTP credentials on this environment (Vercel).",
+        };
       } else {
         console.error(
           "[otp] Email requested but Brevo is not configured (BREVO_API_KEY / SMTP)"
@@ -296,10 +339,12 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
     }
 
     if (!anyOk) {
+      const onlyEmail = sendEmail && !sendPhone;
       return {
         ok: false as const,
-        error:
-          phoneTransport === "whatsapp"
+        error: onlyEmail
+          ? "Could not send verification email. Check Brevo keys on this environment."
+          : phoneTransport === "whatsapp"
             ? "Could not send WhatsApp code. Confirm Sendchamp WhatsApp is active, or try again."
             : "Could not send verification code. Try again shortly.",
       };
@@ -308,6 +353,8 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
 
   const channelLabel = deliveredVia.join("+") || "whatsapp";
   const usedEmailDevFallback = deliveredVia.includes("email-dev");
+  // Surface code only for simulate / local fallback — never for real Brevo success.
+  const exposeDevHint = explicitSim || usedEmailDevFallback;
 
   await prisma.otpChallenge.create({
     data: {
@@ -326,9 +373,7 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
     phoneLocal: local || null,
     email: resolvedEmail,
     channels: deliveredVia,
-    // Show code in UI when simulate OR when Brevo failed and we fell back locally.
-    devHint:
-      isSimulateMode() || usedEmailDevFallback ? code : undefined,
+    devHint: exposeDevHint ? code : undefined,
   };
 }
 

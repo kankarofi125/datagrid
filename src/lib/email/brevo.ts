@@ -9,7 +9,10 @@ import {
 } from "@/lib/email/templates/otp";
 
 /**
- * Brevo transactional email.
+ * Brevo transactional email — sole email provider for DataGrid.
+ *
+ * Used for: login/2FA OTP, wallet funded, purchase receipts, and any
+ * future product email. Phone OTP (SMS/WhatsApp) stays on Sendchamp.
  *
  * IMPORTANT: If Brevo → Security → Authorised IPs is enabled, the HTTP API
  * rejects every call from Vercel/unknown IPs. Either:

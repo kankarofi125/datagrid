@@ -4,16 +4,17 @@ import "server-only";
  * Sendchamp Communication API client.
  * Docs: https://sendchamp.readme.io/reference/introduction
  *
+ * DataGrid usage (fixed split):
+ *   • SMS + WhatsApp OTP  → this module
+ *   • All email (OTP/2FA, fund, purchase) → Brevo (`src/lib/email/brevo.ts`)
+ *     Do not route product email through Sendchamp.
+ *
  * Base: https://api.sendchamp.com/api/v1
  * Auth: Authorization: Bearer {Access Key}
  *
- * OTP:
- *  POST /verification/create  — send OTP (sms | email | voice | whatsapp)
+ * OTP used by the app:
+ *  POST /verification/create  — channel sms | whatsapp (voice unused)
  *  POST /verification/confirm — verify code with returned reference
- *
- * Messaging:
- *  POST /sms/send
- *  POST /email/send
  */
 
 const SENDCHAMP_BASE =
@@ -299,7 +300,8 @@ export async function sendchampSendSms(input: {
 }
 
 /**
- * POST /email/send — plain email.
+ * POST /email/send — unused by DataGrid.
+ * All product email goes through Brevo. Kept only for API parity / emergencies.
  * @see https://sendchamp.readme.io/reference/send-email-api
  */
 export async function sendchampSendEmail(input: {
