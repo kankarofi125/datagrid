@@ -51,7 +51,6 @@ function LoginForm() {
   const [isNew, setIsNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailHint, setEmailHint] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [pending, start] = useTransition();
 
@@ -202,12 +201,6 @@ function LoginForm() {
       }
       if (data.needs2fa) {
         setEmailHint(data.emailHint || null);
-        setStatusMessage(
-          data.message ||
-            (data.emailHint
-              ? `We sent a 4-digit code to ${data.emailHint}. Check inbox and spam.`
-              : "We sent a 4-digit code to your email. Check inbox and spam.")
-        );
         setCode("");
         setStep("login-2fa");
         return;
@@ -399,24 +392,6 @@ function LoginForm() {
 
       {step === "login-2fa" && (
         <>
-          {(statusMessage || emailHint) && (
-            <div
-              className="rounded-xl border border-green/20 bg-green/[0.06] px-3.5 py-3 text-sm leading-relaxed text-green-deep"
-              role="status"
-            >
-              <p className="font-semibold">
-                {statusMessage ||
-                  (emailHint
-                    ? `Code sent to ${emailHint}`
-                    : "Code sent to your email")}
-              </p>
-              <p className="mt-1 text-xs text-ink/55">
-                From <span className="font-mono-num">auth@datagrid-ng.com</span>
-                · subject “DataGrid verification code”. Check spam/promotions if
-                it’s not in the inbox.
-              </p>
-            </div>
-          )}
           <DigitField
             label="Email code"
             length={4}
@@ -445,7 +420,6 @@ function LoginForm() {
             onClick={() => {
               start(async () => {
                 setError(null);
-                setStatusMessage(null);
                 const res = await fetch("/api/auth/2fa/resend", {
                   method: "POST",
                 });
@@ -455,12 +429,6 @@ function LoginForm() {
                   return;
                 }
                 if (data.emailHint) setEmailHint(data.emailHint);
-                setStatusMessage(
-                  data.message ||
-                    (data.emailHint
-                      ? `New code sent to ${data.emailHint}`
-                      : "New code sent to your email")
-                );
                 setCode("");
               });
             }}
