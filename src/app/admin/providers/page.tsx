@@ -1,5 +1,7 @@
 "use client";
 
+import { formatNigeriaDateTime } from "@/lib/time";
+
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { Reveal } from "@/components/motion/Reveal";
@@ -113,7 +115,7 @@ export default function AdminProvidersPage() {
                 <p className="font-mono-num text-xs text-ink/50">
                   {p.role} · priority {p.priority} · success {p.successRate}%
                   {p.lastHealth
-                    ? ` · health ${new Date(p.lastHealth).toLocaleString("en-NG")}`
+                    ? ` · health ${formatNigeriaDateTime(p.lastHealth)}`
                     : ""}
                 </p>
               </div>
@@ -151,7 +153,7 @@ export default function AdminProvidersPage() {
             {logs.map((l) => (
               <li key={l.id} className="px-3 py-2 text-sm">
                 <span className="font-mono-num text-xs text-ink/45">
-                  {new Date(l.createdAt).toLocaleString("en-NG")}
+                  {formatNigeriaDateTime(l.createdAt)}
                 </span>{" "}
                 <strong>{l.provider}</strong> {l.action}{" "}
                 <span className={l.success ? "text-green" : "text-danger"}>

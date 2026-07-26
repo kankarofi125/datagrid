@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { useLocalClock } from "@/hooks/useLocalClock";
 import { APP_NAV } from "@/components/layout/app-nav";
 import { BalanceAmount } from "@/components/ui/BalanceAmount";
+import { BalanceEyeButton } from "@/components/ui/BalanceEyeToggle";
+import { useBalanceHidden } from "@/hooks/useBalanceHidden";
 import { FloatingDesktopHeader } from "@/components/layout/ShellHeaders";
 
 export function DesktopTopBar({
@@ -20,7 +21,7 @@ export function DesktopTopBar({
 }) {
   const clock = useLocalClock();
   const path = usePathname();
-  const [hidden, setHidden] = useState(false);
+  const { hidden } = useBalanceHidden();
   const navItem = APP_NAV.find(
     (item) => path === item.href || (item.href !== "/dashboard" && path.startsWith(item.href))
   );
@@ -34,24 +35,19 @@ export function DesktopTopBar({
         <>
           <div className="hidden items-center gap-2 font-mono-num text-[9px] tracking-wide text-ink/42 xl:flex">
             <span className="h-1.5 w-1.5 rounded-full bg-green" />
-            <span className="uppercase text-green">{clock.place || "LOCAL"}</span>
-            {clock.time || "—"}
-            {clock.zoneAbbr ? ` ${clock.zoneAbbr}` : ""}
+            <span className="tabular-nums text-green" title="Nigeria time">
+              {clock.time || "—"}
+            </span>
           </div>
           <span className="hidden font-mono-num text-[9px] text-ink/35 2xl:inline">
             {phone}
           </span>
           <NotificationBell />
           {!onDashboard && (
-            <button
-              type="button"
-              aria-label={hidden ? "Show balance" : "Hide balance"}
-              onClick={() => setHidden((value) => !value)}
-              className="flex h-9 items-center gap-2 rounded-xl border border-line bg-white px-3 text-ink shadow-sm"
-            >
-              <span className="text-green" aria-hidden>{hidden ? "○" : "◉"}</span>
+            <div className="flex h-9 items-center gap-1.5 rounded-xl border border-line bg-white pl-3 pr-1.5 text-ink shadow-sm">
               <BalanceAmount amount={balance} hidden={hidden} variant="compact" />
-            </button>
+              <BalanceEyeButton className="h-8 w-8 border-0 bg-transparent text-ink/55 hover:bg-ink/[0.04] hover:text-ink" />
+            </div>
           )}
           <Link
             href="/wallet"

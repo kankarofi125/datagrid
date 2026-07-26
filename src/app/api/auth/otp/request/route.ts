@@ -43,6 +43,8 @@ export async function POST(req: Request) {
       ok: true,
       phone: result.phone,
       phoneLocal: result.phoneLocal,
+      email: "email" in result ? result.email : undefined,
+      channels: "channels" in result ? result.channels : undefined,
       exists: Boolean(user),
       hasPin: Boolean(user?.pinHash),
       isNew: !user,

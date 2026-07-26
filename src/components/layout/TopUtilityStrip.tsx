@@ -21,10 +21,13 @@ export function TopUtilityStrip({
     <div className="border-b border-line bg-green-deep text-paper">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 text-[11px] sm:text-xs">
         <div className="font-mono-num flex min-w-0 items-center gap-2 tracking-wide sm:gap-3">
-          <span className="truncate uppercase text-amber">{clock.place || "LOCAL"}</span>
-          <span aria-live="polite" aria-atomic="true" className="shrink-0">
+          <span
+            aria-live="polite"
+            aria-atomic="true"
+            className="shrink-0 tabular-nums text-amber"
+            title="Nigeria time"
+          >
             {clock.time || "—"}
-            {clock.zoneAbbr ? ` ${clock.zoneAbbr}` : ""}
           </span>
         </div>
         <div className="font-mono-num hidden items-center gap-2 tracking-[0.12em] sm:flex">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { formatNaira } from "@/lib/money";
+import { formatNigeriaShort } from "@/lib/time";
 import { Reveal } from "@/components/motion/Reveal";
 import { MobileOnly, DesktopOnly } from "@/components/layout/Responsive";
 
@@ -16,12 +17,7 @@ export type HistoryRow = {
 };
 
 function shortWhen(iso: string) {
-  return new Date(iso).toLocaleString("en-NG", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatNigeriaShort(iso);
 }
 
 export function HistoryViews({ rows }: { rows: HistoryRow[] }) {

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatNigeriaDateTime } from "@/lib/time";
+
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -12,6 +14,8 @@ import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import { LoadFailure, SkeletonPage } from "@/components/ui/Skeleton";
 import { BalanceAmount } from "@/components/ui/BalanceAmount";
+import { BalanceEyeButton } from "@/components/ui/BalanceEyeToggle";
+import { useBalanceHidden } from "@/hooks/useBalanceHidden";
 import { PinPad } from "@/components/buy/PinPad";
 import { isPinDenied } from "@/lib/pin-feedback";
 import { useBlockingLoader } from "@/components/ui/BlockingLoader";
@@ -39,7 +43,7 @@ export default function WalletPage() {
   const [balance, setBalance] = useState(0);
   const [commission, setCommission] = useState(0);
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
-  const [hidden, setHidden] = useState(false);
+  const { hidden } = useBalanceHidden();
   const [amount, setAmount] = useState("2000");
   const [tab, setTab] = useState<"card" | "flutterwave" | "transfer">("transfer");
   const [open, setOpen] = useState(false);
@@ -134,7 +138,10 @@ export default function WalletPage() {
     });
   }
 
-  function transfer() {
+  function transfer(pinCode?: string) {
+    const code = pinCode ?? xferPin;
+    if (code.length < 4) return;
+    if (pinCode) setXferPin(pinCode);
     start(async () => {
       await runBlocking(async () => {
         setMsg(null);
@@ -146,7 +153,7 @@ export default function WalletPage() {
           body: JSON.stringify({
             phone: xferPhone,
             amount: Number(xferAmount),
-            pin: xferPin,
+            pin: code,
           }),
         });
         const data = await res.json();
@@ -169,7 +176,10 @@ export default function WalletPage() {
     });
   }
 
-  function payoutCommission() {
+  function payoutCommission(pinCode?: string) {
+    const code = pinCode ?? payoutPin;
+    if (code.length < 4) return;
+    if (pinCode) setPayoutPin(pinCode);
     start(async () => {
       await runBlocking(async () => {
         setMsg(null);
@@ -178,7 +188,7 @@ export default function WalletPage() {
         const res = await fetch("/api/wallet/commission/payout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pin: payoutPin }),
+          body: JSON.stringify({ pin: code }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -353,13 +363,7 @@ export default function WalletPage() {
           }}
         />
       ) : (
-      <form
-        className="space-y-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (xferPin.length === 4) transfer();
-        }}
-      >
+      <div className="space-y-3">
         <PhoneInput
           label="Recipient phone"
           value={xferPhone}
@@ -373,12 +377,19 @@ export default function WalletPage() {
         />
         <div>
           <p className="mb-2 text-center text-xs font-medium text-ink/55">
-            Enter your transaction PIN
+            Enter your transaction PIN — transfer starts automatically
           </p>
           <PinPad
             value={xferPin}
             onChange={setXferPin}
             onDeniedReset={() => setXferError(null)}
+            onComplete={(full) => {
+              if (!xferPhone.trim() || Number(xferAmount) < 1) {
+                setXferError("Enter recipient and amount first");
+                return;
+              }
+              transfer(full);
+            }}
             disabled={pending}
             denied={transferPinDenied}
           />
@@ -388,10 +399,7 @@ export default function WalletPage() {
             </p>
           )}
         </div>
-        <Button type="submit" fullWidth disabled={pending || xferPin.length < 4}>
-          Transfer
-        </Button>
-      </form>
+      </div>
       )}
     </Sheet>
   );
@@ -423,12 +431,19 @@ export default function WalletPage() {
         </span>
       </p>
       <p className="mb-2 text-center text-xs font-medium text-ink/55">
-        Confirm with your transaction PIN
+        Enter your transaction PIN — payout starts automatically
       </p>
       <PinPad
         value={payoutPin}
         onChange={setPayoutPin}
         onDeniedReset={() => setPayoutError(null)}
+        onComplete={(full) => {
+          if (commission < 1) {
+            setPayoutError("No commission available");
+            return;
+          }
+          payoutCommission(full);
+        }}
         disabled={pending}
         denied={payoutPinDenied}
       />
@@ -437,14 +452,6 @@ export default function WalletPage() {
           {payoutError}
         </p>
       )}
-      <Button
-        className="mt-3"
-        fullWidth
-        onClick={payoutCommission}
-        disabled={pending || commission < 1 || payoutPin.length < 4}
-      >
-        Move all to main wallet
-      </Button>
       </>
       )}
     </Sheet>
@@ -476,7 +483,7 @@ export default function WalletPage() {
               <div>
                 <p className="font-medium">{l.memo || l.direction}</p>
                 <p className="font-mono-num text-[10px] text-ink/45">
-                  {new Date(l.createdAt).toLocaleString("en-NG")}
+                  {formatNigeriaDateTime(l.createdAt)}
                 </p>
               </div>
               <div className="text-right">
@@ -514,13 +521,7 @@ export default function WalletPage() {
                   </p>
                   <BalanceAmount amount={balance} hidden={hidden} className="mt-2 text-paper" />
                 </div>
-                <button
-                  type="button"
-                  className="min-h-9 shrink-0 rounded-full border border-white/10 bg-white/[0.06] px-3 font-mono-num text-[9px] font-semibold text-paper/65"
-                  onClick={() => setHidden((h) => !h)}
-                >
-                  {hidden ? "SHOW" : "HIDE"}
-                </button>
+                <BalanceEyeButton className="border-white/15 bg-white/[0.08] text-paper/80 hover:bg-white/[0.14]" />
               </div>
               {commission > 0 && (
                 <p className="mt-3 border-t border-white/10 pt-3 font-mono-num text-xs text-amber">

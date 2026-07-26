@@ -7,7 +7,7 @@ import {
   ShellMenuButton,
   ShellMobileMenuPanel,
 } from "@/components/layout/ShellMobileMenu";
-import { BalanceAmount } from "@/components/ui/BalanceAmount";
+import { BalanceWithEye } from "@/components/ui/BalanceEyeToggle";
 
 export function MobileAppMenu({
   balance,
@@ -34,7 +34,12 @@ export function MobileAppMenu({
         summary={
           <div className="rounded-xl border border-line bg-green-deep/5 p-3">
             <p className="font-mono-num text-[10px] tracking-widest text-ink/45">WALLET</p>
-            <BalanceAmount amount={balance} variant="card" className="mt-1 text-ink" />
+            <BalanceWithEye
+              amount={balance}
+              variant="card"
+              className="mt-1 text-ink"
+              eyeClassName="mt-1 border-line bg-white text-ink/55 hover:bg-ink/[0.04]"
+            />
             <p className="mt-0.5 truncate text-xs text-ink/55">{phone || "—"}</p>
           </div>
         }

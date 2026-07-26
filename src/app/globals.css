@@ -172,8 +172,8 @@ a {
 }
 
 .blocking-loader-mark {
-  --blocking-cell: 9px;
-  --blocking-gap: 2.5px;
+  --blocking-cell: 14px;
+  --blocking-gap: 3.5px;
   display: grid;
   grid-template-columns: repeat(2, var(--blocking-cell));
   grid-template-rows: repeat(2, var(--blocking-cell));
@@ -248,18 +248,18 @@ a {
 
 @media (min-width: 640px) {
   .blocking-loader-mark {
-    --blocking-cell: 12px;
-    --blocking-gap: 3.25px;
+    --blocking-cell: 18px;
+    --blocking-gap: 4.5px;
   }
 }
 
 @media (min-width: 1024px) {
   .blocking-loader-mark {
-    --blocking-cell: 15px;
-    --blocking-gap: 4px;
+    --blocking-cell: 22px;
+    --blocking-gap: 5.5px;
   }
   .blocking-loader-cell {
-    border-radius: 3px;
+    border-radius: 3.5px;
   }
 }
 

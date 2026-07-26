@@ -115,8 +115,10 @@ export function useBuyData(initial?: {
     setOpen(true);
   }
 
-  function pay() {
-    if (!selected || !local || pin.length < 4) return;
+  function pay(pinCode?: string) {
+    const code = pinCode ?? pin;
+    if (!selected || !local || code.length < 4) return;
+    if (pinCode) setPin(pinCode);
     start(async () => {
       await runBlocking(async () => {
         setStatus("processing");
@@ -132,7 +134,7 @@ export function useBuyData(initial?: {
             phone: local,
             planId: selected.id,
             networkCode: network,
-            pin,
+            pin: code,
           }),
         });
         const data = await res.json();

@@ -5,7 +5,7 @@ import { formatNaira } from "@/lib/money";
 import type { NetworkCode } from "@/lib/phone";
 import { NETWORK_COLORS } from "@/lib/phone";
 import { cn } from "@/lib/cn";
-import { BalanceAmount } from "@/components/ui/BalanceAmount";
+import { BalanceWithEye } from "@/components/ui/BalanceEyeToggle";
 
 type Tx = {
   id: string;
@@ -94,7 +94,11 @@ export function DashboardDesktop({
                 <p className="font-mono-num text-[10px] font-semibold tracking-[0.16em] text-amber">
                   MAIN WALLET
                 </p>
-                <BalanceAmount amount={balance} className="mt-3 text-paper" />
+                <BalanceWithEye
+                  amount={balance}
+                  className="mt-3 text-paper"
+                  eyeClassName="mt-3 border-white/15 bg-white/[0.08] text-paper/80 hover:bg-white/[0.14]"
+                />
               </div>
               <span className="rounded-full border border-white/10 bg-white/[0.07] px-3 py-1 font-mono-num text-[9px] tracking-wider text-paper/60">
                 AVAILABLE

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatNigeriaDateTime } from "@/lib/time";
+
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -286,7 +288,7 @@ export default function SchedulesPage() {
                     <span className="font-mono-num">{s.phone}</span>
                   </p>
                   <p className="font-mono-num mt-1 text-[11px] text-ink/50">
-                    Next: {new Date(s.nextRunAt).toLocaleString("en-NG")}
+                    Next: {formatNigeriaDateTime(s.nextRunAt)}
                     {!s.isActive && " · PAUSED"}
                   </p>
                 </div>

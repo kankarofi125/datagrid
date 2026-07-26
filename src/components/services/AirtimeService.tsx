@@ -86,7 +86,10 @@ export default function AirtimeService({
     setOpen(true);
   }
 
-  function buy() {
+  function buy(pinCode?: string) {
+    const code = pinCode ?? pin;
+    if (code.length < 4) return;
+    if (pinCode) setPin(pinCode);
     start(async () => {
       await runBlocking(async () => {
         setStatus("processing");
@@ -98,7 +101,7 @@ export default function AirtimeService({
             phone: local,
             amount: n,
             networkCode: network,
-            pin,
+            pin: code,
           }),
         });
         const data = await res.json();
@@ -212,6 +215,11 @@ export default function AirtimeService({
               Balance after: {formatNaira(Math.max(0, balance - n))}
             </p>
           )}
+          <p className="text-center text-xs text-ink/50">
+            {status === "processing"
+              ? "Processing…"
+              : "Enter your 4-digit PIN — payment starts automatically"}
+          </p>
           <PinPad
             value={pin}
             onChange={setPin}
@@ -220,6 +228,7 @@ export default function AirtimeService({
               setStatus("idle");
               setTrail([]);
             }}
+            onComplete={(full) => buy(full)}
             disabled={pending}
             denied={pinDenied}
           />
@@ -238,9 +247,6 @@ export default function AirtimeService({
             </div>
           )}
           {error && !pinDenied && <p className="text-sm text-danger">{error}</p>}
-          <Button fullWidth size="lg" onClick={buy} disabled={pending || pin.length < 4}>
-            {status === "processing" ? "Processing…" : "Confirm with PIN"}
-          </Button>
         </div>
       )}
     </Sheet>
@@ -290,7 +296,7 @@ export default function AirtimeService({
                 <p className="font-mono-num mt-8 text-[11px] leading-relaxed text-paper/40">
                   Instant delivery via provider failover.
                   <br />
-                  Confirm with PIN on the next step.
+                  Enter your PIN on the next step — payment starts automatically.
                 </p>
               </div>
             </Reveal>

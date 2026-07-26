@@ -1,5 +1,7 @@
 "use client";
 
+import { formatNigeriaDateTime } from "@/lib/time";
+
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { useEffect, useState, useTransition } from "react";
@@ -139,7 +141,7 @@ export default function AdminWalletsPage() {
                 {r.phone} · {r.reason}
               </p>
               <p className="font-mono-num text-[10px] text-ink/45">
-                {r.status} · {new Date(r.createdAt).toLocaleString("en-NG")}
+                {r.status} · {formatNigeriaDateTime(r.createdAt)}
               </p>
             </div>
             {r.status === "PENDING" && (

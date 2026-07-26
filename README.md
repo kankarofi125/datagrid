@@ -28,7 +28,9 @@ Open [http://localhost:3000](http://localhost:3000).
 | User  | 08030000000  | 1234 | 1234 |
 | Admin | 08000000001  | 1234 | 1234 |
 
-OTP is always logged to the server console in `OTP_MODE=simulate`.
+OTP: `OTP_MODE=simulate` logs codes to the server console. For production SMS/email
+OTP set `OTP_MODE=sendchamp`, `SENDCHAMP_API_KEY`, and optional `OTP_CHANNELS=sms|email|both`
+([Sendchamp docs](https://sendchamp.readme.io/reference/introduction)).
 
 ## Marketing scroll video
 

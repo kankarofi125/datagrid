@@ -1,5 +1,7 @@
 "use client";
 
+import { formatNigeriaDateTime } from "@/lib/time";
+
 import { useCallback, useEffect, useState } from "react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
@@ -187,7 +189,7 @@ export default function AdminTransactionsPage() {
                   <td className="font-mono-num px-3 py-2 text-xs">{t.networkCode || "—"}</td>
                   <td className="font-mono-num px-3 py-2 text-xs">{t.providerCode || "—"}</td>
                   <td className="font-mono-num px-3 py-2 text-xs text-ink/50">
-                    {new Date(t.createdAt).toLocaleString("en-NG")}
+                    {formatNigeriaDateTime(t.createdAt)}
                   </td>
                 </tr>
               ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
+import { useRef } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { PinPad } from "@/components/buy/PinPad";
 import { StatusTrail } from "@/components/buy/StatusTrail";
@@ -39,12 +39,31 @@ export function ConfirmPurchaseSheet({
   trail: { at: string; status: string; note?: string }[];
   error: string | null;
   pending: boolean;
-  onConfirm: () => void;
+  /** Called with the completed 4-digit PIN (auto-submit on last digit). */
+  onConfirm: (pin: string) => void;
   delivered?: React.ReactNode;
 }) {
   const pinDenied =
     status === "failed" &&
     isPinDenied(error);
+  const submittingRef = useRef(false);
+
+  function handleComplete(fullPin: string) {
+    if (
+      submittingRef.current ||
+      pending ||
+      status === "processing" ||
+      status === "delivered"
+    ) {
+      return;
+    }
+    submittingRef.current = true;
+    onConfirm(fullPin);
+    // Allow retry after wrong PIN / failure once pad is cleared.
+    window.setTimeout(() => {
+      submittingRef.current = false;
+    }, 800);
+  }
 
   return (
     <Sheet
@@ -80,10 +99,16 @@ export function ConfirmPurchaseSheet({
           <p className="font-mono-num text-center text-[11px] tracking-widest text-ink/45">
             TRANSACTION PIN
           </p>
+          <p className="text-center text-xs text-ink/50">
+            {status === "processing"
+              ? "Processing…"
+              : "Enter your 4-digit PIN — payment starts automatically"}
+          </p>
           <PinPad
             value={pin}
             onChange={onPinChange}
             onDeniedReset={onPinDeniedReset}
+            onComplete={handleComplete}
             disabled={pending || status === "processing"}
             denied={pinDenied}
           />
@@ -106,14 +131,6 @@ export function ConfirmPurchaseSheet({
               {error}
             </p>
           )}
-          <Button
-            fullWidth
-            size="lg"
-            onClick={onConfirm}
-            disabled={pending || pin.length < 4 || status === "processing"}
-          >
-            {status === "processing" ? "Processing…" : "Confirm with PIN"}
-          </Button>
         </div>
       )}
     </Sheet>

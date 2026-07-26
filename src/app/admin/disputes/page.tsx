@@ -1,5 +1,7 @@
 "use client";
 
+import { formatNigeriaDateTime } from "@/lib/time";
+
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { useEffect, useState, useTransition } from "react";
@@ -114,7 +116,7 @@ export default function AdminDisputesPage() {
                 </p>
                 <p className="mt-1 text-sm text-ink/65">{d.reason}</p>
                 <p className="font-mono-num text-[10px] text-ink/40">
-                  {d.status} · {new Date(d.createdAt).toLocaleString("en-NG")}
+                  {d.status} · {formatNigeriaDateTime(d.createdAt)}
                 </p>
               </div>
               {(d.status === "OPEN" || d.status === "INVESTIGATING") && (

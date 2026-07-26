@@ -44,7 +44,7 @@ export function BalanceAmount({
   return (
     <span
       className={cn(
-        "block max-w-full whitespace-nowrap font-mono-num font-semibold leading-none tracking-[-0.045em] tabular-nums",
+        "inline-block max-w-full whitespace-nowrap font-mono-num font-semibold leading-none tracking-[-0.045em] tabular-nums",
         size,
         className
       )}

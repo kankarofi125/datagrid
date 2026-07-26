@@ -14,6 +14,8 @@ export function PinPad({
   disabled,
   denied = false,
   onDeniedReset,
+  /** Fires once the full PIN is entered (e.g. auto-submit a purchase). */
+  onComplete,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -21,6 +23,7 @@ export function PinPad({
   disabled?: boolean;
   denied?: boolean;
   onDeniedReset?: () => void;
+  onComplete?: (pin: string) => void;
 }) {
   const controls = useAnimationControls();
   const reduced = useReducedMotion();
@@ -28,11 +31,13 @@ export function PinPad({
   const [denialLocked, setDenialLocked] = useState(false);
   const onChangeRef = useRef(onChange);
   const onDeniedResetRef = useRef(onDeniedReset);
+  const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
     onChangeRef.current = onChange;
     onDeniedResetRef.current = onDeniedReset;
-  }, [onChange, onDeniedReset]);
+    onCompleteRef.current = onComplete;
+  }, [onChange, onDeniedReset, onComplete]);
 
   useEffect(() => {
     if (!denied) {
@@ -76,7 +81,12 @@ export function PinPad({
     }
     if (k === "") return;
     if (value.length >= maxLength) return;
-    onChange(value + k);
+    const next = value + k;
+    onChange(next);
+    if (next.length === maxLength) {
+      // Defer so parent state has the full PIN before submit handlers run.
+      window.setTimeout(() => onCompleteRef.current?.(next), 0);
+    }
   }
 
   return (

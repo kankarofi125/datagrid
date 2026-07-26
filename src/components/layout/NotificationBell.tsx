@@ -1,5 +1,7 @@
 "use client";
 
+import { formatNigeriaDateTime } from "@/lib/time";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, type PanInfo } from "framer-motion";
@@ -244,12 +246,7 @@ export function NotificationBell({ className }: { className?: string }) {
                           </p>
                           <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-ink/55 sm:mt-1 sm:text-xs">{note.body}</p>
                           <p className="mt-1.5 font-mono-num text-[9px] text-ink/35">
-                            {new Date(note.createdAt).toLocaleString("en-NG", {
-                              day: "2-digit",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {formatNigeriaDateTime(note.createdAt)}
                           </p>
                         </div>
                       </div>

@@ -170,12 +170,23 @@ model OtpChallenge {
   id         String    @id @default(cuid())
   userId     String?
   user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  phone      String
+  /// Destination phone (E.164). Empty string when challenge is email-only.
+  phone      String    @default("")
+  /// Optional email destination for Sendchamp email OTP.
+  email      String?
+  /// sms | email | both — how the code was delivered.
+  channel    String    @default("sms")
+  /// Sendchamp verification reference (MN-OTP-…) for confirm API.
+  providerRef String?
   codeHash   String
   attempts   Int       @default(0)
   expiresAt  DateTime
   consumedAt DateTime?
   createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+  @@index([email, createdAt])
+  @@index([providerRef])
 }
 
 model KycDocument {

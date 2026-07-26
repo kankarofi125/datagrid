@@ -50,7 +50,7 @@ function TypewrittenBrand() {
   return (
     <p
       aria-hidden
-      className="font-mono-num min-h-5 text-[12px] font-semibold tracking-[0.08em] text-ink/64 sm:text-[13px] lg:text-[14px]"
+      className="font-mono-num min-h-6 text-[14px] font-semibold tracking-[0.08em] text-ink/64 sm:text-[15px] lg:text-[16px]"
     >
       {reduced ? word : word.slice(0, length)}
       <span className="blocking-loader-caret" />
@@ -85,7 +85,7 @@ function BlockingOverlay({
           transition={{ duration: reduced ? 0 : 0.28, ease: [0.16, 1, 0.3, 1] }}
         >
           <motion.div
-            className="flex flex-col items-center gap-2.5 sm:gap-3"
+            className="flex flex-col items-center gap-3.5 sm:gap-4"
             initial={reduced ? false : { opacity: 0, y: 10, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduced ? undefined : { opacity: 0, y: 6, scale: 0.98 }}

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatNigeriaDateTime } from "@/lib/time";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -166,7 +168,7 @@ export default function ReferralsPage() {
                 <div>
                   <p className="font-mono-num font-medium">{r.phone}</p>
                   <p className="font-mono-num text-[10px] text-ink/40">
-                    {new Date(r.joinedAt).toLocaleDateString("en-NG")}
+                    {formatNigeriaDateTime(r.joinedAt, { dateOnly: true })}
                   </p>
                 </div>
                 <p className="font-mono-num text-green">
@@ -189,7 +191,7 @@ export default function ReferralsPage() {
                 <div>
                   <p className="font-medium">{c.kind.replace(/_/g, " ")}</p>
                   <p className="font-mono-num text-[10px] text-ink/40">
-                    {new Date(c.createdAt).toLocaleString("en-NG")}
+                    {formatNigeriaDateTime(c.createdAt)}
                   </p>
                 </div>
                 <p className="font-mono-num font-semibold text-green">

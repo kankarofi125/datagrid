@@ -250,10 +250,16 @@ export function BuyDataConfirmSheet({ s }: { s: BuyDataState }) {
           <p className="font-mono-num text-center text-[11px] tracking-widest text-ink/45">
             TRANSACTION PIN
           </p>
+          <p className="text-center text-xs text-ink/50">
+            {s.status === "processing"
+              ? "Processing…"
+              : "Enter your 4-digit PIN — payment starts automatically"}
+          </p>
           <PinPad
             value={s.pin}
             onChange={s.setPin}
             onDeniedReset={s.resetPinDenial}
+            onComplete={(full) => s.pay(full)}
             disabled={s.pending || s.status === "processing"}
             denied={pinDenied}
           />
@@ -276,14 +282,6 @@ export function BuyDataConfirmSheet({ s }: { s: BuyDataState }) {
               {s.error}
             </p>
           )}
-          <Button
-            fullWidth
-            size="lg"
-            onClick={s.pay}
-            disabled={s.pending || s.pin.length < 4 || s.status === "processing"}
-          >
-            {s.status === "processing" ? "Processing…" : "Confirm with PIN"}
-          </Button>
         </div>
       )}
     </Sheet>

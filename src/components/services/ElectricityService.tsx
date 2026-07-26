@@ -101,7 +101,10 @@ export default function ElectricityService() {
     setOpen(true);
   }
 
-  function pay() {
+  function pay(pinCode?: string) {
+    const code = pinCode ?? pin;
+    if (code.length < 4) return;
+    if (pinCode) setPin(pinCode);
     start(async () => {
       await runBlocking(async () => {
         setStatus("processing");
@@ -113,7 +116,7 @@ export default function ElectricityService() {
             billerCode: disco,
             meter: meterClean,
             amount: n,
-            pin,
+            pin: code,
             customerName,
           }),
         });

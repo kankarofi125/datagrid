@@ -32,7 +32,9 @@ export async function POST(req: Request) {
       ? String(body.referral)
       : pendingGoogle?.referral;
 
-    const result = await verifyOtp(phone, code);
+    const result = await verifyOtp(phone, code, {
+      email: body.email ? String(body.email) : undefined,
+    });
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }

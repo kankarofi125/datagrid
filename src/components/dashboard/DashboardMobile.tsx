@@ -4,7 +4,7 @@ import { formatNaira } from "@/lib/money";
 import type { NetworkCode } from "@/lib/phone";
 import { NETWORK_COLORS } from "@/lib/phone";
 import { cn } from "@/lib/cn";
-import { BalanceAmount } from "@/components/ui/BalanceAmount";
+import { BalanceWithEye } from "@/components/ui/BalanceEyeToggle";
 
 type Tx = {
   id: string;
@@ -190,7 +190,12 @@ export function DashboardMobile({
               <p className="font-mono-num text-[9px] font-semibold tracking-[0.15em] text-amber/90">
                 MAIN WALLET
               </p>
-              <BalanceAmount amount={balance} variant="card" className="mt-1.5 text-paper" />
+              <BalanceWithEye
+                amount={balance}
+                variant="card"
+                className="mt-1.5 text-paper"
+                eyeClassName="mt-1.5 border-white/15 bg-white/[0.08] text-paper/80 hover:bg-white/[0.14]"
+              />
             </div>
             <Link
               href="/wallet"

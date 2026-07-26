@@ -1,5 +1,7 @@
 "use client";
 
+import { formatNigeriaDateTime } from "@/lib/time";
+
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SkeletonPage } from "@/components/ui/Skeleton";
 import { useEffect, useState } from "react";
@@ -47,7 +49,7 @@ export default function AdminAuditPage() {
                 </span>
               </p>
               <p className="font-mono-num text-[10px] text-ink/40">
-                {new Date(l.createdAt).toLocaleString("en-NG")}
+                {formatNigeriaDateTime(l.createdAt)}
               </p>
             </div>
             <p className="text-xs text-ink/55">Actor: {l.actorPhone || "system"}</p>

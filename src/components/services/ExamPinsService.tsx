@@ -69,7 +69,10 @@ export default function ExamPinsService() {
     setOpen(true);
   }
 
-  function pay() {
+  function pay(pinCode?: string) {
+    const code = pinCode ?? pin;
+    if (code.length < 4) return;
+    if (pinCode) setPin(pinCode);
     start(async () => {
       await runBlocking(async () => {
         setStatus("processing");
@@ -77,7 +80,7 @@ export default function ExamPinsService() {
         const res = await fetch("/api/vtu/pins", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ billerCode, pin }),
+          body: JSON.stringify({ billerCode, pin: code }),
         });
         const data = await res.json();
         if (!res.ok) {

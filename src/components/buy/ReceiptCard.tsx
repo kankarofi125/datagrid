@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { triggerHaptic } from "@/lib/haptics";
 import { formatNaira } from "@/lib/money";
 import { formatPhoneDisplay } from "@/lib/phone";
+import { formatNigeriaDateTime } from "@/lib/time";
 
 type Props = {
   orderRef: string;
@@ -481,14 +482,7 @@ function formatIssuedAt(value: string | Date | null | undefined) {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("en-NG", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Africa/Lagos",
-  }).format(date);
+  return formatNigeriaDateTime(date);
 }
 
 function PrintIcon() {

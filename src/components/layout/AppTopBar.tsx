@@ -15,9 +15,9 @@ export function AppTopBar({ balance, phone }: { balance: number; phone: string }
       eyebrow={
         <span className="flex items-center gap-1.5">
           <RealtimeDot />
-          <span className="uppercase">{clock.place || "LOCAL"}</span>{" "}
-          {clock.time || "—"}
-          {clock.zoneAbbr ? ` ${clock.zoneAbbr}` : ""}
+          <span className="tabular-nums" title="Nigeria time">
+            {clock.time || "—"}
+          </span>
         </span>
       }
       detail={phone || "DataGrid"}
