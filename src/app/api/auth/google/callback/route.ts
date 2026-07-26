@@ -154,6 +154,7 @@ async function finishReturningGoogleUser(
     email: string | null;
     totpEnabled: boolean;
     isActive: boolean;
+    pinHash: string | null;
   },
   identity: GoogleIdentity
 ) {
@@ -268,9 +269,10 @@ async function finishReturningGoogleUser(
     return clearOAuthCookies(response);
   }
 
-  // Full login (no 2FA)
+  // Full login (no 2FA) — still force PIN setup if missing
+  const needsPin = !user.pinHash;
   const response = NextResponse.redirect(
-    new URL("/dashboard", request.url),
+    new URL(needsPin ? "/login?setup=pin" : "/dashboard", request.url),
     303
   );
   const session = await getIronSession<SessionData>(
@@ -282,6 +284,7 @@ async function finishReturningGoogleUser(
   session.phone = user.phone;
   session.role = user.role;
   session.isLoggedIn = true;
+  session.needsPinSetup = needsPin;
   delete session.adminUsername;
   delete session.pendingGoogle;
   delete session.pendingLogin2fa;

@@ -11,11 +11,17 @@ export async function POST(req: Request) {
     let phone = String(body.phone || "");
     const session = await getSession();
 
+    const pendingGoogleLive =
+      session.pendingGoogle && session.pendingGoogle.expiresAt > Date.now()
+        ? session.pendingGoogle
+        : null;
+    const pending2faLive =
+      session.pendingLogin2fa && session.pendingLogin2fa.expiresAt > Date.now()
+        ? session.pendingLogin2fa
+        : null;
+
     if (body.googleLink === true) {
-      if (
-        !session.pendingGoogle ||
-        session.pendingGoogle.expiresAt <= Date.now()
-      ) {
+      if (!pendingGoogleLive) {
         delete session.pendingGoogle;
         await session.save();
         return NextResponse.json(
@@ -31,11 +37,20 @@ export async function POST(req: Request) {
 
     const useSessionPhone = body.useSessionPhone === true;
 
-    // "Use OTP instead" after Google / email 2FA: always load phone from DB
-    // via parked userId / email / googleSub (ignore empty client form).
+    // "Use OTP instead" after Google / email 2FA — only with first factor parked.
     if (useSessionPhone) {
+      if (!pending2faLive && !pendingGoogleLive) {
+        return NextResponse.json(
+          {
+            error:
+              "Sign-in session expired. Enter your PIN or continue with Google first.",
+            code: "SESSION_EXPIRED",
+          },
+          { status: 401 }
+        );
+      }
+
       const resolved = await resolveAccountPhoneFromSession(session, {
-        // Never trust client phone for this path — use account linkage.
         clientPhone: "",
       });
 
@@ -44,9 +59,6 @@ export async function POST(req: Request) {
           code: resolved.code,
           hasPending2fa: Boolean(session.pendingLogin2fa),
           pendingUserId: session.pendingLogin2fa?.userId,
-          pendingEmail: session.pendingLogin2fa?.email
-            ? session.pendingLogin2fa.email.replace(/^(.{1,2}).*(@.*)$/, "$1***$2")
-            : null,
           hasPendingGoogle: Boolean(session.pendingGoogle),
         });
         return NextResponse.json(
@@ -73,7 +85,53 @@ export async function POST(req: Request) {
       });
     }
 
-    // channels override: e.g. "whatsapp" for "Use OTP instead" (WA → SMS fallback).
+    const e164Preview = toE164(phone);
+    if (e164Preview) {
+      const existing = await prisma.user.findUnique({
+        where: { phone: e164Preview },
+        select: {
+          isActive: true,
+          totpEnabled: true,
+          email: true,
+          pinHash: true,
+        },
+      });
+      if (existing && !existing.isActive) {
+        return NextResponse.json(
+          {
+            error: "This account is suspended. Contact support.",
+            code: "ACCOUNT_SUSPENDED",
+          },
+          { status: 403 }
+        );
+      }
+      // Block public OTP as sole login when email 2FA is on (must use PIN first).
+      if (
+        existing?.totpEnabled &&
+        existing.email &&
+        existing.pinHash &&
+        !useSessionPhone &&
+        !pendingGoogleLive &&
+        body.googleLink !== true
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "This account uses email 2FA. Enter your PIN first, then complete the email code.",
+            code: "2FA_PIN_REQUIRED",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Only trusted server contexts may skip resend cooldown.
+    const allowSkipCooldown =
+      body.skipCooldown === true &&
+      (Boolean(pending2faLive) ||
+        Boolean(pendingGoogleLive) ||
+        body.googleLink === true);
+
     const channels =
       typeof body.channels === "string" && body.channels.trim()
         ? body.channels.trim()
@@ -82,7 +140,7 @@ export async function POST(req: Request) {
     const result = await requestOtp({
       phone,
       channels,
-      skipCooldown: body.skipCooldown === true,
+      skipCooldown: allowSkipCooldown,
     });
     if (!result.ok) {
       return NextResponse.json(
@@ -97,12 +155,22 @@ export async function POST(req: Request) {
       select: { pinHash: true },
     });
 
+    const delivered = "channels" in result ? result.channels || [] : [];
+    const channelHint = delivered.includes("sms")
+      ? "SMS"
+      : delivered.includes("whatsapp")
+        ? "WhatsApp"
+        : delivered.includes("email")
+          ? "email"
+          : null;
+
     return NextResponse.json({
       ok: true,
       phone: result.phone,
       phoneLocal: result.phoneLocal || toLocalPhone(e164),
       email: "email" in result ? result.email : undefined,
-      channels: "channels" in result ? result.channels : undefined,
+      channels: delivered,
+      channelHint,
       expiresInSec: "expiresInSec" in result ? result.expiresInSec : 120,
       exists: Boolean(user),
       hasPin: Boolean(user?.pinHash),

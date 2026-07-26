@@ -53,17 +53,23 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const googleState = params.get("google");
+  const setupPin = params.get("setup") === "pin";
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
   const [step, setStep] = useState<Step>("phone");
   const [isNew, setIsNew] = useState(false);
+  const [email2faOn, setEmail2faOn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailHint, setEmailHint] = useState<string | null>(null);
+  const [channelHint, setChannelHint] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
   const [otpRemainingSec, setOtpRemainingSec] = useState(0);
+  const [otpSource, setOtpSource] = useState<"onboard" | "2fa-fallback" | null>(
+    null
+  );
   const [pending, start] = useTransition();
 
   function startOtpCountdown(expiresInSec?: number) {
@@ -80,6 +86,10 @@ function LoginForm() {
     setOtpRemainingSec(0);
   }
 
+  function startCooldown(sec?: number) {
+    if (typeof sec === "number" && sec > 0) setCooldown(sec);
+  }
+
   // Tick OTP expiry countdown on otp + email-2fa steps.
   useEffect(() => {
     if (!otpExpiresAt) return;
@@ -92,20 +102,41 @@ function LoginForm() {
     return () => window.clearInterval(id);
   }, [otpExpiresAt]);
 
+  // Tick resend cooldown
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = window.setInterval(() => {
+      setCooldown((c) => Math.max(0, c - 1));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [cooldown]);
+
+  // Server redirected here to finish PIN after OTP/Google (needsPinSetup).
+  useEffect(() => {
+    if (setupPin) {
+      setStep("pin-setup");
+      setPin("");
+      setPinConfirm("");
+      setError(null);
+      setIsNew(true);
+    }
+  }, [setupPin]);
+
   // Google (or shared) 2FA redirect → show email code step immediately.
   useEffect(() => {
     if (googleState === "2fa" || params.get("login") === "2fa") {
       setStep("login-2fa");
       setCode("");
+      setEmail2faOn(true);
+      setOtpSource("2fa-fallback");
       const hint = params.get("emailHint");
       if (hint) setEmailHint(hint);
       if (params.get("emailFailed") === "1") {
         setError(
-          "Email code could not be sent. Tap “Use OTP instead” to get a code on WhatsApp/SMS."
+          "Email code could not be sent. Tap “Use phone OTP instead” for WhatsApp/SMS."
         );
       } else {
         setError(null);
-        // Code was just sent by the server on redirect — start 2‑minute window.
         startOtpCountdown(DEFAULT_OTP_TTL_SEC);
       }
     }
@@ -151,10 +182,12 @@ function LoginForm() {
         const otp = await otpRes.json().catch(() => ({}));
         if (!otpRes.ok) {
           setError(otp.error || "Could not send OTP");
-          if (otp.cooldownSec) setCooldown(otp.cooldownSec);
+          startCooldown(otp.cooldownSec);
           return;
         }
         setIsNew(Boolean(otp.isNew));
+        setChannelHint(otp.channelHint || null);
+        setOtpSource("onboard");
         setCode("");
         startOtpCountdown(otp.expiresInSec);
         setStep("otp");
@@ -172,7 +205,9 @@ function LoginForm() {
         return;
       }
 
-      // Existing user with PIN → login with PIN (no OTP)
+      setEmail2faOn(Boolean(lookup.email2fa));
+
+      // Existing user with PIN → login with PIN (no OTP as first factor)
       if (lookup.exists && lookup.hasPin) {
         setIsNew(false);
         setPin("");
@@ -190,9 +225,11 @@ function LoginForm() {
       const otp = await otpRes.json().catch(() => ({}));
       if (!otpRes.ok) {
         setError(otp.error || "Could not send OTP");
-        if (otp.cooldownSec) setCooldown(otp.cooldownSec);
+        startCooldown(otp.cooldownSec);
         return;
       }
+      setChannelHint(otp.channelHint || null);
+      setOtpSource("onboard");
       setCode("");
       startOtpCountdown(otp.expiresInSec);
       setStep("otp");
@@ -202,6 +239,8 @@ function LoginForm() {
   function verifyOtp() {
     start(async () => {
       setError(null);
+      // After PIN/Google 2FA, phone OTP is second factor (login2fa path when email).
+      // For WA fallback we use regular verify with phone + pending2fa on server.
       const res = await fetch("/api/auth/otp/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -215,6 +254,10 @@ function LoginForm() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error || "Verification failed");
+        if (data.code === "2FA_FIRST_FACTOR_REQUIRED") {
+          setStep("pin-login");
+          setPin("");
+        }
         return;
       }
 
@@ -242,18 +285,20 @@ function LoginForm() {
       if (!res.ok) {
         setError(data.error || "Incorrect PIN");
         if (data.code === "PIN_REQUIRED") {
-          // Fall back to OTP setup
-          continueWithOtpForce();
+          requestPhoneOtp({ onboard: true });
         }
+        if (data.retryAfterSec) startCooldown(data.retryAfterSec);
         return;
       }
       if (data.needs2fa) {
         setEmailHint(data.emailHint || null);
+        setEmail2faOn(true);
+        setOtpSource("2fa-fallback");
         setCode("");
         if (data.emailFailed) {
           setError(
             data.message ||
-              "Email code could not be sent. Tap “Use OTP instead” to get a code on WhatsApp/SMS."
+              "Email code could not be sent. Tap “Use phone OTP instead” for WhatsApp/SMS."
           );
           clearOtpCountdown();
         } else {
@@ -284,9 +329,21 @@ function LoginForm() {
       if (!res.ok) {
         setError(data.error || "Verification failed");
         if (data.code === "2FA_EXPIRED") {
-          setStep("pin-login");
-          setPin("");
+          // Google path has no PIN context — back to phone/Google start.
+          if (googleState === "2fa" || !local) {
+            setStep("phone");
+            setPin("");
+            setCode("");
+            clearOtpCountdown();
+          } else {
+            setStep("pin-login");
+            setPin("");
+          }
         }
+        return;
+      }
+      if (data.needsPinSetup) {
+        setStep("pin-setup");
         return;
       }
       router.push("/dashboard");
@@ -295,29 +352,32 @@ function LoginForm() {
   }
 
   /**
-   * Phone OTP via WhatsApp first; server falls back to SMS if WA fails.
-   * After Google / email 2FA, server resolves phone from the verified email
-   * on the session (no need to re-type the number).
+   * Phone OTP via WhatsApp → SMS fallback.
+   * - onboard: public signup / forgot-PIN (no 2FA accounts)
+   * - 2fa-fallback: only after PIN/Google parked pendingLogin2fa
    */
-  function continueWithOtpForce() {
+  function requestPhoneOtp(opts: { onboard?: boolean; resend?: boolean }) {
     start(async () => {
       setError(null);
+      const as2faFallback = !opts.onboard && (otpSource === "2fa-fallback" || step === "login-2fa");
       const otpRes = await fetch("/api/auth/otp/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: phone || undefined,
-          // Force phone path only — WhatsApp, then SMS fallback in requestOtp.
           channels: "whatsapp",
-          skipCooldown: true,
-          // Always try session (Google 2FA parks phone + email).
-          useSessionPhone: true,
+          // Server only honors skip when pending 2FA / Google is present.
+          skipCooldown: as2faFallback || Boolean(opts.resend),
+          useSessionPhone: as2faFallback,
         }),
       });
       const otp = await otpRes.json().catch(() => ({}));
       if (!otpRes.ok) {
         setError(otp.error || "Could not send OTP");
-        if (otp.cooldownSec) setCooldown(otp.cooldownSec);
+        startCooldown(otp.cooldownSec);
+        if (otp.code === "2FA_PIN_REQUIRED") {
+          setStep("pin-login");
+        }
         return;
       }
       if (otp.phoneLocal) {
@@ -327,11 +387,29 @@ function LoginForm() {
             .slice(0, NG_LOCAL_MAX_DIGITS)
         );
       }
+      setChannelHint(otp.channelHint || null);
       setCode("");
-      setEmailHint(null);
+      if (!as2faFallback) setEmailHint(null);
+      setOtpSource(as2faFallback ? "2fa-fallback" : "onboard");
       startOtpCountdown(otp.expiresInSec);
       setStep("otp");
     });
+  }
+
+  /** After first factor (PIN/Google 2FA): phone OTP as second factor. */
+  function continueWithOtpForce() {
+    requestPhoneOtp({ onboard: false });
+  }
+
+  /** Forgot PIN — only for accounts without email 2FA. */
+  function forgotPinWithOtp() {
+    if (email2faOn) {
+      setError(
+        "Email 2FA is on. Enter your PIN, then use the email code (or phone OTP after PIN). To reset PIN, sign in first then use Settings."
+      );
+      return;
+    }
+    requestPhoneOtp({ onboard: true });
   }
 
   function onPinSetupNext() {
@@ -430,7 +508,7 @@ function LoginForm() {
             type="submit"
             fullWidth
             size="lg"
-            disabled={pending || phone.length < 10}
+            disabled={pending || !local || phone.length < NG_LOCAL_MAX_DIGITS}
           >
             {pending ? "Checking…" : "Continue"}
           </Button>
@@ -445,7 +523,11 @@ function LoginForm() {
             value={code}
             onChange={setCode}
             autoFocus
-            hint={`Sent to ${local || phone}`}
+            hint={
+              channelHint
+                ? `Sent via ${channelHint} to ${local || phone}`
+                : `Sent to ${local || phone}`
+            }
             aria-label="One-time password"
           />
           <OtpExpiryBanner remainingSec={otpRemainingSec} active={Boolean(otpExpiresAt)} />
@@ -463,27 +545,30 @@ function LoginForm() {
                   ? "Verify & create account"
                   : "Verify"}
           </Button>
-          {otpRemainingSec <= 0 && (
-            <button
-              type="button"
-              className="font-mono-num w-full text-center text-xs tracking-wide text-green"
-              disabled={pending}
-              onClick={continueWithOtpForce}
-            >
-              Resend OTP
-            </button>
-          )}
+          <button
+            type="button"
+            className="font-mono-num w-full text-center text-xs tracking-wide text-green disabled:opacity-40"
+            disabled={pending || cooldown > 0}
+            onClick={() =>
+              requestPhoneOtp({
+                onboard: otpSource !== "2fa-fallback",
+                resend: true,
+              })
+            }
+          >
+            {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend OTP"}
+          </button>
           <button
             type="button"
             className="font-mono-num w-full text-center text-xs tracking-wide text-ink/50"
             onClick={() => {
-              setStep("phone");
+              setStep(otpSource === "2fa-fallback" ? "login-2fa" : "phone");
               setCode("");
               setError(null);
               clearOtpCountdown();
             }}
           >
-            Change number
+            {otpSource === "2fa-fallback" ? "Back to email code" : "Change number"}
           </button>
         </>
       )}
@@ -545,8 +630,11 @@ function LoginForm() {
             disabled={pending}
             onClick={continueWithOtpForce}
           >
-            Use OTP instead
+            Use phone OTP instead
           </button>
+          <p className="text-center text-[11px] text-ink/40">
+            After PIN/Google, WhatsApp/SMS can replace the email code.
+          </p>
           <button
             type="button"
             className="font-mono-num w-full text-center text-xs tracking-wide text-ink/40"
@@ -583,13 +671,21 @@ function LoginForm() {
           >
             {pending ? "Signing in…" : "Enter the grid"}
           </Button>
-          <button
-            type="button"
-            className="font-mono-num w-full text-center text-xs tracking-wide text-ink/50"
-            onClick={continueWithOtpForce}
-          >
-            Use OTP instead
-          </button>
+          {!email2faOn && (
+            <button
+              type="button"
+              className="font-mono-num w-full text-center text-xs tracking-wide text-ink/50"
+              onClick={forgotPinWithOtp}
+            >
+              Forgot PIN? Use OTP
+            </button>
+          )}
+          {email2faOn && (
+            <p className="text-center text-[11px] leading-relaxed text-ink/45">
+              Email 2FA is on — enter your PIN, then the email code. Phone OTP is
+              available after PIN if email fails.
+            </p>
+          )}
           <button
             type="button"
             className="font-mono-num w-full text-center text-xs tracking-wide text-ink/40"
@@ -728,7 +824,9 @@ function LoginForm() {
             </HeroEnter>
             <HeroEnter delay={240}>
               <p className="mt-4 max-w-sm text-paper/65">
-                New lines verify with OTP, then set a PIN. Returning operators unlock with PIN.
+                New lines verify with OTP, then set a PIN. Returning users unlock with
+                PIN — and email 2FA when enabled. Optional Google sign-in links to your
+                Nigerian number.
               </p>
             </HeroEnter>
           </div>
@@ -828,15 +926,17 @@ function OnboardingRail({ step }: { step: Step }) {
   const phases = [
     { key: "phone", label: "Line" },
     { key: "verify", label: "Verify" },
-    { key: "pin", label: "PIN" },
+    { key: "secure", label: "Secure" },
   ] as const;
 
   const active =
     step === "phone"
       ? 0
-      : step === "otp"
+      : step === "otp" || step === "login-2fa"
         ? 1
-        : 2;
+        : step === "pin-login" || step === "pin-setup" || step === "pin-confirm"
+          ? 2
+          : 0;
 
   return (
     <ol className="mt-6 flex items-center gap-2" aria-label="Onboarding progress">

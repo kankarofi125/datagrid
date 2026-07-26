@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isValidPin, verifyPin } from "@/lib/auth/pin";
+import {
+  clearPinFailures,
+  getPinLockStatus,
+  recordPinFailure,
+} from "@/lib/auth/pin-lockout";
 import { startEmail2faChallenge } from "@/lib/auth/login-2fa";
 import { toE164, toLocalPhone } from "@/lib/phone";
 
@@ -24,6 +29,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "PIN must be 4 digits" }, { status: 400 });
     }
 
+    const lock = await getPinLockStatus(e164);
+    if (lock.locked) {
+      return NextResponse.json(
+        {
+          error: `Too many incorrect PINs. Try again in ${lock.retryAfterSec}s.`,
+          code: "PIN_LOCKED",
+          retryAfterSec: lock.retryAfterSec,
+        },
+        { status: 429 }
+      );
+    }
+
     const user = await prisma.user.findUnique({ where: { phone: e164 } });
     if (!user || !user.isActive) {
       return NextResponse.json(
@@ -40,12 +57,32 @@ export async function POST(req: Request) {
 
     const ok = await verifyPin(pin, user.pinHash);
     if (!ok) {
-      return NextResponse.json({ error: "Incorrect PIN" }, { status: 401 });
+      const fail = await recordPinFailure(e164);
+      if (fail.locked) {
+        return NextResponse.json(
+          {
+            error: `Too many incorrect PINs. Try again in ${fail.retryAfterSec}s.`,
+            code: "PIN_LOCKED",
+            retryAfterSec: fail.retryAfterSec,
+          },
+          { status: 429 }
+        );
+      }
+      return NextResponse.json(
+        {
+          error: "Incorrect PIN",
+          attemptsLeft: fail.attemptsLeft,
+        },
+        { status: 401 }
+      );
     }
+
+    await clearPinFailures(e164);
 
     const session = await getSession();
     delete session.adminUsername;
     delete session.pendingGoogle;
+    delete session.needsPinSetup;
 
     if (user.totpEnabled && user.email) {
       const challenge = await startEmail2faChallenge(session, {
@@ -70,7 +107,6 @@ export async function POST(req: Request) {
         );
       }
 
-      // Email may have failed — still open 2FA step; client can "Use OTP instead".
       return NextResponse.json({
         ok: true,
         needs2fa: true,
@@ -93,6 +129,7 @@ export async function POST(req: Request) {
     session.phone = user.phone;
     session.role = user.role;
     session.isLoggedIn = true;
+    session.needsPinSetup = false;
     await session.save();
 
     return NextResponse.json({

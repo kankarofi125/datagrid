@@ -46,6 +46,11 @@ export type SessionData = {
     verified: boolean;
     expiresAt: number;
   };
+  /**
+   * User is authenticated but must create a transaction/login PIN
+   * before using the main app shell.
+   */
+  needsPinSetup?: boolean;
   isLoggedIn: boolean;
 };
 

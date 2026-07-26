@@ -29,8 +29,9 @@ export async function POST(req: Request) {
         await session.save();
         return NextResponse.json(
           {
-            error: "Your 2FA step expired. Sign in with your PIN again.",
+            error: "Your 2FA step expired. Sign in again.",
             code: "2FA_EXPIRED",
+            recovery: "start",
           },
           { status: 401 }
         );
@@ -41,6 +42,22 @@ export async function POST(req: Request) {
       });
       if (!result.ok) {
         return NextResponse.json({ error: result.error }, { status: 400 });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: pending2fa.userId },
+        select: { isActive: true, pinHash: true },
+      });
+      if (!user || !user.isActive) {
+        delete session.pendingLogin2fa;
+        await session.save();
+        return NextResponse.json(
+          {
+            error: "This account is suspended. Contact support.",
+            code: "ACCOUNT_SUSPENDED",
+          },
+          { status: 403 }
+        );
       }
 
       await prisma.user.update({
@@ -55,11 +72,12 @@ export async function POST(req: Request) {
       session.phone = pending2fa.phone;
       session.role = pending2fa.role;
       session.isLoggedIn = true;
+      session.needsPinSetup = !user.pinHash;
       await session.save();
 
       return NextResponse.json({
         ok: true,
-        needsPinSetup: false,
+        needsPinSetup: !user.pinHash,
         login2fa: true,
         user: {
           id: pending2fa.userId,
@@ -93,6 +111,68 @@ export async function POST(req: Request) {
     }
 
     let user = await prisma.user.findUnique({ where: { phone: result.phone } });
+
+    // Suspended accounts cannot complete OTP login.
+    if (user && !user.isActive) {
+      return NextResponse.json(
+        {
+          error: "This account is suspended. Contact support.",
+          code: "ACCOUNT_SUSPENDED",
+        },
+        { status: 403 }
+      );
+    }
+
+    /**
+     * Email 2FA enforcement:
+     * If the account has email 2FA on, phone OTP may only complete login when
+     * the user already passed first factor (pendingLogin2fa after PIN/Google).
+     * Exception: Google phone-link (pendingGoogle) is a first-time link flow.
+     * Exception: new users / users without PIN still need OTP onboarding.
+     */
+    if (
+      user &&
+      user.totpEnabled &&
+      user.email &&
+      user.pinHash &&
+      !pendingGoogle
+    ) {
+      const firstFactorOk =
+        pending2fa &&
+        pending2fa.userId === user.id &&
+        pending2fa.expiresAt > Date.now();
+
+      if (!firstFactorOk) {
+        return NextResponse.json(
+          {
+            error:
+              "Email 2FA is on for this account. Enter your PIN first, then use the email code (or phone OTP after PIN).",
+            code: "2FA_FIRST_FACTOR_REQUIRED",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Phone OTP used as second factor after PIN/Google — match parked account.
+    if (pending2fa && !pendingGoogle) {
+      if (pending2fa.userId && user && user.id !== pending2fa.userId) {
+        return NextResponse.json(
+          {
+            error: "That code is for a different line. Start sign-in again.",
+            code: "2FA_PHONE_MISMATCH",
+          },
+          { status: 403 }
+        );
+      }
+      // Prefer parked user if OTP phone matches pending
+      if (!user && pending2fa.phone) {
+        user = await prisma.user.findUnique({
+          where: { phone: pending2fa.phone },
+        });
+      }
+    }
+
     let googleOwner: { id: string } | null = null;
     let emailOwner: { id: string } | null = null;
     if (pendingGoogle) {
@@ -109,7 +189,6 @@ export async function POST(req: Request) {
         }),
       ]);
 
-      // Google identity already belongs to a different phone account.
       if (googleOwner && googleOwner.id !== user?.id) {
         return NextResponse.json(
           {
@@ -120,7 +199,6 @@ export async function POST(req: Request) {
           { status: 409 }
         );
       }
-      // Email already on a different account — that account should sign in via Google.
       if (emailOwner && emailOwner.id !== user?.id) {
         return NextResponse.json(
           {
@@ -134,6 +212,7 @@ export async function POST(req: Request) {
     }
 
     let referredById: string | undefined;
+    let createdNew = false;
     if (!user) {
       if (referral) {
         const ref = await prisma.user.findUnique({
@@ -156,6 +235,7 @@ export async function POST(req: Request) {
           },
         },
       });
+      createdNew = true;
       if (referredById) {
         await invalidate(CacheKeys.referrals(referredById));
       }
@@ -179,6 +259,8 @@ export async function POST(req: Request) {
       });
     }
 
+    const needsPinSetup = !user.pinHash;
+
     session.userId = user.id;
     session.phone = user.phone;
     session.role = user.role;
@@ -186,14 +268,13 @@ export async function POST(req: Request) {
     delete session.pendingGoogle;
     delete session.pendingLogin2fa;
     session.isLoggedIn = true;
+    session.needsPinSetup = needsPinSetup;
     await session.save();
-
-    const needsPinSetup = !user.pinHash;
 
     return NextResponse.json({
       ok: true,
       needsPinSetup,
-      isNew: !user.pinHash && !user.lastLoginAt,
+      isNew: createdNew || needsPinSetup,
       user: {
         id: user.id,
         phone: user.phoneLocal,

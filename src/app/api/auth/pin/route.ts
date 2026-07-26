@@ -73,10 +73,19 @@ export async function POST(req: Request) {
     where: { id: user.id },
     data: { pinHash },
   });
-  await invalidate(CacheKeys.userProfile(user.id));
+  await invalidate([
+    CacheKeys.userProfile(user.id),
+    CacheKeys.appShell(user.id),
+  ]);
 
   if (user.pinHash) {
     await consumeSecurityAction(session, "pin_change");
+  }
+
+  // First-time onboarding PIN complete — unlock full app.
+  if (session.needsPinSetup) {
+    delete session.needsPinSetup;
+    await session.save();
   }
 
   return NextResponse.json({

@@ -23,6 +23,11 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  // Force PIN setup before the main app (server-side, not only login UI).
+  if (session.needsPinSetup) {
+    redirect("/login?setup=pin");
+  }
+
   let balance = 0;
   let phoneLocal = "";
   try {
@@ -33,9 +38,14 @@ export default async function AppLayout({
           where: { id: session.userId },
           include: { wallets: true },
         });
+        // DB is source of truth if session flag was lost
+        if (user && !user.pinHash) {
+          return { phoneLocal: user.phoneLocal || "", balance: 0, needsPin: true as const };
+        }
         return {
           phoneLocal: user?.phoneLocal || "",
           balance: Number(user?.wallets.find((w) => w.kind === "MAIN")?.balance ?? 0),
+          needsPin: false as const,
         };
       },
       {
@@ -44,6 +54,11 @@ export default async function AppLayout({
         tags: [CacheTags.wallet(session.userId)],
       }
     );
+    if (shell.needsPin) {
+      session.needsPinSetup = true;
+      await session.save();
+      redirect("/login?setup=pin");
+    }
     phoneLocal = shell.phoneLocal;
     balance = shell.balance;
   } catch {
