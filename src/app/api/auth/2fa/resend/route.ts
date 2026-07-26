@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { OTP_TTL_MS, requestOtp } from "@/lib/auth/otp";
+import { PENDING_2FA_SESSION_MS } from "@/lib/auth/resolve-account-phone";
 import { getSession } from "@/lib/auth/session";
 
 /** Resend email 2FA code while pendingLogin2fa is active. */
@@ -39,10 +40,10 @@ export async function POST() {
       ? otp.expiresInSec
       : Math.floor(OTP_TTL_MS / 1000);
 
-  // Refresh 2FA window to match new code TTL
+  // Refresh identity window (20 min) — do not shrink to the 2‑min code TTL.
   session.pendingLogin2fa = {
     ...pending,
-    expiresAt: Date.now() + expiresInSec * 1000,
+    expiresAt: Date.now() + PENDING_2FA_SESSION_MS,
   };
   await session.save();
 

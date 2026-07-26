@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  consumeSecurityAction,
+  requireVerifiedSecurity,
+} from "@/lib/auth/security-action";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { hashPin, isValidPin, verifyPin } from "@/lib/auth/pin";
@@ -18,7 +22,15 @@ export async function GET() {
   return privateJson({ hasPin: Boolean(user?.pinHash) });
 }
 
-/** POST — set or change PIN */
+/**
+ * POST — set or change PIN.
+ *
+ * - First-time set (no pinHash): pin only (session already authenticated).
+ * - Change / reset (has pinHash): requires completed phone OTP
+ *   (pendingSecurity purpose=pin_change, verified).
+ * - Optional currentPin still accepted as extra check but OTP is required
+ *   when changing an existing PIN.
+ */
 export async function POST(req: Request) {
   const session = await requireUser();
   if (!session?.userId) {
@@ -30,15 +42,29 @@ export async function POST(req: Request) {
   const currentPin = body.currentPin ? String(body.currentPin) : undefined;
 
   if (!isValidPin(pin)) {
-    return NextResponse.json({ error: "PIN must be exactly 4 digits" }, { status: 400 });
+    return NextResponse.json(
+      { error: "PIN must be exactly 4 digits" },
+      { status: 400 }
+    );
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.userId } });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (user.pinHash) {
-    if (!currentPin || !(await verifyPin(currentPin, user.pinHash))) {
-      return NextResponse.json({ error: "Current PIN is incorrect" }, { status: 401 });
+    const gate = requireVerifiedSecurity(session, "pin_change");
+    if (!gate.ok) {
+      return NextResponse.json(
+        { error: gate.error, code: "OTP_REQUIRED" },
+        { status: 403 }
+      );
+    }
+    // Optional: if they also provided current PIN, verify it.
+    if (currentPin && !(await verifyPin(currentPin, user.pinHash))) {
+      return NextResponse.json(
+        { error: "Current PIN is incorrect" },
+        { status: 401 }
+      );
     }
   }
 
@@ -49,5 +75,13 @@ export async function POST(req: Request) {
   });
   await invalidate(CacheKeys.userProfile(user.id));
 
-  return NextResponse.json({ ok: true, hasPin: true });
+  if (user.pinHash) {
+    await consumeSecurityAction(session, "pin_change");
+  }
+
+  return NextResponse.json({
+    ok: true,
+    hasPin: true,
+    changed: Boolean(user.pinHash),
+  });
 }

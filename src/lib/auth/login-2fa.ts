@@ -1,7 +1,10 @@
 import "server-only";
 
 import type { IronSession } from "iron-session";
-import { OTP_TTL_MS, OTP_TTL_SECONDS, requestOtp } from "@/lib/auth/otp";
+import { OTP_TTL_SECONDS, requestOtp } from "@/lib/auth/otp";
+import {
+  PENDING_2FA_SESSION_MS,
+} from "@/lib/auth/resolve-account-phone";
 import type { SessionData } from "@/lib/auth/session";
 
 export type Login2faUser = {
@@ -11,6 +14,7 @@ export type Login2faUser = {
   name: string | null;
   role: string;
   totpEnabled: boolean;
+  googleSub?: string | null;
 };
 
 export function maskEmail(email: string): string {
@@ -22,13 +26,14 @@ export function maskEmail(email: string): string {
 
 /**
  * Park pendingLogin2fa so the user can finish with email code OR phone OTP.
- * Phone is always stored for "Use OTP instead" (resolved again by email if needed).
+ * Always stores userId + phone + email from the User account (DB truth).
+ * Session TTL is 20 minutes — independent of the 2-minute OTP code lifetime.
  */
-async function parkPending2fa(
+export async function parkPending2fa(
   session: IronSession<SessionData>,
   user: Login2faUser,
   email: string,
-  ttlMs: number
+  opts?: { googleSub?: string | null; ttlMs?: number }
 ) {
   session.isLoggedIn = false;
   delete session.userId;
@@ -40,9 +45,10 @@ async function parkPending2fa(
     userId: user.id,
     phone: user.phone,
     email,
+    googleSub: opts?.googleSub || user.googleSub || undefined,
     name: user.name,
     role: user.role,
-    expiresAt: Date.now() + ttlMs,
+    expiresAt: Date.now() + (opts?.ttlMs ?? PENDING_2FA_SESSION_MS),
   };
   await session.save();
 }
@@ -50,12 +56,12 @@ async function parkPending2fa(
 /**
  * Start email 2FA after PIN or Google verified the first factor.
  * Always parks pendingLogin2fa (with phone) so "Use OTP instead" can resolve
- * the line from the verified Google/PIN identity even if Brevo fails.
+ * the line from the User row even if Brevo fails or the email code expires.
  */
 export async function startEmail2faChallenge(
   session: IronSession<SessionData>,
   user: Login2faUser,
-  opts?: { emailOverride?: string; firstName?: string }
+  opts?: { emailOverride?: string; firstName?: string; googleSub?: string | null }
 ): Promise<
   | {
       ok: true;
@@ -91,10 +97,11 @@ export async function startEmail2faChallenge(
     };
   }
 
-  // Park first so "Use OTP instead" works even when email delivery fails.
-  // Give a longer window than a single OTP when email may not arrive.
-  const fallbackTtlMs = Math.max(OTP_TTL_MS, 10 * 60 * 1000);
-  await parkPending2fa(session, user, email, fallbackTtlMs);
+  // Park identity for 20 minutes (phone OTP fallback must outlive 2‑min codes).
+  await parkPending2fa(session, user, email, {
+    googleSub: opts?.googleSub || user.googleSub,
+    ttlMs: PENDING_2FA_SESSION_MS,
+  });
 
   const emailHint = maskEmail(email);
 
@@ -110,7 +117,6 @@ export async function startEmail2faChallenge(
 
   if (!otp.ok) {
     console.error("[login-2fa] email send failed", otp.error);
-    // Keep pendingLogin2fa so Google/PIN users can fall back to phone OTP.
     return {
       ok: false,
       error: otp.error,
@@ -126,22 +132,14 @@ export async function startEmail2faChallenge(
       ? otp.expiresInSec
       : OTP_TTL_SECONDS;
 
-  // Align pending window with the code that was actually sent.
-  session.pendingLogin2fa = {
-    userId: user.id,
-    phone: user.phone,
-    email,
-    name: user.name,
-    role: user.role,
-    expiresAt: Date.now() + expiresInSec * 1000,
-  };
-  await session.save();
-
+  // IMPORTANT: do NOT shrink pendingLogin2fa.expiresAt to the OTP code TTL.
+  // Code expiry is tracked on OtpChallenge; identity stays for phone fallback.
   console.info("[login-2fa] challenge started", {
     userId: user.id,
     emailHint,
     delivered: otp.channels,
     expiresInSec,
+    sessionMs: PENDING_2FA_SESSION_MS,
     realEmail:
       otp.channels.includes("email") && !otp.channels.includes("email-dev"),
   });

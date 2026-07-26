@@ -1,90 +1,9 @@
 import { NextResponse } from "next/server";
 import { requestOtp } from "@/lib/auth/otp";
+import { resolveAccountPhoneFromSession } from "@/lib/auth/resolve-account-phone";
 import { prisma } from "@/lib/db";
 import { toE164, toLocalPhone } from "@/lib/phone";
 import { getSession } from "@/lib/auth/session";
-
-/**
- * Resolve phone for "Use OTP instead" after Google / email 2FA.
- * Only uses identities already verified in session (never raw client email alone).
- */
-async function resolvePhoneFromSession(opts: {
-  phone: string;
-  useSessionPhone: boolean;
-}): Promise<
-  | { ok: true; phone: string; source: string }
-  | { ok: false; error: string }
-> {
-  if (opts.phone.trim()) {
-    return { ok: true, phone: opts.phone.trim(), source: "client" };
-  }
-  if (!opts.useSessionPhone) {
-    return { ok: false, error: "Enter a valid Nigerian phone number" };
-  }
-
-  const session = await getSession();
-  const pending2fa =
-    session.pendingLogin2fa && session.pendingLogin2fa.expiresAt > Date.now()
-      ? session.pendingLogin2fa
-      : null;
-  const pendingGoogle =
-    session.pendingGoogle && session.pendingGoogle.expiresAt > Date.now()
-      ? session.pendingGoogle
-      : null;
-
-  if (pending2fa?.phone?.trim()) {
-    return {
-      ok: true,
-      phone: pending2fa.phone.trim(),
-      source: "pendingLogin2fa.phone",
-    };
-  }
-
-  // Look up phone from the verified Google/2FA email on the account.
-  const emails: string[] = [];
-  if (pending2fa?.email) emails.push(pending2fa.email);
-  if (pendingGoogle?.email) emails.push(pendingGoogle.email);
-
-  for (const raw of emails) {
-    const email = raw.trim().toLowerCase();
-    if (!email.includes("@")) continue;
-
-    const user = await prisma.user.findFirst({
-      where: {
-        email: { equals: email, mode: "insensitive" },
-        isActive: true,
-      },
-      select: { phone: true, id: true },
-    });
-
-    if (user?.phone) {
-      // Refresh pending 2fa phone cache if we only had email.
-      if (pending2fa && !pending2fa.phone) {
-        session.pendingLogin2fa = {
-          ...pending2fa,
-          phone: user.phone,
-        };
-        await session.save();
-      }
-      console.info("[otp/request] resolved phone from email", {
-        email: email.replace(/^(.{1,2}).*(@.*)$/, "$1***$2"),
-        userId: user.id,
-        source: pending2fa ? "pendingLogin2fa.email" : "pendingGoogle.email",
-      });
-      return {
-        ok: true,
-        phone: user.phone,
-        source: pending2fa ? "pendingLogin2fa.email" : "pendingGoogle.email",
-      };
-    }
-  }
-
-  return {
-    ok: false,
-    error:
-      "No phone number linked to this Google account. Enter your line on the login form, or contact support.",
-  };
-}
 
 export async function POST(req: Request) {
   try {
@@ -111,14 +30,48 @@ export async function POST(req: Request) {
     }
 
     const useSessionPhone = body.useSessionPhone === true;
-    const resolved = await resolvePhoneFromSession({
-      phone,
-      useSessionPhone,
-    });
-    if (!resolved.ok) {
-      return NextResponse.json({ error: resolved.error }, { status: 400 });
+
+    // "Use OTP instead" after Google / email 2FA: always load phone from DB
+    // via parked userId / email / googleSub (ignore empty client form).
+    if (useSessionPhone) {
+      const resolved = await resolveAccountPhoneFromSession(session, {
+        // Never trust client phone for this path — use account linkage.
+        clientPhone: "",
+      });
+
+      if (!resolved.ok) {
+        console.warn("[otp/request] phone resolve failed", {
+          code: resolved.code,
+          hasPending2fa: Boolean(session.pendingLogin2fa),
+          pendingUserId: session.pendingLogin2fa?.userId,
+          pendingEmail: session.pendingLogin2fa?.email
+            ? session.pendingLogin2fa.email.replace(/^(.{1,2}).*(@.*)$/, "$1***$2")
+            : null,
+          hasPendingGoogle: Boolean(session.pendingGoogle),
+        });
+        return NextResponse.json(
+          { error: resolved.error, code: resolved.code },
+          { status: 400 }
+        );
+      }
+
+      phone = resolved.result.phone;
+
+      if (session.pendingLogin2fa && resolved.result.userId) {
+        session.pendingLogin2fa = {
+          ...session.pendingLogin2fa,
+          phone: resolved.result.phone,
+          email: resolved.result.email || session.pendingLogin2fa.email,
+        };
+        await session.save();
+      }
+
+      console.info("[otp/request] phone resolved from account", {
+        source: resolved.result.source,
+        userId: resolved.result.userId || undefined,
+        phoneLast4: resolved.result.phone.replace(/\D/g, "").slice(-4),
+      });
     }
-    phone = resolved.phone;
 
     // channels override: e.g. "whatsapp" for "Use OTP instead" (WA → SMS fallback).
     const channels =
@@ -154,7 +107,6 @@ export async function POST(req: Request) {
       exists: Boolean(user),
       hasPin: Boolean(user?.pinHash),
       isNew: !user,
-      resolvedFrom: resolved.source,
     });
   } catch (err) {
     console.error("[otp/request]", err);

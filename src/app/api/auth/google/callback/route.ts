@@ -15,6 +15,7 @@ import {
   email2faLoginPath,
   startEmail2faChallenge,
 } from "@/lib/auth/login-2fa";
+import { PENDING_2FA_SESSION_MS } from "@/lib/auth/resolve-account-phone";
 import {
   sessionOptions,
   type SessionData,
@@ -191,6 +192,7 @@ async function finishReturningGoogleUser(
         name: user.name || identity.name || null,
         role: user.role,
         totpEnabled: true,
+        googleSub: identity.sub,
       },
       {
         emailOverride: email,
@@ -198,6 +200,7 @@ async function finishReturningGoogleUser(
           user.name?.split(" ")[0] ||
           identity.name?.split(" ")[0] ||
           "Customer",
+        googleSub: identity.sub,
       }
     );
 
@@ -236,16 +239,19 @@ async function finishReturningGoogleUser(
     delete session2.adminUsername;
     delete session2.pendingGoogle;
     // Prefer values already parked by startEmail2faChallenge; re-assert phone.
+    // Never shrink expiresAt to the 2‑min OTP code TTL — that broke "Use OTP instead".
     const parked = session.pendingLogin2fa;
     session2.pendingLogin2fa = {
       userId: user.id,
-      phone: parked?.phone || user.phone,
-      email: parked?.email || email,
+      phone: (parked?.phone || user.phone).trim(),
+      email: (parked?.email || email).trim().toLowerCase(),
+      googleSub: parked?.googleSub || identity.sub,
       name: parked?.name || user.name || identity.name,
       role: parked?.role || user.role,
       expiresAt:
-        parked?.expiresAt ||
-        Date.now() + (challenge.expiresInSec || 120) * 1000,
+        parked?.expiresAt && parked.expiresAt > Date.now()
+          ? parked.expiresAt
+          : Date.now() + PENDING_2FA_SESSION_MS,
     };
     await session2.save();
 
@@ -254,6 +260,10 @@ async function finishReturningGoogleUser(
       emailHint,
       emailFailed: !challenge.ok,
       hasPhone: Boolean(session2.pendingLogin2fa.phone),
+      phoneLocal: session2.pendingLogin2fa.phone?.slice(-4),
+      sessionExpiresInSec: Math.round(
+        (session2.pendingLogin2fa.expiresAt - Date.now()) / 1000
+      ),
     });
     return clearOAuthCookies(response);
   }

@@ -17,15 +17,33 @@ export type SessionData = {
   /** Present when logged in via /auth/admin (username/password) */
   adminUsername?: string;
   /**
-   * After correct PIN/Google, before email 2FA code is verified.
-   * Session is not fully logged in until OTP succeeds.
+   * After correct PIN/Google, before email 2FA (or phone OTP fallback) finishes.
+   * Identity window is longer than a single OTP code (see PENDING_2FA_SESSION_MS).
+   * Phone/email here are cache; DB User row is source of truth for "Use OTP instead".
    */
   pendingLogin2fa?: {
     userId: string;
     phone: string;
     email: string;
+    /** Google OpenID subject when login started via Google (optional). */
+    googleSub?: string;
     name?: string | null;
     role: string;
+    /** When this pending identity expires (not the OTP code TTL). */
+    expiresAt: number;
+  };
+  /**
+   * In-app security actions (PIN reset, email change) after OTP is sent/verified.
+   * Completing the action consumes this slot.
+   */
+  pendingSecurity?: {
+    purpose: "pin_change" | "email_change";
+    userId: string;
+    /** New email awaiting proof (email_change only). */
+    targetEmail?: string;
+    /** Delivery hint for UI (masked phone/email). */
+    destinationHint?: string;
+    verified: boolean;
     expiresAt: number;
   };
   isLoggedIn: boolean;
