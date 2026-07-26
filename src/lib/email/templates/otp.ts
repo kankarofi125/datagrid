@@ -16,7 +16,7 @@ export type OtpEmailContent = {
  */
 export function buildOtpEmailHtml(input: OtpEmailContent): string {
   const name = (input.firstName || "there").trim() || "there";
-  const minutes = input.expiresInMinutes ?? 10;
+  const minutes = input.expiresInMinutes ?? 2;
   const logoUrl = emailAssetUrl("/icons/icon-192.png");
   const homeUrl = absoluteUrl("/");
   const privacyUrl = absoluteUrl("/privacy");
@@ -138,7 +138,7 @@ export function buildOtpEmailSubject(code?: string): string {
 
 export function buildOtpEmailText(input: OtpEmailContent): string {
   const name = input.firstName || "there";
-  const minutes = input.expiresInMinutes ?? 10;
+  const minutes = input.expiresInMinutes ?? 2;
   return [
     `Hi ${name},`,
     "",

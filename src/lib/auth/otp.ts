@@ -10,8 +10,10 @@ import {
   type SendchampOtpChannel,
 } from "@/lib/sendchamp";
 
-const OTP_TTL_MS = 10 * 60 * 1000;
-const OTP_TTL_MINUTES = 10;
+/** OTP codes expire after 2 minutes (phone + email). */
+export const OTP_TTL_MS = 2 * 60 * 1000;
+export const OTP_TTL_MINUTES = 2;
+export const OTP_TTL_SECONDS = 120;
 const MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_MS = 45_000;
 const TOKEN_LENGTH = 4;
@@ -380,6 +382,8 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
     phoneLocal: local || null,
     email: resolvedEmail,
     channels: deliveredVia,
+    expiresInSec: OTP_TTL_SECONDS,
+    expiresAt: expiresAt.toISOString(),
   };
 }
 

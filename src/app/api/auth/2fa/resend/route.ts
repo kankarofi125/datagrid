@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requestOtp } from "@/lib/auth/otp";
+import { OTP_TTL_MS, requestOtp } from "@/lib/auth/otp";
 import { getSession } from "@/lib/auth/session";
 
 /** Resend email 2FA code while pendingLogin2fa is active. */
@@ -34,10 +34,15 @@ export async function POST() {
     );
   }
 
-  // Refresh 2FA window
+  const expiresInSec =
+    "expiresInSec" in otp && typeof otp.expiresInSec === "number"
+      ? otp.expiresInSec
+      : Math.floor(OTP_TTL_MS / 1000);
+
+  // Refresh 2FA window to match new code TTL
   session.pendingLogin2fa = {
     ...pending,
-    expiresAt: Date.now() + 10 * 60 * 1000,
+    expiresAt: Date.now() + expiresInSec * 1000,
   };
   await session.save();
 
@@ -50,6 +55,7 @@ export async function POST() {
   return NextResponse.json({
     ok: true,
     emailHint: hint,
+    expiresInSec,
     message: `Code resent to ${hint}`,
   });
 }

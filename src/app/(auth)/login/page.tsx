@@ -11,6 +11,9 @@ import { HeroEnter, Reveal } from "@/components/motion/Reveal";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { sanitizeNgPhoneInput, toLocalPhone, NG_LOCAL_MAX_DIGITS } from "@/lib/phone";
 
+/** Default OTP lifetime shown while waiting for server `expiresInSec`. */
+const DEFAULT_OTP_TTL_SEC = 120;
+
 type Step =
   | "phone"
   | "otp"
@@ -18,6 +21,13 @@ type Step =
   | "pin-login"
   | "pin-setup"
   | "pin-confirm";
+
+function formatCountdown(totalSec: number) {
+  const s = Math.max(0, totalSec);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
 
 function stepTitle(step: Step) {
   switch (step) {
@@ -52,16 +62,52 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [emailHint, setEmailHint] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
+  const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
+  const [otpRemainingSec, setOtpRemainingSec] = useState(0);
   const [pending, start] = useTransition();
+
+  function startOtpCountdown(expiresInSec?: number) {
+    const sec =
+      typeof expiresInSec === "number" && expiresInSec > 0
+        ? expiresInSec
+        : DEFAULT_OTP_TTL_SEC;
+    setOtpExpiresAt(Date.now() + sec * 1000);
+    setOtpRemainingSec(sec);
+  }
+
+  function clearOtpCountdown() {
+    setOtpExpiresAt(null);
+    setOtpRemainingSec(0);
+  }
+
+  // Tick OTP expiry countdown on otp + email-2fa steps.
+  useEffect(() => {
+    if (!otpExpiresAt) return;
+    const tick = () => {
+      const rem = Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000));
+      setOtpRemainingSec(rem);
+    };
+    tick();
+    const id = window.setInterval(tick, 250);
+    return () => window.clearInterval(id);
+  }, [otpExpiresAt]);
 
   // Google (or shared) 2FA redirect → show email code step immediately.
   useEffect(() => {
     if (googleState === "2fa" || params.get("login") === "2fa") {
       setStep("login-2fa");
       setCode("");
-      setError(null);
       const hint = params.get("emailHint");
       if (hint) setEmailHint(hint);
+      if (params.get("emailFailed") === "1") {
+        setError(
+          "Email code could not be sent. Tap “Use OTP instead” to get a code on WhatsApp/SMS."
+        );
+      } else {
+        setError(null);
+        // Code was just sent by the server on redirect — start 2‑minute window.
+        startOtpCountdown(DEFAULT_OTP_TTL_SEC);
+      }
     }
   }, [googleState, params]);
 
@@ -110,6 +156,7 @@ function LoginForm() {
         }
         setIsNew(Boolean(otp.isNew));
         setCode("");
+        startOtpCountdown(otp.expiresInSec);
         setStep("otp");
         return;
       }
@@ -147,6 +194,7 @@ function LoginForm() {
         return;
       }
       setCode("");
+      startOtpCountdown(otp.expiresInSec);
       setStep("otp");
     });
   }
@@ -202,6 +250,16 @@ function LoginForm() {
       if (data.needs2fa) {
         setEmailHint(data.emailHint || null);
         setCode("");
+        if (data.emailFailed) {
+          setError(
+            data.message ||
+              "Email code could not be sent. Tap “Use OTP instead” to get a code on WhatsApp/SMS."
+          );
+          clearOtpCountdown();
+        } else {
+          setError(null);
+          startOtpCountdown(data.expiresInSec);
+        }
         setStep("login-2fa");
         return;
       }
@@ -236,20 +294,42 @@ function LoginForm() {
     });
   }
 
+  /**
+   * Phone OTP via WhatsApp first; server falls back to SMS if WA fails.
+   * After Google / email 2FA, server resolves phone from the verified email
+   * on the session (no need to re-type the number).
+   */
   function continueWithOtpForce() {
     start(async () => {
       setError(null);
       const otpRes = await fetch("/api/auth/otp/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({
+          phone: phone || undefined,
+          // Force phone path only — WhatsApp, then SMS fallback in requestOtp.
+          channels: "whatsapp",
+          skipCooldown: true,
+          // Always try session (Google 2FA parks phone + email).
+          useSessionPhone: true,
+        }),
       });
       const otp = await otpRes.json().catch(() => ({}));
       if (!otpRes.ok) {
         setError(otp.error || "Could not send OTP");
+        if (otp.cooldownSec) setCooldown(otp.cooldownSec);
         return;
       }
+      if (otp.phoneLocal) {
+        setPhone(
+          String(otp.phoneLocal)
+            .replace(/\D/g, "")
+            .slice(0, NG_LOCAL_MAX_DIGITS)
+        );
+      }
       setCode("");
+      setEmailHint(null);
+      startOtpCountdown(otp.expiresInSec);
       setStep("otp");
     });
   }
@@ -368,14 +448,31 @@ function LoginForm() {
             hint={`Sent to ${local || phone}`}
             aria-label="One-time password"
           />
+          <OtpExpiryBanner remainingSec={otpRemainingSec} active={Boolean(otpExpiresAt)} />
           <Button
             type="submit"
             fullWidth
             size="lg"
-            disabled={pending || code.length < 4}
+            disabled={pending || code.length < 4 || otpRemainingSec <= 0}
           >
-            {pending ? "Verifying…" : isNew ? "Verify & create account" : "Verify"}
+            {pending
+              ? "Verifying…"
+              : otpRemainingSec <= 0
+                ? "Code expired"
+                : isNew
+                  ? "Verify & create account"
+                  : "Verify"}
           </Button>
+          {otpRemainingSec <= 0 && (
+            <button
+              type="button"
+              className="font-mono-num w-full text-center text-xs tracking-wide text-green"
+              disabled={pending}
+              onClick={continueWithOtpForce}
+            >
+              Resend OTP
+            </button>
+          )}
           <button
             type="button"
             className="font-mono-num w-full text-center text-xs tracking-wide text-ink/50"
@@ -383,6 +480,7 @@ function LoginForm() {
               setStep("phone");
               setCode("");
               setError(null);
+              clearOtpCountdown();
             }}
           >
             Change number
@@ -405,13 +503,18 @@ function LoginForm() {
             }
             aria-label="Email two-factor code"
           />
+          <OtpExpiryBanner remainingSec={otpRemainingSec} active={Boolean(otpExpiresAt)} />
           <Button
             type="submit"
             fullWidth
             size="lg"
-            disabled={pending || code.length < 4}
+            disabled={pending || code.length < 4 || otpRemainingSec <= 0}
           >
-            {pending ? "Verifying…" : "Complete sign-in"}
+            {pending
+              ? "Verifying…"
+              : otpRemainingSec <= 0
+                ? "Code expired"
+                : "Complete sign-in"}
           </Button>
           <button
             type="button"
@@ -430,10 +533,19 @@ function LoginForm() {
                 }
                 if (data.emailHint) setEmailHint(data.emailHint);
                 setCode("");
+                startOtpCountdown(data.expiresInSec);
               });
             }}
           >
             Resend email code
+          </button>
+          <button
+            type="button"
+            className="font-mono-num w-full text-center text-xs tracking-wide text-ink/50"
+            disabled={pending}
+            onClick={continueWithOtpForce}
+          >
+            Use OTP instead
           </button>
           <button
             type="button"
@@ -443,6 +555,7 @@ function LoginForm() {
               setPin("");
               setCode("");
               setError(null);
+              clearOtpCountdown();
             }}
           >
             Start over
@@ -634,6 +747,32 @@ function LoginForm() {
         </div>
       </div>
     </>
+  );
+}
+
+function OtpExpiryBanner({
+  remainingSec,
+  active,
+}: {
+  remainingSec: number;
+  active: boolean;
+}) {
+  if (!active) return null;
+  const expired = remainingSec <= 0;
+  return (
+    <p
+      className={
+        expired
+          ? "font-mono-num text-center text-xs tracking-wide text-danger"
+          : "font-mono-num text-center text-xs tracking-wide text-ink/55"
+      }
+      role="status"
+      aria-live="polite"
+    >
+      {expired
+        ? "Code expired — request a new one"
+        : `Code expires in ${formatCountdown(remainingSec)}`}
+    </p>
   );
 }
 

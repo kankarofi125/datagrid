@@ -57,7 +57,7 @@ export async function POST(req: Request) {
         totpEnabled: user.totpEnabled,
       });
 
-      if (!challenge.ok) {
+      if (!challenge.ok && !challenge.phoneFallback) {
         console.error("[auth/pin/login] 2FA email failed", challenge.error);
         return NextResponse.json(
           {
@@ -70,11 +70,16 @@ export async function POST(req: Request) {
         );
       }
 
+      // Email may have failed — still open 2FA step; client can "Use OTP instead".
       return NextResponse.json({
         ok: true,
         needs2fa: true,
         emailHint: challenge.emailHint,
-        message: `We sent a verification code to ${challenge.emailHint}`,
+        expiresInSec: challenge.expiresInSec ?? 120,
+        emailFailed: !challenge.ok,
+        message: challenge.ok
+          ? `We sent a verification code to ${challenge.emailHint}`
+          : "Email code could not be sent. Use OTP instead (WhatsApp/SMS).",
       });
     }
 

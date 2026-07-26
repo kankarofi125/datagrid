@@ -201,16 +201,28 @@ async function finishReturningGoogleUser(
       }
     );
 
-    if (!challenge.ok) {
+    // Email may fail (Brevo) — still land on 2FA step with phone OTP fallback.
+    // startEmail2faChallenge already parked pendingLogin2fa (phone + email).
+    if (!challenge.ok && !challenge.phoneFallback) {
       console.error("[auth/google/callback] 2FA start failed", challenge.error);
       return loginRedirect(request, "unavailable");
     }
 
+    const emailHint =
+      challenge.emailHint ||
+      (() => {
+        const [local, domain] = email.split("@");
+        if (!domain) return "***";
+        return local.length <= 2 ? `*@${domain}` : `${local[0]}***@${domain}`;
+      })();
+
     const path = email2faLoginPath({
-      emailHint: challenge.emailHint,
+      emailHint,
       source: "google",
+      emailFailed: !challenge.ok,
     });
     // Rebuild redirect with full query; re-apply session on the final response
+    // so Set-Cookie is attached to this redirect (not the provisional one).
     const response = NextResponse.redirect(new URL(path, request.url), 303);
     const session2 = await getIronSession<SessionData>(
       request,
@@ -223,19 +235,25 @@ async function finishReturningGoogleUser(
     delete session2.role;
     delete session2.adminUsername;
     delete session2.pendingGoogle;
+    // Prefer values already parked by startEmail2faChallenge; re-assert phone.
+    const parked = session.pendingLogin2fa;
     session2.pendingLogin2fa = {
       userId: user.id,
-      phone: user.phone,
-      email,
-      name: user.name || identity.name,
-      role: user.role,
-      expiresAt: Date.now() + 10 * 60 * 1000,
+      phone: parked?.phone || user.phone,
+      email: parked?.email || email,
+      name: parked?.name || user.name || identity.name,
+      role: parked?.role || user.role,
+      expiresAt:
+        parked?.expiresAt ||
+        Date.now() + (challenge.expiresInSec || 120) * 1000,
     };
     await session2.save();
 
     console.info("[auth/google/callback] 2FA redirect", {
       userId: user.id,
-      emailHint: challenge.emailHint,
+      emailHint,
+      emailFailed: !challenge.ok,
+      hasPhone: Boolean(session2.pendingLogin2fa.phone),
     });
     return clearOAuthCookies(response);
   }
