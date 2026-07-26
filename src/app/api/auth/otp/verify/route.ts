@@ -17,6 +17,59 @@ export async function POST(req: Request) {
       session.pendingGoogle && session.pendingGoogle.expiresAt > Date.now()
         ? session.pendingGoogle
         : undefined;
+    const pending2fa =
+      session.pendingLogin2fa && session.pendingLogin2fa.expiresAt > Date.now()
+        ? session.pendingLogin2fa
+        : undefined;
+
+    // --- Login email 2FA (after PIN or Google) ---
+    if (body.login2fa === true || (pending2fa && body.purpose === "login2fa")) {
+      if (!pending2fa) {
+        delete session.pendingLogin2fa;
+        await session.save();
+        return NextResponse.json(
+          {
+            error: "Your 2FA step expired. Sign in with your PIN again.",
+            code: "2FA_EXPIRED",
+          },
+          { status: 401 }
+        );
+      }
+
+      const result = await verifyOtp(pending2fa.email, code, {
+        email: pending2fa.email,
+      });
+      if (!result.ok) {
+        return NextResponse.json({ error: result.error }, { status: 400 });
+      }
+
+      await prisma.user.update({
+        where: { id: pending2fa.userId },
+        data: { lastLoginAt: new Date() },
+      });
+
+      delete session.pendingLogin2fa;
+      delete session.pendingGoogle;
+      delete session.adminUsername;
+      session.userId = pending2fa.userId;
+      session.phone = pending2fa.phone;
+      session.role = pending2fa.role;
+      session.isLoggedIn = true;
+      await session.save();
+
+      return NextResponse.json({
+        ok: true,
+        needsPinSetup: false,
+        login2fa: true,
+        user: {
+          id: pending2fa.userId,
+          phone: pending2fa.phone,
+          name: pending2fa.name,
+          role: pending2fa.role,
+        },
+      });
+    }
+
     if (body.googleLink === true && !pendingGoogle) {
       delete session.pendingGoogle;
       await session.save();
@@ -131,6 +184,7 @@ export async function POST(req: Request) {
     session.role = user.role;
     delete session.adminUsername;
     delete session.pendingGoogle;
+    delete session.pendingLogin2fa;
     session.isLoggedIn = true;
     await session.save();
 

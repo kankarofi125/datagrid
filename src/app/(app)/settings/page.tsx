@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { cached, CacheKeys, CacheTTL } from "@/lib/cache";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { PinSettings } from "@/components/auth/PinSettings";
+import { Email2faSettings } from "@/components/auth/Email2faSettings";
 import { LowDataToggle } from "@/components/settings/LowDataToggle";
 import { MobileProfileHub } from "@/components/settings/MobileProfileHub";
 import { ProfileEditor } from "@/components/settings/ProfileEditor";
@@ -206,7 +207,7 @@ function ProfileContent({
                     good={profile.pinHash}
                   />
                   <StatusRow
-                    label="Two-step security"
+                    label="Email 2FA"
                     value={profile.totpEnabled ? "Enabled" : "Not enabled"}
                     good={profile.totpEnabled}
                   />
@@ -216,6 +217,15 @@ function ProfileContent({
                 <SectionTitle kicker="Purchase security" title="Transaction PIN" />
                 <div className="mt-4">
                   <PinSettings hasPin={profile.pinHash} />
+                </div>
+              </section>
+              <section className="surface p-4">
+                <SectionTitle kicker="Sign-in security" title="Email two-factor" />
+                <div className="mt-4">
+                  <Email2faSettings
+                    enabled={profile.totpEnabled}
+                    email={profile.email}
+                  />
                 </div>
               </section>
             </div>
@@ -297,9 +307,15 @@ function ProfileContent({
                     good={profile.pinHash}
                   />
                   <StatusRow
-                    label="Two-step security"
+                    label="Email 2FA"
                     value={profile.totpEnabled ? "Enabled" : "Not enabled"}
                     good={profile.totpEnabled}
+                  />
+                </div>
+                <div className="mt-5 border-t border-line pt-5">
+                  <Email2faSettings
+                    enabled={profile.totpEnabled}
+                    email={profile.email}
                   />
                 </div>
                 <dl className="mt-4 divide-y divide-line border-t border-line text-xs">

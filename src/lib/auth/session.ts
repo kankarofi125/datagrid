@@ -16,6 +16,18 @@ export type SessionData = {
   };
   /** Present when logged in via /auth/admin (username/password) */
   adminUsername?: string;
+  /**
+   * After correct PIN/Google, before email 2FA code is verified.
+   * Session is not fully logged in until OTP succeeds.
+   */
+  pendingLogin2fa?: {
+    userId: string;
+    phone: string;
+    email: string;
+    name?: string | null;
+    role: string;
+    expiresAt: number;
+  };
   isLoggedIn: boolean;
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState, useTransition } from "react";
+import { Suspense, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +11,13 @@ import { HeroEnter, Reveal } from "@/components/motion/Reveal";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { sanitizeNgPhoneInput, toLocalPhone, NG_LOCAL_MAX_DIGITS } from "@/lib/phone";
 
-type Step = "phone" | "otp" | "pin-login" | "pin-setup" | "pin-confirm";
+type Step =
+  | "phone"
+  | "otp"
+  | "login-2fa"
+  | "pin-login"
+  | "pin-setup"
+  | "pin-confirm";
 
 function stepTitle(step: Step) {
   switch (step) {
@@ -19,6 +25,11 @@ function stepTitle(step: Step) {
       return { h: "ENTER YOUR LINE.", d: "We check if this number is already on the grid." };
     case "otp":
       return { h: "VERIFY OTP.", d: "Enter the 4-digit code we sent to your line." };
+    case "login-2fa":
+      return {
+        h: "EMAIL 2FA.",
+        d: "We sent a one-time code to your email. Enter it to finish signing in.",
+      };
     case "pin-login":
       return { h: "YOUR PIN.", d: "Welcome back. Enter your 4-digit login PIN." };
     case "pin-setup":
@@ -40,8 +51,17 @@ function LoginForm() {
   const [isNew, setIsNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [devHint, setDevHint] = useState<string | undefined>();
+  const [emailHint, setEmailHint] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [pending, start] = useTransition();
+
+  // Google sign-in with email 2FA redirects here with a pending session.
+  useEffect(() => {
+    if (googleState === "2fa") {
+      setStep("login-2fa");
+      setCode("");
+    }
+  }, [googleState]);
 
   const local = toLocalPhone(phone);
   const copy = useMemo(
@@ -179,6 +199,39 @@ function LoginForm() {
         }
         return;
       }
+      if (data.needs2fa) {
+        setEmailHint(data.emailHint || null);
+        setDevHint(data.devHint);
+        setCode("");
+        setStep("login-2fa");
+        return;
+      }
+      router.push("/dashboard");
+      router.refresh();
+    });
+  }
+
+  function verifyLogin2fa() {
+    start(async () => {
+      setError(null);
+      const res = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          login2fa: true,
+          purpose: "login2fa",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Verification failed");
+        if (data.code === "2FA_EXPIRED") {
+          setStep("pin-login");
+          setPin("");
+        }
+        return;
+      }
       router.push("/dashboard");
       router.refresh();
     });
@@ -245,6 +298,7 @@ function LoginForm() {
         event.preventDefault();
         if (step === "phone") continueWithPhone();
         else if (step === "otp") verifyOtp();
+        else if (step === "login-2fa") verifyLogin2fa();
         else if (step === "pin-login") loginWithPin();
         else if (step === "pin-setup") onPinSetupNext();
         else if (step === "pin-confirm") savePinAndEnter();
@@ -338,6 +392,46 @@ function LoginForm() {
             }}
           >
             Change number
+          </button>
+        </>
+      )}
+
+      {step === "login-2fa" && (
+        <>
+          <DigitField
+            label="Email code"
+            length={4}
+            value={code}
+            onChange={setCode}
+            autoFocus
+            hint={
+              devHint
+                ? `Dev code: ${devHint}`
+                : emailHint
+                  ? `Sent to ${emailHint}`
+                  : "Check your email for the DataGrid code"
+            }
+            aria-label="Email two-factor code"
+          />
+          <Button
+            type="submit"
+            fullWidth
+            size="lg"
+            disabled={pending || code.length < 4}
+          >
+            {pending ? "Verifying…" : "Complete sign-in"}
+          </Button>
+          <button
+            type="button"
+            className="font-mono-num w-full text-center text-xs tracking-wide text-ink/50"
+            onClick={() => {
+              setStep("pin-login");
+              setPin("");
+              setCode("");
+              setError(null);
+            }}
+          >
+            Back to PIN
           </button>
         </>
       )}
@@ -543,6 +637,8 @@ function googleMessage(state: string | null) {
   switch (state) {
     case "phone":
       return "Google account verified. Add your Nigerian line once, then confirm the OTP to finish linking.";
+    case "2fa":
+      return "Google verified. Enter the email code we just sent to finish two-factor sign-in.";
     case "cancelled":
       return "Google sign-in was cancelled. You can try again or continue with your phone.";
     case "expired":

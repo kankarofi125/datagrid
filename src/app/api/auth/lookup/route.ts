@@ -18,7 +18,14 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({
       where: { phone: e164 },
-      select: { id: true, pinHash: true, isActive: true, name: true },
+      select: {
+        id: true,
+        pinHash: true,
+        isActive: true,
+        name: true,
+        email: true,
+        totpEnabled: true,
+      },
     });
 
     if (user && !user.isActive) {
@@ -34,6 +41,7 @@ export async function POST(req: Request) {
       phoneLocal: local,
       exists: Boolean(user),
       hasPin: Boolean(user?.pinHash),
+      email2fa: Boolean(user?.totpEnabled && user?.email),
       isNew: !user,
     });
   } catch (err) {

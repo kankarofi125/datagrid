@@ -11,6 +11,7 @@ import {
   secureStringEqual,
   verifyGoogleIdToken,
 } from "@/lib/auth/google";
+import { requestOtp } from "@/lib/auth/otp";
 import { getSession } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
@@ -92,9 +93,9 @@ export async function GET(request: Request) {
         return loginRedirect(request, "unavailable");
       }
 
-      await establishSession(byEmail, identity);
+      const dest = await establishSession(byEmail, identity);
       return clearOAuthCookies(
-        NextResponse.redirect(new URL("/dashboard", request.url), 303)
+        NextResponse.redirect(new URL(dest, request.url), 303)
       );
     }
 
@@ -131,28 +132,64 @@ async function establishSession(
     googleAvatar: string | null;
     googleSub: string | null;
     email: string | null;
+    totpEnabled: boolean;
   },
   identity: GoogleIdentity
-) {
+): Promise<string> {
+  const email = user.email || identity.email;
+
   await prisma.user.update({
     where: { id: user.id },
     data: {
-      lastLoginAt: new Date(),
       googleSub: identity.sub,
       googleAvatar: identity.picture || user.googleAvatar,
       name: user.name || identity.name || null,
-      email: user.email || identity.email,
+      email,
+      // lastLoginAt set after full 2FA when enabled
+      ...(!user.totpEnabled || !email
+        ? { lastLoginAt: new Date() }
+        : {}),
     },
   });
 
   const session = await getSession();
+  delete session.adminUsername;
+  delete session.pendingGoogle;
+
+  if (user.totpEnabled && email) {
+    const otp = await requestOtp({
+      email,
+      channels: "email",
+      firstName: user.name?.split(" ")[0] || identity.name?.split(" ")[0] || "Customer",
+    });
+    if (!otp.ok) {
+      console.error("[auth/google/callback] 2FA email failed", otp.error);
+      return "/login?google=unavailable";
+    }
+
+    session.isLoggedIn = false;
+    delete session.userId;
+    delete session.phone;
+    delete session.role;
+    session.pendingLogin2fa = {
+      userId: user.id,
+      phone: user.phone,
+      email,
+      name: user.name || identity.name,
+      role: user.role,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    };
+    await session.save();
+    return "/login?google=2fa";
+  }
+
+  delete session.pendingLogin2fa;
   session.userId = user.id;
   session.phone = user.phone;
   session.role = user.role;
   session.isLoggedIn = true;
-  delete session.adminUsername;
-  delete session.pendingGoogle;
   await session.save();
+  return "/dashboard";
 }
 
 function loginRedirect(request: Request, reason: GoogleLoginReason) {
