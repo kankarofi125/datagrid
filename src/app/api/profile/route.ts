@@ -12,6 +12,91 @@ import { CacheKeys, invalidate } from "@/lib/cache";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
+ * GET full customer profile — powers web settings + Flutter profile hub.
+ * Mirrors `loadProfile` on the settings page (counts, KYC, security flags).
+ */
+export async function GET() {
+  const session = await requireUser({ allowWithoutPin: true });
+  if (!session?.userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const [user, activeApiKeys] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.userId },
+      select: {
+        name: true,
+        email: true,
+        phoneLocal: true,
+        phone: true,
+        referralCode: true,
+        kycTier: true,
+        kycStatus: true,
+        role: true,
+        lifetimeVolume: true,
+        pinHash: true,
+        totpEnabled: true,
+        isActive: true,
+        lastLoginAt: true,
+        createdAt: true,
+        _count: {
+          select: {
+            transactions: true,
+            beneficiaries: true,
+            schedules: true,
+            referrals: true,
+            tickets: true,
+          },
+        },
+      },
+    }),
+    prisma.apiKey.count({ where: { userId: session.userId, revokedAt: null } }),
+  ]);
+
+  if (!user) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const hasPin = Boolean(user.pinHash);
+  const completionParts = [
+    Boolean(user.name),
+    Boolean(user.email),
+    hasPin,
+    user.kycStatus === "APPROVED",
+    user.totpEnabled,
+  ];
+  const completion = Math.round(
+    (completionParts.filter(Boolean).length / completionParts.length) * 100
+  );
+
+  return NextResponse.json({
+    name: user.name,
+    email: user.email,
+    phoneLocal: user.phoneLocal,
+    phone: user.phone,
+    referralCode: user.referralCode,
+    kycTier: user.kycTier,
+    kycStatus: user.kycStatus,
+    role: user.role,
+    lifetimeVolume: Number(user.lifetimeVolume),
+    hasPin,
+    totpEnabled: user.totpEnabled,
+    isActive: user.isActive,
+    lastLoginAt: user.lastLoginAt?.toISOString() || null,
+    createdAt: user.createdAt.toISOString(),
+    activeApiKeys,
+    counts: {
+      transactions: user._count.transactions,
+      beneficiaries: user._count.beneficiaries,
+      schedules: user._count.schedules,
+      referrals: user._count.referrals,
+      tickets: user._count.tickets,
+    },
+    completion,
+  });
+}
+
+/**
  * PATCH profile.
  * - Name-only updates: free.
  * - Email add/change: requires verified security OTP for that email.

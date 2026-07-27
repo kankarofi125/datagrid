@@ -149,8 +149,29 @@ export type RequireUserOpts = {
 /**
  * Require active logged-in user. Re-checks isActive from DB.
  * Enforces PIN setup unless allowWithoutPin.
+ *
+ * Accepts either:
+ * - Browser iron-session cookie (web), or
+ * - Authorization: Bearer dgm_… mobile token (Flutter app)
  */
 export async function requireUser(opts: RequireUserOpts = {}) {
+  // Mobile / native clients
+  const { resolveBearerAuth } = await import("@/lib/auth/mobile-token");
+  const bearer = await resolveBearerAuth(opts);
+  if (bearer) {
+    if (bearer.needsPinSetup && !opts.allowWithoutPin) return null;
+    // Shape compatible with iron-session callers (save is a no-op for bearer).
+    return {
+      userId: bearer.userId,
+      phone: bearer.phone,
+      role: bearer.role,
+      isLoggedIn: true as const,
+      needsPinSetup: bearer.needsPinSetup,
+      save: async () => {},
+      destroy: async () => {},
+    } as unknown as Awaited<ReturnType<typeof getSession>>;
+  }
+
   const session = await getSession();
   if (!session.isLoggedIn || !session.userId) return null;
   if (isLoggedInIdle(session)) {

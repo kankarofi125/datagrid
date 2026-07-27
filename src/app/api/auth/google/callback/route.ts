@@ -93,6 +93,7 @@ export async function GET(request: Request) {
       idToken,
       audience: config.clientId,
       nonce,
+      requireNonce: true,
     });
 
     console.info("[auth/google/callback] identity ok", {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { verifyOtp } from "@/lib/auth/otp";
 import {
   getLivePendingSignup,
@@ -6,6 +7,7 @@ import {
   markSessionLogin,
 } from "@/lib/auth/session";
 import { createUserFromSignup } from "@/lib/auth/signup";
+import { issueMobileToken } from "@/lib/auth/mobile-token";
 
 /**
  * Confirm email OTP (or accept already-verified email), create User, open session.
@@ -80,6 +82,22 @@ export async function POST(req: Request) {
     });
     await session.save();
 
+    // Flutter / native clients get a bearer token (no cookie jar required).
+    const h = await headers();
+    const client = (h.get("x-client") || "").toLowerCase();
+    let mobileToken: Awaited<ReturnType<typeof issueMobileToken>> | null =
+      null;
+    if (client.includes("flutter") || client.includes("mobile")) {
+      mobileToken = await issueMobileToken({
+        userId: user.id,
+        userAgent: h.get("user-agent"),
+        ip:
+          h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          h.get("x-real-ip") ||
+          null,
+      });
+    }
+
     return NextResponse.json({
       ok: true,
       needsPinSetup: true,
@@ -91,6 +109,7 @@ export async function POST(req: Request) {
         email: user.email,
         role: user.role,
       },
+      ...(mobileToken || {}),
     });
   } catch (err) {
     console.error("[auth/signup/verify-email]", err);

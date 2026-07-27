@@ -10,9 +10,16 @@ import {
   parseSignupFields,
 } from "@/lib/auth/signup";
 import { maskEmail } from "@/lib/auth/resolve-identifier";
+import {
+  getGoogleAudiences,
+  verifyGoogleIdToken,
+} from "@/lib/auth/google";
 
 /**
  * Start create-account: validate name/email/phone, park pendingSignup, send phone OTP.
+ *
+ * Mobile Google: pass `googleIdToken` so we re-verify and attach googleSub
+ * without relying on browser pendingGoogle cookies.
  */
 export async function POST(req: Request) {
   try {
@@ -38,10 +45,56 @@ export async function POST(req: Request) {
 
     const session = await getSession();
     // Absorb Google identity if still parked (new Google → signup).
-    const pendingGoogle =
+    let pendingGoogle =
       session.pendingGoogle && session.pendingGoogle.expiresAt > Date.now()
         ? session.pendingGoogle
         : null;
+
+    // Mobile / Flutter: re-verify ID token (no cookie dependency).
+    const googleIdToken = body.googleIdToken
+      ? String(body.googleIdToken).trim()
+      : "";
+    if (googleIdToken) {
+      try {
+        const audiences = getGoogleAudiences();
+        const identity = await verifyGoogleIdToken({
+          idToken: googleIdToken,
+          audiences,
+          requireNonce: false,
+        });
+        // Email on form must match Google email (prevents hijack).
+        if (identity.email !== parsed.fields.email) {
+          return NextResponse.json(
+            {
+              error:
+                "Use the same email as your Google account for this signup.",
+              code: "GOOGLE_EMAIL_MISMATCH",
+            },
+            { status: 400 }
+          );
+        }
+        pendingGoogle = {
+          sub: identity.sub,
+          email: identity.email,
+          name: identity.name,
+          picture: identity.picture,
+          expiresAt: Date.now() + 20 * 60 * 1000,
+        };
+        session.pendingGoogle = pendingGoogle;
+      } catch (err) {
+        console.warn(
+          "[auth/signup/start] googleIdToken invalid",
+          err instanceof Error ? err.message : err
+        );
+        return NextResponse.json(
+          {
+            error: "Google session expired. Tap Continue with Google again.",
+            code: "GOOGLE_INVALID",
+          },
+          { status: 401 }
+        );
+      }
+    }
 
     const googleEmail = pendingGoogle?.email?.trim().toLowerCase();
     const emailVerifiedByGoogle =

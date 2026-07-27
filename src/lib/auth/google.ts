@@ -235,14 +235,39 @@ export async function exchangeGoogleCode({
   return payload.id_token;
 }
 
+/**
+ * Allowed Google OAuth client IDs for ID token `aud` / `azp`.
+ * Web uses GOOGLE_CLIENT_ID; native Sign-In often has aud=web client and
+ * azp=Android/iOS client — both must be listed in env for mobile.
+ */
+export function getGoogleAudiences(): string[] {
+  const ids = [
+    cleanEnv(process.env.GOOGLE_CLIENT_ID),
+    cleanEnv(process.env.GOOGLE_ANDROID_CLIENT_ID),
+    cleanEnv(process.env.GOOGLE_IOS_CLIENT_ID),
+  ].filter((v): v is string => Boolean(v));
+  return [...new Set(ids)];
+}
+
 export async function verifyGoogleIdToken({
   idToken,
   audience,
+  audiences,
   nonce,
+  requireNonce = true,
 }: {
   idToken: string;
-  audience: string;
-  nonce: string;
+  /** Single expected audience (web OAuth). */
+  audience?: string;
+  /** Multiple allowed audiences (mobile + web client IDs). */
+  audiences?: string[];
+  /** Required when requireNonce is true (browser PKCE flow). */
+  nonce?: string;
+  /**
+   * Web OAuth always embeds a nonce. Native google_sign_in ID tokens usually
+   * do not — pass requireNonce: false for mobile token exchange.
+   */
+  requireNonce?: boolean;
 }): Promise<GoogleIdentity> {
   const segments = idToken.split(".");
   if (segments.length !== 3) throw new Error("Malformed Google ID token");
@@ -272,13 +297,22 @@ export async function verifyGoogleIdToken({
   const validIssuer =
     claims.iss === "https://accounts.google.com" ||
     claims.iss === "accounts.google.com";
-  const validAudience = Array.isArray(claims.aud)
-    ? claims.aud.includes(audience)
-    : claims.aud === audience;
+
+  const allowed = [
+    ...(audiences || []),
+    ...(audience ? [audience] : []),
+  ].filter(Boolean);
+  if (allowed.length === 0) {
+    throw new Error("No Google audience configured");
+  }
+
+  const claimAud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+  const validAudience = claimAud.some((a) => allowed.includes(String(a)));
 
   if (!validIssuer) throw new Error("Invalid Google ID token issuer");
   if (!validAudience) throw new Error("Invalid Google ID token audience");
-  if (claims.azp && claims.azp !== audience) {
+  // azp is often the Android client while aud is the web client — accept either.
+  if (claims.azp && !allowed.includes(claims.azp)) {
     throw new Error("Invalid Google authorized presenter");
   }
   if (!Number.isFinite(claims.exp) || claims.exp <= now) {
@@ -287,8 +321,10 @@ export async function verifyGoogleIdToken({
   if (!Number.isFinite(claims.iat) || claims.iat > now + 60) {
     throw new Error("Invalid Google ID token issue time");
   }
-  if (!claims.nonce || !secureStringEqual(claims.nonce, nonce)) {
-    throw new Error("Invalid Google ID token nonce");
+  if (requireNonce) {
+    if (!nonce || !claims.nonce || !secureStringEqual(claims.nonce, nonce)) {
+      throw new Error("Invalid Google ID token nonce");
+    }
   }
   if (!claims.sub || claims.sub.length > 255) {
     throw new Error("Invalid Google account identifier");
