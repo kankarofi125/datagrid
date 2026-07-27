@@ -2,8 +2,7 @@ import Link from "next/link";
 import { RateTicker } from "@/components/layout/RateTicker";
 import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import { NetworkStatusBoard } from "@/components/landing/NetworkStatusBoard";
-
-import { HeroPhoneImage } from "@/components/landing/HeroPhoneImage";
+import { ProductShowcase } from "@/components/landing/ProductShowcase";
 import { RateBoard } from "@/components/landing/RateBoard";
 import { MarginCalculator } from "@/components/landing/MarginCalculator";
 import { CountUp } from "@/components/motion/CountUp";
@@ -16,7 +15,6 @@ import type { NetworkCode } from "@/lib/phone";
 import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
 import { createPublicMetadata, SITE_DESCRIPTION } from "@/lib/site";
 
-// Live catalog data is served through the shared Redis + stale local cache.
 export const dynamic = "force-dynamic";
 export const metadata = createPublicMetadata({
   title: "DataGrid Nigeria — Buy Data, Airtime & Pay Bills",
@@ -65,7 +63,9 @@ async function getLandingData() {
             retailPrice: Number(p.retailPrice),
             networkCode: p.network.code as NetworkCode,
           })),
-          ticker: tickerSetting ? (JSON.parse(tickerSetting.value) as string[]) : undefined,
+          ticker: tickerSetting
+            ? (JSON.parse(tickerSetting.value) as string[])
+            : undefined,
         };
       },
       { ttl: CacheTTL.catalog, staleTtl: 3600, tags: [CacheTags.catalog] }
@@ -91,7 +91,6 @@ export default async function LandingPage() {
             aria-label="DataGrid home"
           >
             <BrandLogo priority className="w-9 sm:w-10" alt="DataGrid" />
-            {/* Visible wordmark — must match Google OAuth consent app name */}
             <span className="font-display min-w-0 text-[1.15rem] leading-none tracking-tight text-ink sm:text-[1.35rem]">
               DataGrid
             </span>
@@ -103,19 +102,14 @@ export default async function LandingPage() {
             <Link href="/rates" className="link-draw text-ink/70 hover:text-ink">
               Rates
             </Link>
+            <Link href="#why" className="link-draw text-ink/70 hover:text-ink">
+              Why us
+            </Link>
             <Link href="/about" className="link-draw text-ink/70 hover:text-ink">
               Trust
             </Link>
-            <Link href="/privacy" className="link-draw text-ink/70 hover:text-ink">
-              Privacy
-            </Link>
           </nav>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <Link href="/rates" className="md:hidden">
-              <Button variant="ghost" size="sm">
-                Rates
-              </Button>
-            </Link>
             <Link href="/login" className="hidden sm:block">
               <Button variant="ghost" size="sm">
                 Log in
@@ -129,213 +123,169 @@ export default async function LandingPage() {
       </header>
 
       <main id="main" className="overflow-hidden">
-        <section className="relative border-b border-line bg-[radial-gradient(circle_at_85%_8%,rgba(242,166,61,.16),transparent_27%),radial-gradient(circle_at_4%_75%,rgba(22,134,83,.08),transparent_25%),linear-gradient(180deg,#f8f6f0_0%,#efebe1_100%)]">
-          <div className="pointer-events-none absolute -right-24 top-24 h-72 w-72 rounded-full bg-amber/10 blur-3xl" aria-hidden />
-          <div className="mx-auto grid max-w-7xl items-start gap-8 px-3 py-10 sm:px-4 sm:py-14 lg:grid-cols-12 lg:gap-14 lg:px-8 lg:py-20">
-            <div className="space-y-6 sm:space-y-8 lg:col-span-7 lg:pt-3">
-              <div>
-                {/*
-                  Static (no animation) brand + purpose first for Google OAuth branding review.
-                  App name must match consent screen: "DataGrid".
-                */}
-                <p className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.18em] text-green">
+        {/* ── Hero ── */}
+        <section className="relative border-b border-line bg-[radial-gradient(circle_at_88%_0%,rgba(242,166,61,.18),transparent_28%),radial-gradient(circle_at_0%_70%,rgba(22,134,83,.1),transparent_32%),linear-gradient(180deg,#f8f6f0_0%,#efebe1_100%)]">
+          <div
+            className="pointer-events-none absolute -right-20 top-16 h-80 w-80 rounded-full bg-amber/10 blur-3xl"
+            aria-hidden
+          />
+          <div className="mx-auto grid max-w-7xl items-start gap-8 px-3 py-10 sm:px-4 sm:py-14 lg:grid-cols-12 lg:items-center lg:gap-12 lg:px-8 lg:py-16">
+            <div className="min-w-0 lg:col-span-6 xl:col-span-7">
+              <HeroEnter delay={0}>
+                <p className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.2em] text-green">
                   DataGrid · Nigeria
                 </p>
-                <h1 className="font-display mt-3 text-[clamp(2.35rem,8.5vw,4.75rem)] leading-[0.95] tracking-tight text-ink">
-                  DataGrid
+                <h1 className="font-display mt-3 text-[clamp(2.6rem,8vw,4.85rem)] leading-[0.92] tracking-tight text-ink">
+                  Data in ten
+                  <br />
+                  seconds.{" "}
+                  <span className="text-green">Light in twenty.</span>
                 </h1>
-                <p className="mt-3 max-w-xl text-lg font-semibold leading-snug text-ink sm:text-xl">
-                  Buy data, airtime &amp; pay bills in Nigeria
-                </p>
-                <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink/70 sm:text-base">
-                  DataGrid is a Nigerian digital services platform for mobile data and
-                  airtime, electricity tokens, cable TV (DStv/GOtv), and exam pins—with a
-                  prepaid wallet, clear order status, instant receipts, and automatic
-                  refunds when a provider fails.
-                </p>
+              </HeroEnter>
 
-                <HeroEnter delay={80}>
-                  <p className="font-display mt-6 text-[clamp(1.35rem,4vw,2rem)] leading-tight text-ink/80">
-                    Data in ten seconds.{" "}
-                    <span className="text-green">Light in twenty.</span>
-                  </p>
-                </HeroEnter>
+              <HeroEnter delay={90}>
+                <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-ink/65 sm:text-lg">
+                  The premium way to buy data, airtime, electricity tokens, cable
+                  TV and exam pins — wallet checkout, clear order status, and
+                  auto-refund when a provider fails.
+                </p>
+              </HeroEnter>
 
-                <HeroEnter delay={140}>
-                  <div className="mt-6 flex flex-col gap-2.5 sm:mt-7 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                    <Link href="#buy" className="w-full sm:w-auto">
-                      <Button size="lg" className="w-full px-6 sm:w-auto">
-                        Buy now
-                      </Button>
-                    </Link>
-                    <Link href="/signup" className="w-full sm:w-auto">
-                      <Button size="lg" variant="ghost" className="w-full bg-white/55 sm:w-auto">
-                        Create account
-                      </Button>
-                    </Link>
-                    <Link href="/login" className="w-full sm:w-auto">
-                      <Button size="lg" variant="ghost" className="w-full sm:w-auto">
-                        Sign in
-                      </Button>
-                    </Link>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono-num text-[9px] uppercase tracking-wide text-ink/38">
-                    <span>✓ Wallet checkout</span>
-                    <span>✓ Receipt on every order</span>
-                    <span>✓ Auto-refund</span>
-                  </div>
-                </HeroEnter>
-              </div>
-
-              {/* Always-visible OAuth / privacy summary (no animation). */}
-              <div className="max-w-xl rounded-2xl border border-line bg-white/90 p-4 text-sm leading-relaxed text-ink/70 shadow-sm">
-                <p className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.14em] text-ink/45">
-                  About this app
-                </p>
-                <p className="mt-2">
-                  <strong className="font-semibold text-ink">DataGrid</strong> helps
-                  people and small businesses in Nigeria buy{" "}
-                  <strong className="font-semibold text-ink">
-                    data, airtime, electricity, cable TV and exam pins
-                  </strong>{" "}
-                  online, fund a wallet, and track every order with a receipt.
-                </p>
-                <p className="mt-2">
-                  Optional <strong className="font-semibold text-ink">Google sign-in</strong>{" "}
-                  uses only OpenID Connect scopes{" "}
-                  <code className="rounded bg-paper px-1 text-xs">openid</code>,{" "}
-                  <code className="rounded bg-paper px-1 text-xs">email</code>, and{" "}
-                  <code className="rounded bg-paper px-1 text-xs">profile</code> to
-                  authenticate you and link your Google identity to a verified Nigerian
-                  phone number on your DataGrid account. We do not access Gmail, Drive,
-                  contacts, or other Google product content.
-                </p>
-                <p className="mt-2">
-                  Read our{" "}
-                  <Link href="/privacy" className="font-semibold text-green underline">
-                    Privacy Policy
-                  </Link>{" "}
-                  and{" "}
-                  <Link href="/terms" className="font-semibold text-green underline">
-                    Terms of Service
+              <HeroEnter delay={150}>
+                <div className="mt-7 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                  <Link href="/signup" className="w-full sm:w-auto">
+                    <Button size="lg" className="w-full px-7 sm:w-auto">
+                      Open an account
+                    </Button>
                   </Link>
-                  .
-                </p>
-              </div>
-
-              <HeroEnter delay={300}>
-                <div className="grid grid-cols-3 gap-2 sm:max-w-xl sm:gap-3">
-                  <div className="rounded-2xl border border-line bg-white/70 p-3 shadow-sm backdrop-blur sm:p-4">
-                    <p className="font-mono-num text-[9px] tracking-widest text-ink/45 sm:text-[10px]">
-                      DELIVERED
-                    </p>
-                    <p className="font-mono-num mt-1.5 text-lg font-semibold text-ink sm:mt-2 sm:text-2xl lg:text-3xl">
-                      <CountUp value={412} prefix="₦" suffix="M" />
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-line bg-white/70 p-3 shadow-sm backdrop-blur sm:p-4">
-                    <p className="font-mono-num text-[9px] tracking-widest text-ink/45 sm:text-[10px]">
-                      ORDERS
-                    </p>
-                    <p className="font-mono-num mt-1.5 text-lg font-semibold text-ink sm:mt-2 sm:text-2xl lg:text-3xl">
-                      <CountUp value={96000} />
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-green-deep p-3 text-paper shadow-[0_18px_42px_-28px_rgba(10,46,34,.9)] sm:p-4">
-                    <p className="font-mono-num text-[9px] tracking-widest text-amber sm:text-[10px]">
-                      UPTIME
-                    </p>
-                    <p className="font-mono-num mt-1.5 text-lg font-semibold sm:mt-2 sm:text-2xl lg:text-3xl">
-                      99.6%
-                    </p>
-                  </div>
+                  <Link href="#services" className="w-full sm:w-auto">
+                    <Button
+                      size="lg"
+                      variant="ghost"
+                      className="w-full bg-white/60 sm:w-auto"
+                    >
+                      Browse services
+                    </Button>
+                  </Link>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono-num text-[9px] uppercase tracking-wide text-ink/40">
+                  <span>Wallet checkout</span>
+                  <span className="text-ink/20">·</span>
+                  <span>Receipt on every order</span>
+                  <span className="text-ink/20">·</span>
+                  <span>Auto-refund</span>
                 </div>
               </HeroEnter>
 
-              <HeroEnter delay={380}>
-                <div className="hidden w-full max-w-md lg:block">
+              <HeroEnter delay={240}>
+                <div className="mt-9 grid max-w-lg grid-cols-3 gap-2 sm:gap-3">
+                  {[
+                    { label: "Delivered", value: 412, prefix: "₦", suffix: "M" },
+                    { label: "Orders", value: 96000 },
+                    { label: "Uptime", static: "99.6%", accent: true },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className={
+                        stat.accent
+                          ? "rounded-2xl bg-green-deep p-3 text-paper shadow-[0_18px_42px_-28px_rgba(10,46,34,.9)] sm:p-4"
+                          : "rounded-2xl border border-line bg-white/75 p-3 shadow-sm backdrop-blur sm:p-4"
+                      }
+                    >
+                      <p
+                        className={
+                          stat.accent
+                            ? "font-mono-num text-[9px] tracking-widest text-amber"
+                            : "font-mono-num text-[9px] tracking-widest text-ink/45"
+                        }
+                      >
+                        {stat.label.toUpperCase()}
+                      </p>
+                      <p
+                        className={
+                          stat.accent
+                            ? "font-mono-num mt-1.5 text-lg font-semibold sm:text-2xl"
+                            : "font-mono-num mt-1.5 text-lg font-semibold text-ink sm:text-2xl"
+                        }
+                      >
+                        {stat.static ?? (
+                          <CountUp
+                            value={stat.value!}
+                            prefix={stat.prefix}
+                            suffix={stat.suffix}
+                          />
+                        )}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </HeroEnter>
+
+              <HeroEnter delay={300}>
+                <div className="mt-6 hidden max-w-md lg:block">
                   <NetworkStatusBoard networks={data.networks} />
                 </div>
               </HeroEnter>
             </div>
 
-            <div
-              id="buy"
-              className="scroll-mt-20 lg:col-span-5 lg:sticky lg:top-24"
-            >
+            <div id="buy" className="min-w-0 scroll-mt-24 lg:col-span-6 xl:col-span-5">
               <HeroEnter delay={120}>
-                <div className="rounded-[24px] border border-line bg-white p-6 shadow-[0_32px_80px_-38px_rgba(10,46,34,.45)] sm:p-8">
-                  <p className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.16em] text-green">
-                    Secure checkout
-                  </p>
-                  <h2 className="font-display mt-2 text-2xl text-ink sm:text-3xl">
-                    Sign in to buy
-                  </h2>
-                  <p className="mt-2 text-sm leading-relaxed text-ink/60">
-                    Guest checkout has been removed. Create an account or log in to
-                    fund your wallet and buy data, airtime, and bills securely.
-                  </p>
-                  <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
-                    <Link href="/signup" className="w-full sm:w-auto">
-                      <Button size="lg" className="w-full sm:w-auto">
-                        Create account
-                      </Button>
-                    </Link>
-                    <Link href="/login" className="w-full sm:w-auto">
-                      <Button size="lg" variant="ghost" className="w-full sm:w-auto">
-                        Sign in
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-                <div className="mt-5 lg:hidden">
-                  <NetworkStatusBoard networks={data.networks} />
-                </div>
+                <ProductShowcase />
               </HeroEnter>
+              <div className="mt-4 lg:hidden">
+                <NetworkStatusBoard networks={data.networks} />
+              </div>
             </div>
           </div>
         </section>
 
-        <section id="services" className="bg-paper py-10 sm:py-14">
+        {/* ── Services ── */}
+        <section id="services" className="bg-paper py-14 sm:py-16 lg:py-20">
           <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-8">
             <Reveal>
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                 <div>
                   <p className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.18em] text-green">
                     One reliable checkout
                   </p>
-                  <h2 className="font-display mt-2 text-3xl text-ink sm:text-4xl">
-                    FIVE THINGS. ONE GRID.
+                  <h2 className="font-display mt-2 text-[clamp(1.85rem,5vw,3.25rem)] leading-[0.95] text-ink">
+                    FIVE THINGS.
+                    <br />
+                    ONE GRID.
                   </h2>
                 </div>
-                <p className="max-w-md text-sm leading-relaxed text-ink/50">
-                  Everyday digital payments in one clean account, with a single wallet and
-                  a receipt trail you can trust.
+                <p className="max-w-md text-sm leading-relaxed text-ink/50 sm:text-right">
+                  Everyday digital payments in one clean account — single wallet,
+                  receipt trail, provider failover you never see.
                 </p>
               </div>
             </Reveal>
-            <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
               {[
-                ["01", "Data", "SME · Gifting"],
-                ["02", "Airtime", "All networks"],
-                ["03", "Electricity", "Instant tokens"],
-                ["04", "Cable TV", "DStv · GOtv"],
-                ["05", "Exam pins", "WAEC · NECO"],
-              ].map(([number, title, detail], index) => (
-                <Reveal key={title} delay={index * 50}>
+                ["01", "Data", "SME · Gifting", "from ₦"],
+                ["02", "Airtime", "All networks", "any amount"],
+                ["03", "Electricity", "Instant tokens", "prepaid"],
+                ["04", "Cable TV", "DStv · GOtv", "renewals"],
+                ["05", "Exam pins", "WAEC · NECO", "result checks"],
+              ].map(([number, title, detail, tag], index) => (
+                <Reveal key={title} delay={index * 55}>
                   <Link
-                    href="/login"
-                    className="group block h-full rounded-2xl border border-line bg-white p-4 shadow-[0_12px_34px_-30px_rgba(14,33,26,.5)] transition hover:-translate-y-1 hover:border-green/25 hover:shadow-[0_20px_42px_-28px_rgba(14,33,26,.45)] sm:p-5"
+                    href="/signup"
+                    className="group relative flex h-full flex-col overflow-hidden rounded-[22px] border border-line bg-white p-4 shadow-[0_16px_40px_-32px_rgba(14,33,26,.5)] transition duration-300 hover:-translate-y-1 hover:border-green/30 hover:shadow-[0_28px_50px_-28px_rgba(14,33,26,.4)] sm:p-5"
                   >
-                    <span className="font-mono-num text-[9px] font-semibold text-green/60">
+                    <span className="font-mono-num text-[10px] font-semibold text-green/55">
                       {number}
                     </span>
-                    <h3 className="mt-5 text-base font-semibold text-ink">{title}</h3>
+                    <h3 className="mt-6 text-lg font-semibold text-ink">{title}</h3>
                     <p className="mt-1 font-mono-num text-[9px] uppercase tracking-wide text-ink/38">
                       {detail}
                     </p>
-                    <span className="mt-4 block text-xs font-semibold text-green opacity-0 transition group-hover:opacity-100">
+                    <span className="mt-auto pt-5 text-xs font-semibold text-green opacity-0 transition group-hover:opacity-100">
                       Get started →
+                    </span>
+                    <span className="pointer-events-none absolute -right-2 -top-2 font-display text-5xl text-green/[0.04] transition group-hover:text-green/[0.08]">
+                      {tag[0]}
                     </span>
                   </Link>
                 </Reveal>
@@ -344,34 +294,43 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        <HeroPhoneImage />
-
-        {/* Rate + margin desk */}
-        <section className="bg-[#efebe1] py-12 sm:py-16 lg:py-20">
+        {/* ── Rate desk ── */}
+        <section className="bg-[#efebe1] py-14 sm:py-16 lg:py-20">
           <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-8">
-          <Reveal>
-            <p className="font-mono-num text-[11px] tracking-[0.2em] text-ink/45">RATE DESK</p>
-            <h2 className="font-display mt-2 text-3xl text-ink sm:text-4xl lg:text-5xl">
-              PRICES ON THE GRID.
-            </h2>
-          </Reveal>
-          <div className="mt-8 grid items-start gap-5 sm:mt-10 sm:gap-6 lg:grid-cols-5 lg:gap-8">
-            <Reveal className="min-w-0 lg:col-span-3" delay={60}>
-              <RateBoard />
+            <Reveal>
+              <p className="font-mono-num text-[11px] tracking-[0.2em] text-ink/45">
+                RATE DESK
+              </p>
+              <h2 className="font-display mt-2 text-[clamp(1.85rem,5vw,3.25rem)] leading-[0.95] text-ink">
+                PRICES ON THE GRID.
+              </h2>
+              <p className="mt-3 max-w-lg text-sm leading-relaxed text-ink/55">
+                Live catalogue samples — open an account for full plans, agent
+                margins, and wallet checkout.
+              </p>
             </Reveal>
-            <Reveal className="min-w-0 lg:col-span-2" delay={140}>
-              <MarginCalculator />
-            </Reveal>
-          </div>
+            <div className="mt-8 grid items-start gap-5 sm:mt-10 sm:gap-6 lg:grid-cols-5 lg:gap-8">
+              <Reveal className="min-w-0 lg:col-span-3" delay={60}>
+                <RateBoard />
+              </Reveal>
+              <Reveal className="min-w-0 lg:col-span-2" delay={140}>
+                <MarginCalculator />
+              </Reveal>
+            </div>
           </div>
         </section>
 
-        {/* Moats — asymmetric, aligned system */}
-        <section className="bg-[radial-gradient(circle_at_85%_15%,rgba(242,166,61,.13),transparent_25%),linear-gradient(145deg,#123b2a,#0a2e22)] py-12 text-paper sm:py-16 lg:py-20">
+        {/* ── Moats ── */}
+        <section
+          id="why"
+          className="relative overflow-hidden bg-[radial-gradient(circle_at_90%_10%,rgba(242,166,61,.14),transparent_28%),linear-gradient(155deg,#123b2a,#0a2e22)] py-14 text-paper sm:py-16 lg:py-20"
+        >
           <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-8">
             <Reveal>
-              <p className="font-mono-num text-[11px] tracking-[0.2em] text-amber">MOATS</p>
-              <h2 className="font-display mt-3 text-[clamp(1.75rem,6vw,3.5rem)] leading-tight">
+              <p className="font-mono-num text-[11px] tracking-[0.2em] text-amber">
+                WHY DATAGRID
+              </p>
+              <h2 className="font-display mt-3 text-[clamp(1.85rem,5.5vw,3.4rem)] leading-[0.95]">
                 Built for Nigeria.
                 <br />
                 Not a template.
@@ -380,19 +339,29 @@ export default async function LandingPage() {
             <ul className="moat-grid mt-8 sm:mt-12">
               {[
                 ["Wallet checkout", "Fund once, buy data and bills in seconds."],
-                ["Network auto-detect", "0803… snaps to MTN using the live prefix map."],
+                [
+                  "Network auto-detect",
+                  "0803… snaps to MTN using the live prefix map.",
+                ],
                 ["Status board", "Live uptime dots on landing and dashboard."],
-                ["Provider failover", "2+ VTU adapters. You never see the retry."],
+                [
+                  "Provider failover",
+                  "2+ VTU adapters. You never see the retry.",
+                ],
                 ["Scheduled top-ups", "1GB every Friday, 6pm WAT."],
-                ["One-tap repeat", "Last 3 buys as chips on the home grid."],
+                ["One-tap repeat", "Last buys as chips on the home grid."],
               ].map(([t, d], i) => (
-                <Reveal key={t} delay={i * 60} as="li">
-                  <div className="h-full rounded-2xl bg-white/[0.065] p-4 shadow-[0_16px_40px_-32px_rgba(0,0,0,.8)] transition hover:-translate-y-1 hover:bg-white/[0.09] sm:p-6">
+                <Reveal key={t} delay={i * 55} as="li">
+                  <div className="h-full rounded-[22px] border border-white/[0.06] bg-white/[0.06] p-5 shadow-[0_16px_40px_-32px_rgba(0,0,0,.8)] transition duration-300 hover:-translate-y-1 hover:bg-white/[0.09] sm:p-6">
                     <p className="font-mono-num text-[10px] text-amber">
                       {String(i + 1).padStart(2, "0")}
                     </p>
-                    <h3 className="mt-2 text-base font-semibold sm:mt-3 sm:text-lg">{t}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-paper/65 sm:mt-2">{d}</p>
+                    <h3 className="mt-2 text-base font-semibold sm:mt-3 sm:text-lg">
+                      {t}
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-paper/65 sm:mt-2">
+                      {d}
+                    </p>
                   </div>
                 </Reveal>
               ))}
@@ -400,16 +369,66 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* FAQ */}
-        <section className="mx-auto max-w-4xl px-3 py-12 sm:px-4 sm:py-16 lg:px-8 lg:py-20">
+        {/* ── Trust / OAuth compact ── */}
+        <section className="border-b border-line bg-paper py-12 sm:py-14">
+          <div className="mx-auto max-w-4xl px-3 sm:px-4 lg:px-8">
+            <Reveal>
+              <div className="rounded-[24px] border border-line bg-white p-6 shadow-[0_20px_50px_-36px_rgba(14,33,26,.35)] sm:p-8">
+                <p className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.16em] text-ink/40">
+                  Trust &amp; access
+                </p>
+                <h2 className="font-display mt-2 text-2xl text-ink sm:text-3xl">
+                  Secure by design.
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-ink/60 sm:text-[15px]">
+                  Optional{" "}
+                  <strong className="font-semibold text-ink">Google sign-in</strong>{" "}
+                  uses only OpenID Connect scopes{" "}
+                  <code className="rounded bg-paper px-1.5 py-0.5 font-mono-num text-[11px]">
+                    openid
+                  </code>
+                  ,{" "}
+                  <code className="rounded bg-paper px-1.5 py-0.5 font-mono-num text-[11px]">
+                    email
+                  </code>
+                  , and{" "}
+                  <code className="rounded bg-paper px-1.5 py-0.5 font-mono-num text-[11px]">
+                    profile
+                  </code>{" "}
+                  — then links to a verified Nigerian phone. We do not access
+                  Gmail, Drive, or contacts.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
+                  <Link href="/privacy" className="text-green hover:underline">
+                    Privacy Policy
+                  </Link>
+                  <Link href="/terms" className="text-green hover:underline">
+                    Terms of Service
+                  </Link>
+                  <Link href="/about" className="text-green hover:underline">
+                    About &amp; trust
+                  </Link>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ── FAQ ── */}
+        <section className="mx-auto max-w-4xl px-3 py-14 sm:px-4 sm:py-16 lg:px-8 lg:py-20">
           <Reveal>
-            <h2 className="font-display text-3xl text-ink sm:text-4xl lg:text-5xl">FAQ</h2>
+            <p className="font-mono-num text-[10px] font-semibold uppercase tracking-[0.18em] text-green">
+              Answers
+            </p>
+            <h2 className="font-display mt-2 text-[clamp(1.85rem,5vw,3rem)] text-ink">
+              FAQ
+            </h2>
           </Reveal>
-          <dl className="mt-8 grid gap-2.5 sm:mt-10">
+          <dl className="mt-8 grid gap-3">
             {[
               [
                 "Do I need an account?",
-                "Yes for wallet purchases. Sign in with your Nigerian number (or Google + phone), set a PIN, fund your wallet, then buy.",
+                "Yes for wallet purchases. Sign up with name, email and phone (OTP on both), set a PIN, fund your wallet, then buy.",
               ],
               [
                 "How fast is delivery?",
@@ -421,13 +440,15 @@ export default async function LandingPage() {
               ],
               [
                 "What happens when I sign in with Google?",
-                "We use only your verified email, name, profile image and stable Google account ID to authenticate and link your DataGrid account. We do not access Gmail, Drive, contacts, calendar or other Google product content.",
+                "We use only your verified email, name, profile image and stable Google account ID to authenticate and link your DataGrid account. We do not access Gmail, Drive, contacts or other Google product content.",
               ],
             ].map(([q, a], i) => (
-              <Reveal key={q} delay={i * 80}>
-                <div className="rounded-2xl border border-line bg-white p-4 shadow-[0_12px_32px_-30px_rgba(14,33,26,.45)] sm:p-5">
+              <Reveal key={q} delay={i * 70}>
+                <div className="rounded-[20px] border border-line bg-white p-5 shadow-[0_12px_32px_-30px_rgba(14,33,26,.45)] sm:p-6">
                   <dt className="text-base font-semibold text-ink">{q}</dt>
-                  <dd className="mt-2 text-sm leading-relaxed text-ink/65 sm:text-base">{a}</dd>
+                  <dd className="mt-2 text-sm leading-relaxed text-ink/62 sm:text-[15px]">
+                    {a}
+                  </dd>
                 </div>
               </Reveal>
             ))}
@@ -447,44 +468,11 @@ export default async function LandingPage() {
             <p className="mt-3 text-sm leading-relaxed text-paper/60">
               DataGrid — buy data, airtime and pay bills in Nigeria.
             </p>
-            <div className="mt-4 flex items-center gap-3">
-              <a
-                href="https://www.facebook.com/datagrid"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="DataGrid on Facebook"
-                className="text-paper/60 transition-colors hover:text-amber"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.45 2.89h-2.33v6.99A10 10 0 0 0 22 12Z" />
-                </svg>
-              </a>
-              <a
-                href="https://www.instagram.com/datagrid"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="DataGrid on Instagram"
-                className="text-paper/60 transition-colors hover:text-amber"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M12 2c2.72 0 3.06.01 4.12.06 1.07.05 1.8.22 2.43.47.66.25 1.22.6 1.77 1.15.55.55.9 1.11 1.15 1.77.25.63.42 1.36.47 2.43.05 1.06.06 1.4.06 4.12s-.01 3.06-.06 4.12c-.05 1.07-.22 1.8-.47 2.43a4.9 4.9 0 0 1-1.15 1.77c-.55.55-1.11.9-1.77 1.15-.63.25-1.36.42-2.43.47-1.06.05-1.4.06-4.12.06s-3.06-.01-4.12-.06c-1.07-.05-1.8-.22-2.43-.47a4.9 4.9 0 0 1-1.77-1.15 4.9 4.9 0 0 1-1.15-1.77c-.25-.63-.42-1.36-.47-2.43C2.01 15.06 2 14.72 2 12s.01-3.06.06-4.12c.05-1.07.22-1.8.47-2.43.25-.66.6-1.22 1.15-1.77.55-.55 1.11-.9 1.77-1.15.63-.25 1.36-.42 2.43-.47C8.94 2.01 9.28 2 12 2Zm0 1.8c-2.67 0-2.99.01-4.04.06-.98.04-1.51.21-1.86.35-.47.18-.8.4-1.15.75-.35.35-.57.68-.75 1.15-.14.35-.31.88-.35 1.86-.05 1.05-.06 1.37-.06 4.04s.01 2.99.06 4.04c.04.98.21 1.51.35 1.86.18.47.4.8.75 1.15.35.35.68.57 1.15.75.35.14.88.31 1.86.35 1.05.05 1.37.06 4.04.06s2.99-.01 4.04-.06c.98-.04 1.51-.21 1.86-.35.47-.18.8-.4 1.15-.75.35-.35.57-.68.75-1.15.14-.35.31-.88.35-1.86.05-1.05.06-1.37.06-4.04s-.01-2.99-.06-4.04c-.04-.98-.21-1.51-.35-1.86a3.1 3.1 0 0 0-.75-1.15 3.1 3.1 0 0 0-1.15-.75c-.35-.14-.88-.31-1.86-.35-1.05-.05-1.37-.06-4.04-.06Zm0 3.06a5.14 5.14 0 1 1 0 10.28 5.14 5.14 0 0 1 0-10.28Zm0 8.48a3.34 3.34 0 1 0 0-6.68 3.34 3.34 0 0 0 0 6.68Zm6.54-8.66a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0Z" />
-                </svg>
-              </a>
-              <a
-                href="https://www.youtube.com/@datagrid"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="DataGrid on YouTube"
-                className="text-paper/60 transition-colors hover:text-amber"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M23.5 6.5a3.02 3.02 0 0 0-2.12-2.14C19.5 3.85 12 3.85 12 3.85s-7.5 0-9.38.51A3.02 3.02 0 0 0 .5 6.5C0 8.39 0 12 0 12s0 3.61.5 5.5a3.02 3.02 0 0 0 2.12 2.14c1.88.51 9.38.51 9.38.51s7.5 0 9.38-.51a3.02 3.02 0 0 0 2.12-2.14C24 15.61 24 12 24 12s0-3.61-.5-5.5ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" />
-                </svg>
-              </a>
-            </div>
           </div>
           <div>
-            <p className="font-mono-num text-[10px] tracking-widest text-paper/40">LEGAL</p>
+            <p className="font-mono-num text-[10px] tracking-widest text-paper/40">
+              LEGAL
+            </p>
             <ul className="mt-3 space-y-2 text-sm text-paper/75">
               <li>
                 <Link href="/privacy" className="hover:text-amber">
@@ -496,14 +484,13 @@ export default async function LandingPage() {
                   Terms of Service
                 </Link>
               </li>
-              <li>NIN-SIM notice applies</li>
-              <li>Receipts retained for your records</li>
             </ul>
           </div>
           <div>
-            <p className="font-mono-num text-[10px] tracking-widest text-paper/40">COMPANY</p>
+            <p className="font-mono-num text-[10px] tracking-widest text-paper/40">
+              COMPANY
+            </p>
             <ul className="mt-3 space-y-2 text-sm text-paper/75">
-              <li>Digital services · Nigeria</li>
               <li>
                 <Link href="/about" className="hover:text-amber">
                   Trust &amp; about
@@ -514,13 +501,31 @@ export default async function LandingPage() {
                   Support
                 </Link>
               </li>
+              <li>
+                <Link href="/rates" className="hover:text-amber">
+                  Rates
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
-            <p className="font-mono-num text-[10px] tracking-widest text-paper/40">NOTE</p>
-            <p className="mt-3 text-sm leading-relaxed text-paper/60">
-              Transactions final after delivery. Status trail on every order.
+            <p className="font-mono-num text-[10px] tracking-widest text-paper/40">
+              START
             </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <Link
+                href="/signup"
+                className="text-sm font-semibold text-amber hover:underline"
+              >
+                Create account →
+              </Link>
+              <Link
+                href="/login"
+                className="text-sm text-paper/70 hover:text-amber"
+              >
+                Sign in
+              </Link>
+            </div>
           </div>
         </div>
         <div className="border-t border-white/10 px-4 py-4 text-center font-mono-num text-[11px] text-paper/40">

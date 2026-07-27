@@ -1,3 +1,5 @@
+import { AuthPageSkeleton } from "@/components/auth/AuthPageSkeleton";
+
 export default function Loading() {
-  return null;
+  return <AuthPageSkeleton />;
 }

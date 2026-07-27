@@ -3,7 +3,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { useHasMounted } from "@/hooks/useHasMounted";
 
 const PREMIUM_EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -20,8 +19,9 @@ type Props = {
 };
 
 /**
- * Viewport reveal. Server HTML and the first client paint are plain (visible)
- * markup so React hydration always matches. Motion only activates after mount.
+ * Scroll-triggered reveal. Server and client both start from the same initial
+ * motion styles so hydration stays aligned. Marked data-motion-owned so the
+ * app MotionCascade does not double-animate.
  */
 export function Reveal({
   children,
@@ -30,9 +30,8 @@ export function Reveal({
   once = true,
   as: Tag = "div",
   direction = "up",
-  distance = 26,
+  distance = 28,
 }: Props) {
-  const mounted = useHasMounted();
   const reduced = useReducedMotion() === true;
   const offset = {
     up: { x: 0, y: distance },
@@ -41,8 +40,7 @@ export function Reveal({
     none: { x: 0, y: 0 },
   }[direction];
 
-  // SSR + hydration: static element (no framer styles → no mismatch).
-  if (!mounted || reduced) {
+  if (reduced) {
     const StaticTag = Tag;
     return (
       <StaticTag data-motion-owned className={className}>
@@ -65,13 +63,19 @@ export function Reveal({
         opacity: 0,
         x: offset.x,
         y: offset.y,
-        scale: 0.985,
+        scale: direction === "none" ? 1 : 0.985,
         filter: "blur(8px)",
       }}
-      whileInView={{ opacity: 1, x: 0, y: 0, scale: 1, filter: "blur(0px)" }}
-      viewport={{ once, amount: 0.18, margin: "0px 0px -9% 0px" }}
+      whileInView={{
+        opacity: 1,
+        x: 0,
+        y: 0,
+        scale: 1,
+        filter: "blur(0px)",
+      }}
+      viewport={{ once, amount: 0.14, margin: "0px 0px -6% 0px" }}
       transition={{
-        duration: 0.72,
+        duration: 0.7,
         delay: delay / 1000,
         ease: PREMIUM_EASE,
       }}
@@ -82,7 +86,7 @@ export function Reveal({
   );
 }
 
-/** Hero load sequence — orchestrated entrance, not scroll */
+/** Hero load sequence — orchestrated entrance on mount, not scroll */
 export function HeroEnter({
   children,
   className,
@@ -92,10 +96,9 @@ export function HeroEnter({
   className?: string;
   delay?: number;
 }) {
-  const mounted = useHasMounted();
   const reduced = useReducedMotion() === true;
 
-  if (!mounted || reduced) {
+  if (reduced) {
     return (
       <div data-motion-owned className={cn(className)}>
         {children}
@@ -106,10 +109,10 @@ export function HeroEnter({
   return (
     <motion.div
       data-motion-owned
-      initial={{ opacity: 0, y: 24, scale: 0.99, filter: "blur(7px)" }}
+      initial={{ opacity: 0, y: 22, scale: 0.99, filter: "blur(6px)" }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       transition={{
-        duration: 0.78,
+        duration: 0.75,
         delay: delay / 1000,
         ease: PREMIUM_EASE,
       }}

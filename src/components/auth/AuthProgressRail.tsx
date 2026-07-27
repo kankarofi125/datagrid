@@ -17,7 +17,7 @@ export function AuthProgressRail({ steps, activeIndex, className }: Props) {
   return (
     <ol
       className={cn(
-        "flex w-full items-start justify-between gap-0 rounded-2xl border border-line/80 bg-white/70 px-2.5 py-3 backdrop-blur-sm sm:px-3 sm:py-3.5",
+        "flex w-full items-start justify-between gap-0 rounded-2xl border border-line/80 bg-white px-2.5 py-3 sm:px-3 sm:py-3.5",
         className
       )}
       aria-label="Progress"

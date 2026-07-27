@@ -18,6 +18,8 @@ import {
   AuthOrDivider,
   GoogleAuthButton,
 } from "@/components/auth/GoogleAuthButton";
+import { AuthStepTransition } from "@/components/auth/AuthStepTransition";
+import { AuthPageSkeleton } from "@/components/auth/AuthPageSkeleton";
 import {
   sanitizeNgPhoneInput,
   toLocalPhone,
@@ -96,7 +98,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-grid-paper">
       <TopUtilityStrip />
-      <Suspense fallback={null}>
+      <Suspense fallback={<AuthPageSkeleton compact />}>
         <SignupForm />
       </Suspense>
     </div>
@@ -362,6 +364,8 @@ function SignupForm() {
         } else if (step === "pin-confirm") savePin();
       }}
     >
+      <AuthStepTransition stepKey={step}>
+      <div className="flex flex-col gap-4 sm:gap-5">
       {googlePrefill && step === "details" && (
         <AuthNotice tone="success">
           Google verified your email. Confirm your details, add your Nigerian
@@ -587,6 +591,9 @@ function SignupForm() {
           </AuthTextAction>
         </>
       )}
+
+      </div>
+      </AuthStepTransition>
 
       {error && (
         <p

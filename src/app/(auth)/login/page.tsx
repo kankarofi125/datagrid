@@ -22,6 +22,8 @@ import {
   AuthOrDivider,
   GoogleAuthButton,
 } from "@/components/auth/GoogleAuthButton";
+import { AuthStepTransition } from "@/components/auth/AuthStepTransition";
+import { AuthPageSkeleton } from "@/components/auth/AuthPageSkeleton";
 import {
   sanitizeNgPhoneInput,
   toLocalPhone,
@@ -103,7 +105,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-grid-paper">
       <TopUtilityStrip />
-      <Suspense fallback={null}>
+      <Suspense fallback={<AuthPageSkeleton compact />}>
         <LoginForm />
       </Suspense>
     </div>
@@ -540,6 +542,8 @@ function LoginForm() {
         } else if (step === "pin-confirm") savePinAndEnter();
       }}
     >
+      <AuthStepTransition stepKey={step}>
+      <div className="flex flex-col gap-4 sm:gap-5">
       {step === "identify" && (
         <>
           {googleNotice && (
@@ -870,6 +874,9 @@ function LoginForm() {
           </AuthTextAction>
         </>
       )}
+
+      </div>
+      </AuthStepTransition>
 
       {error && (
         <p
