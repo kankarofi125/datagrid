@@ -956,7 +956,7 @@ function googleMessage(state: string | null) {
     case "cancelled":
       return "Google sign-in was cancelled. You can try again or continue with phone or email.";
     case "expired":
-      return "That Google sign-in session expired or cookies were blocked. Allow cookies for this site, use one tab only, and try again.";
+      return "Google sign-in could not complete (session cookies missing). Allow cookies for this site, use one tab only, and try Continue with Google again.";
     case "mismatch":
       return "This Google sign-in no longer matches the original request. Close extra tabs and try Continue with Google once more.";
     case "invalid":
@@ -967,6 +967,8 @@ function googleMessage(state: string | null) {
       return "Google sign-in is not configured yet. Continue with your phone or email for now.";
     case "unavailable":
       return "Google sign-in is temporarily unavailable. Please try again or use phone/email.";
+    case "session":
+      return "Google verified you, but we could not open your DataGrid session (cookie blocked or expired). Allow cookies, then try Continue with Google again.";
     default:
       return null;
   }

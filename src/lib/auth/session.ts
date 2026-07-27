@@ -89,6 +89,7 @@ export const sessionOptions: SessionOptions = {
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,
     sameSite: "lax",
+    path: "/",
     maxAge: SESSION_IDLE_SEC,
   },
 };

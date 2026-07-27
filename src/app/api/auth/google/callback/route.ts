@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { prisma } from "@/lib/db";
 import {
-  GOOGLE_OAUTH_COOKIE_PATH,
   GOOGLE_OAUTH_COOKIES,
   type GoogleLoginReason,
   type GoogleIdentity,
@@ -25,7 +24,7 @@ export const runtime = "nodejs";
 
 /**
  * Google OAuth callback.
- * Uses getIronSession(request, response) so pendingLogin2fa cookies stick on redirects.
+ * Uses getIronSession(request, response) so session cookies stick on redirects.
  */
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -47,7 +46,6 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const returnedState = requestUrl.searchParams.get("state");
 
-  // Read OAuth cookies from the incoming request
   const cookieHeader = request.headers.get("cookie") || "";
   const cookieMap = parseCookieHeader(cookieHeader);
   const expectedState = cookieMap.get(GOOGLE_OAUTH_COOKIES.state);
@@ -70,7 +68,18 @@ export async function GET(request: Request) {
         : !hasCookies
           ? "expired"
           : "mismatch";
-    console.warn("[auth/google/callback] request not verifiable", { reason });
+    console.warn("[auth/google/callback] request not verifiable", {
+      reason,
+      hasCode: Boolean(code),
+      hasState: Boolean(returnedState),
+      hasExpectedState: Boolean(expectedState),
+      hasNonce: Boolean(nonce),
+      hasVerifier: Boolean(codeVerifier),
+      cookieNames: [...cookieMap.keys()].filter((k) =>
+        k.startsWith("datagrid_google")
+      ),
+      host: requestUrl.host,
+    });
     return loginRedirect(request, reason);
   }
 
@@ -84,6 +93,12 @@ export async function GET(request: Request) {
       idToken,
       audience: config.clientId,
       nonce,
+    });
+
+    console.info("[auth/google/callback] identity ok", {
+      sub: identity.sub.slice(0, 8) + "…",
+      email: identity.email.replace(/^(.).+(@.+)$/, "$1***$2"),
+      host: requestUrl.host,
     });
 
     const bySub = await prisma.user.findUnique({
@@ -139,6 +154,9 @@ export async function GET(request: Request) {
     delete session.pendingLogin2fa;
     delete session.pendingSignup;
     await session.save();
+    console.info("[auth/google/callback] new google → signup", {
+      email: identity.email.replace(/^(.).+(@.+)$/, "$1***$2"),
+    });
     return clearOAuthCookies(response);
   } catch (error) {
     console.error(
@@ -180,7 +198,6 @@ async function finishReturningGoogleUser(
 
   // --- Email 2FA required ---
   if (user.totpEnabled && email) {
-    // Build response first so iron-session can attach Set-Cookie to it
     const provisional = NextResponse.redirect(
       new URL("/login?google=2fa", request.url),
       303
@@ -212,8 +229,6 @@ async function finishReturningGoogleUser(
       }
     );
 
-    // Email may fail (Brevo) — still land on 2FA step with phone OTP fallback.
-    // startEmail2faChallenge already parked pendingLogin2fa (phone + email).
     if (!challenge.ok && !challenge.phoneFallback) {
       console.error("[auth/google/callback] 2FA start failed", challenge.error);
       return loginRedirect(request, "unavailable");
@@ -232,8 +247,6 @@ async function finishReturningGoogleUser(
       source: "google",
       emailFailed: !challenge.ok,
     });
-    // Rebuild redirect with full query; re-apply session on the final response
-    // so Set-Cookie is attached to this redirect (not the provisional one).
     const response = NextResponse.redirect(new URL(path, request.url), 303);
     const session2 = await getIronSession<SessionData>(
       request,
@@ -246,8 +259,6 @@ async function finishReturningGoogleUser(
     delete session2.role;
     delete session2.adminUsername;
     delete session2.pendingGoogle;
-    // Prefer values already parked by startEmail2faChallenge; re-assert phone.
-    // Never shrink expiresAt to the 2‑min OTP code TTL — that broke "Use OTP instead".
     const parked = session.pendingLogin2fa;
     session2.pendingLogin2fa = {
       userId: user.id,
@@ -262,24 +273,18 @@ async function finishReturningGoogleUser(
           : Date.now() + PENDING_2FA_SESSION_MS,
     };
     await session2.save();
-
-    console.info("[auth/google/callback] 2FA redirect", {
-      userId: user.id,
-      emailHint,
-      emailFailed: !challenge.ok,
-      hasPhone: Boolean(session2.pendingLogin2fa.phone),
-      phoneLocal: session2.pendingLogin2fa.phone?.slice(-4),
-      sessionExpiresInSec: Math.round(
-        (session2.pendingLogin2fa.expiresAt - Date.now()) / 1000
-      ),
-    });
     return clearOAuthCookies(response);
   }
 
-  // Full login (no 2FA) — still force PIN setup if missing
+  // Full login (no 2FA) — bounce through continue so the browser stores the cookie
+  // before we hit the RSC app layout (avoids silent bounce to /login).
   const needsPin = !user.pinHash;
+  const nextPath = needsPin ? "/login?setup=pin" : "/dashboard";
   const response = NextResponse.redirect(
-    new URL(needsPin ? "/login?setup=pin" : "/dashboard", request.url),
+    new URL(
+      `/api/auth/session/continue?next=${encodeURIComponent(nextPath)}`,
+      request.url
+    ),
     303
   );
   const session = await getIronSession<SessionData>(
@@ -292,11 +297,19 @@ async function finishReturningGoogleUser(
   session.role = user.role;
   session.isLoggedIn = true;
   session.lastActivityAt = Date.now();
-  session.needsPinSetup = needsPin;
+  if (needsPin) session.needsPinSetup = true;
+  else delete session.needsPinSetup;
   delete session.adminUsername;
   delete session.pendingGoogle;
   delete session.pendingLogin2fa;
+  delete session.pendingSignup;
   await session.save();
+
+  console.info("[auth/google/callback] login ok", {
+    userId: user.id,
+    needsPin,
+    nextPath,
+  });
   return clearOAuthCookies(response);
 }
 
@@ -311,13 +324,16 @@ function loginRedirect(request: Request, reason: GoogleLoginReason) {
 
 function clearOAuthCookies(response: NextResponse) {
   for (const name of Object.values(GOOGLE_OAUTH_COOKIES)) {
-    response.cookies.set(name, "", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 0,
-      path: GOOGLE_OAUTH_COOKIE_PATH,
-    });
+    // Clear both legacy callback-only path and site-wide path
+    for (const path of ["/", "/api/auth/google/callback"] as const) {
+      response.cookies.set(name, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 0,
+        path,
+      });
+    }
   }
   response.headers.set("Cache-Control", "no-store");
   return response;
@@ -330,7 +346,13 @@ function parseCookieHeader(header: string): Map<string, string> {
     if (idx === -1) continue;
     const key = part.slice(0, idx).trim();
     const value = part.slice(idx + 1).trim();
-    if (key) map.set(key, decodeURIComponent(value));
+    if (key) {
+      try {
+        map.set(key, decodeURIComponent(value));
+      } catch {
+        map.set(key, value);
+      }
+    }
   }
   return map;
 }

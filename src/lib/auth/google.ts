@@ -14,7 +14,12 @@ const GOOGLE_AUTHORIZATION_ENDPOINT =
 const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const GOOGLE_JWKS_ENDPOINT = "https://www.googleapis.com/oauth2/v3/certs";
 
-export const GOOGLE_OAUTH_COOKIE_PATH = "/api/auth/google/callback";
+/**
+ * Cookie path for PKCE/state. Must be "/" so the callback always receives them.
+ * A path limited to `/api/auth/google/callback` failed silently in some browsers
+ * (cookies not sent → login?google=expired with a soft notice users miss).
+ */
+export const GOOGLE_OAUTH_COOKIE_PATH = "/";
 /** How long the browser keeps PKCE/state cookies after "Continue with Google". */
 export const GOOGLE_OAUTH_MAX_AGE_SECONDS = 20 * 60;
 export const GOOGLE_OAUTH_COOKIES = {
@@ -33,7 +38,9 @@ export type GoogleLoginReason =
   | "invalid"
   | "suspended"
   | "config"
-  | "unavailable";
+  | "unavailable"
+  | "session"
+  | "2fa";
 
 type GoogleConfig = {
   clientId: string;
@@ -85,13 +92,48 @@ export function getGoogleConfig(requestUrl: string): GoogleConfig | null {
   const clientSecret = cleanEnv(process.env.GOOGLE_CLIENT_SECRET);
   if (!clientId || !clientSecret) return null;
 
+  const requestOrigin = new URL(requestUrl).origin;
   const configuredBase = cleanEnv(process.env.NEXT_PUBLIC_APP_URL);
-  const redirectUri =
-    cleanEnv(process.env.GOOGLE_REDIRECT_URI) ||
-    new URL(
-      "/api/auth/google/callback",
-      configuredBase || new URL(requestUrl).origin
-    ).toString();
+  const configuredRedirect = cleanEnv(process.env.GOOGLE_REDIRECT_URI);
+  const originCallback = `${requestOrigin}/api/auth/google/callback`;
+
+  /**
+   * Always land the OAuth callback on the same host the user started from.
+   * If env points at production (datagrid-ng.com) but the user is on localhost
+   * (or www vs apex), PKCE cookies are set on host A and Google returns to
+   * host B → silent fail / expired state.
+   *
+   * Google Cloud Console must list every redirect URI you use
+   * (production + http://localhost:3000/api/auth/google/callback).
+   */
+  let redirectUri = originCallback;
+  if (configuredRedirect) {
+    try {
+      const configuredOrigin = new URL(configuredRedirect).origin;
+      if (configuredOrigin === requestOrigin) {
+        redirectUri = configuredRedirect;
+      } else {
+        console.warn("[auth/google] redirect host mismatch — using request origin", {
+          configuredRedirect,
+          requestOrigin,
+          using: originCallback,
+        });
+      }
+    } catch {
+      redirectUri = originCallback;
+    }
+  } else if (configuredBase) {
+    try {
+      if (new URL(configuredBase).origin === requestOrigin) {
+        redirectUri = new URL(
+          "/api/auth/google/callback",
+          configuredBase
+        ).toString();
+      }
+    } catch {
+      /* keep originCallback */
+    }
+  }
 
   return { clientId, clientSecret, redirectUri };
 }
