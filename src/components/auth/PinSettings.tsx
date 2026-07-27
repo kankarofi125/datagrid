@@ -173,7 +173,7 @@ export function PinSettings({ hasPin: initial }: { hasPin: boolean }) {
       {step === "otp" && (
         <SecurityOtpStep
           title="Verify it’s you"
-          description="We sent a code to your WhatsApp (SMS if WhatsApp fails). Enter it to unlock PIN change."
+          description="We sent a 6-digit code to your WhatsApp (SMS if WhatsApp fails). Enter it to unlock PIN change."
           destinationHint={destinationHint}
           initialExpiresInSec={expiresInSec}
           onVerified={() => {

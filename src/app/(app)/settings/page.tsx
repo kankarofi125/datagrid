@@ -190,6 +190,7 @@ function ProfileContent({
             <ProfileEditor
               initialName={profile.name || ""}
               initialEmail={profile.email || ""}
+              embedded
             />
           }
           security={

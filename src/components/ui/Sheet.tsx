@@ -121,16 +121,19 @@ export function Sheet({ open, onClose, title, children, className }: Props) {
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchEnd}
         className={cn(
-          "relative z-10 w-full max-w-lg border border-line bg-paper shadow-2xl",
+          "relative z-10 flex w-full max-w-lg min-h-0 flex-col border border-line bg-paper shadow-2xl",
           "rounded-t-2xl sm:rounded-xl",
-          "max-h-[calc(100dvh-12px)] overflow-y-auto overscroll-contain sm:max-h-[90vh]",
+          "max-h-[min(94dvh,calc(100dvh-8px))] sm:max-h-[90vh]",
           !draggingUi && "sheet-enter",
           className
         )}
         style={{
           transform: offset ? `translate3d(0, ${offset}px, 0)` : undefined,
-          transition: draggingUi ? "none" : "transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
+          transition: draggingUi
+            ? "none"
+            : "transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)",
           touchAction: "pan-y",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
         {/* Drag handle — mobile */}
@@ -145,13 +148,15 @@ export function Sheet({ open, onClose, title, children, className }: Props) {
           </p>
         </div>
 
-        <div className="px-4 pb-4 pt-1.5 sm:p-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-1.5 sm:p-5 [-webkit-overflow-scrolling:touch]">
           {title && (
             <div
               data-drag-handle
               className="mb-3 flex items-center justify-between gap-3 sm:mb-4"
             >
-              <h2 className="font-display text-[22px] text-ink sm:text-2xl">{title}</h2>
+              <h2 className="font-display text-[22px] text-ink sm:text-2xl">
+                {title}
+              </h2>
               <button
                 type="button"
                 onClick={onClose}

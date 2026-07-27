@@ -5,6 +5,8 @@ import { useEffect, useRef } from "react";
 
 const PREMIUM_EASE = [0.16, 1, 0.3, 1] as const;
 const MAX_UNWRAP_DEPTH = 3;
+/** Let React finish hydrating / committing before we touch inline styles. */
+const HYDRATION_GUARD_MS = 120;
 
 function cascadeChildren(container: HTMLElement, depth = 0): HTMLElement[] {
   const children = Array.from(container.children).filter(
@@ -19,6 +21,20 @@ function cascadeChildren(container: HTMLElement, depth = 0): HTMLElement[] {
   }
 
   return children;
+}
+
+function isMotionManaged(element: HTMLElement): boolean {
+  if (element.matches("[data-motion-owned], [data-motion-static]")) return true;
+  if (element.closest("[data-motion-owned]")) return true;
+  // Framer Motion projection / presence nodes
+  if (
+    element.hasAttribute("data-projection-id") ||
+    element.hasAttribute("data-framer-component-type") ||
+    element.hasAttribute("data-framer-appear-id")
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function collectCandidates(root: HTMLElement) {
@@ -38,17 +54,16 @@ function collectCandidates(root: HTMLElement) {
     .querySelectorAll<HTMLElement>("[data-motion-cascade]")
     .forEach((container) => addChildren(container));
 
-  return [...candidates].filter(
-    (element) =>
-      !element.matches("[data-motion-owned], [data-motion-static]") &&
-      !element.closest("[data-motion-owned]")
-  );
+  return [...candidates].filter((element) => !isMotionManaged(element));
 }
 
 /**
  * Adds an IntersectionObserver-driven Framer Motion cascade to arbitrary
  * server-rendered route content. Pages retain Server Component boundaries;
  * only this small orchestration island ships to the browser.
+ *
+ * Styles are applied only *after* hydration so we never fight React's
+ * server/client HTML reconciliation (which shows as hydration mismatches).
  */
 export function MotionCascade({ children }: { children: React.ReactNode }) {
   const scope = useRef<HTMLDivElement>(null);
@@ -56,9 +71,7 @@ export function MotionCascade({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const root = scope.current;
-    if (!root) {
-      return;
-    }
+    if (!root) return;
 
     if (reduced || document.documentElement.classList.contains("low-data")) {
       return;
@@ -66,6 +79,10 @@ export function MotionCascade({ children }: { children: React.ReactNode }) {
 
     const managed = new Set<HTMLElement>();
     const animations = new Map<HTMLElement, { stop: () => void }>();
+    let ready = false;
+    let disposed = false;
+    let frame = 0;
+
     const reveal = (element: HTMLElement, index: number) => {
       if (element.dataset.motionRevealed === "true") return;
       const controls = animate(
@@ -104,6 +121,8 @@ export function MotionCascade({ children }: { children: React.ReactNode }) {
         : null;
 
     const registerCandidates = () => {
+      if (!ready || disposed) return;
+
       for (const element of managed) {
         if (root.contains(element)) continue;
         observer?.unobserve(element);
@@ -114,6 +133,7 @@ export function MotionCascade({ children }: { children: React.ReactNode }) {
 
       for (const element of collectCandidates(root)) {
         if (managed.has(element)) continue;
+        if (isMotionManaged(element)) continue;
         const index = managed.size;
         managed.add(element);
         element.dataset.motionIndex = String(index);
@@ -130,16 +150,31 @@ export function MotionCascade({ children }: { children: React.ReactNode }) {
       }
     };
 
-    registerCandidates();
-
-    let frame = 0;
-    const mutations = new MutationObserver(() => {
+    const scheduleRegister = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(registerCandidates);
+    };
+
+    // Defer first paint past React hydration / concurrent commit.
+    const readyTimer = window.setTimeout(() => {
+      ready = true;
+      // Two frames: layout after any late client-component mounts.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!disposed) registerCandidates();
+        });
+      });
+    }, HYDRATION_GUARD_MS);
+
+    const mutations = new MutationObserver(() => {
+      if (!ready) return;
+      scheduleRegister();
     });
     mutations.observe(root, { childList: true, subtree: true });
 
     return () => {
+      disposed = true;
+      window.clearTimeout(readyTimer);
       mutations.disconnect();
       cancelAnimationFrame(frame);
       observer?.disconnect();

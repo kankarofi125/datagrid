@@ -10,15 +10,24 @@ import {
   sendchampSendOtp,
   type SendchampOtpChannel,
 } from "@/lib/sendchamp";
+import {
+  OTP_LENGTH,
+  OTP_TTL_MS,
+  OTP_TTL_MINUTES,
+  OTP_TTL_SECONDS,
+} from "@/lib/auth/otp-constants";
 
-/** OTP codes expire after 2 minutes (phone + email). */
-export const OTP_TTL_MS = 2 * 60 * 1000;
-export const OTP_TTL_MINUTES = 2;
-export const OTP_TTL_SECONDS = 120;
+export {
+  OTP_LENGTH,
+  OTP_TTL_MS,
+  OTP_TTL_MINUTES,
+  OTP_TTL_SECONDS,
+} from "@/lib/auth/otp-constants";
+
 const MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_MS = 45_000;
-/** 6-digit OTP (1_000_000 space) with CSPRNG. */
-const TOKEN_LENGTH = 6;
+/** 6-digit OTP (1_000_000 space) with CSPRNG. Keep UI DigitField length in sync. */
+const TOKEN_LENGTH = OTP_LENGTH;
 
 /**
  * Provider split (fixed):

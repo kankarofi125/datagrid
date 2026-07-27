@@ -9,9 +9,10 @@ import { SkeletonPage } from "@/components/ui/Skeleton";
 import { TopUtilityStrip } from "@/components/layout/TopUtilityStrip";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { sanitizeNgPhoneInput, toLocalPhone, NG_LOCAL_MAX_DIGITS } from "@/lib/phone";
+import { OTP_LENGTH, OTP_TTL_SECONDS } from "@/lib/auth/otp-constants";
 
 /** Default OTP lifetime shown while waiting for server `expiresInSec`. */
-const DEFAULT_OTP_TTL_SEC = 120;
+const DEFAULT_OTP_TTL_SEC = OTP_TTL_SECONDS;
 
 type Step =
   | "phone"
@@ -499,6 +500,7 @@ function LoginForm() {
             value={phone}
             onChange={setPhoneDigits}
             inputMode="tel"
+            variant="field"
             autoFocus
             aria-label="Nigerian phone number"
           />
@@ -521,7 +523,7 @@ function LoginForm() {
         <>
           <DigitField
             label="OTP code"
-            length={6}
+            length={OTP_LENGTH}
             value={code}
             onChange={setCode}
             autoFocus
@@ -541,7 +543,7 @@ function LoginForm() {
             fullWidth
             size="lg"
             disabled={
-              anyBusy || code.length < 6 || otpRemainingSec <= 0
+              anyBusy || code.length < OTP_LENGTH || otpRemainingSec <= 0
             }
           >
             {otpVerifyBusy
@@ -589,15 +591,15 @@ function LoginForm() {
         <>
           <DigitField
             label="Email code"
-            length={6}
+            length={OTP_LENGTH}
             value={code}
             onChange={setCode}
             autoFocus
             disabled={busy === "verify2fa"}
             hint={
               emailHint
-                ? `Enter the 6 digits sent to ${emailHint}`
-                : "Enter the 6-digit code from your email"
+                ? `Enter the ${OTP_LENGTH} digits sent to ${emailHint}`
+                : `Enter the ${OTP_LENGTH}-digit code from your email`
             }
             aria-label="Email two-factor code"
           />
@@ -606,7 +608,7 @@ function LoginForm() {
             type="submit"
             fullWidth
             size="lg"
-            disabled={anyBusy || code.length < 6 || otpRemainingSec <= 0}
+            disabled={anyBusy || code.length < OTP_LENGTH || otpRemainingSec <= 0}
           >
             {busy === "verify2fa"
               ? "Signing you in…"

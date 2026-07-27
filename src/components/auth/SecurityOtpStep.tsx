@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { DigitField } from "@/components/ui/DigitField";
+import { OTP_LENGTH } from "@/lib/auth/otp-constants";
 import { cn } from "@/lib/cn";
 
 function formatCountdown(totalSec: number) {
@@ -72,7 +73,7 @@ export function SecurityOtpStep({
   }
 
   function submit() {
-    if (code.length < 4) return;
+    if (code.length < OTP_LENGTH) return;
     start(async () => {
       setError(null);
       setMessage(null);
@@ -121,7 +122,7 @@ export function SecurityOtpStep({
 
       <DigitField
         label="Verification code"
-        length={6}
+        length={OTP_LENGTH}
         value={code}
         onChange={setCode}
         autoFocus
@@ -139,7 +140,7 @@ export function SecurityOtpStep({
         <Button
           type="button"
           fullWidth
-          disabled={pending || code.length < 6 || expired}
+          disabled={pending || code.length < OTP_LENGTH || expired}
           onClick={submit}
         >
           {pending ? "Checking…" : expired ? "Code expired" : "Verify code"}

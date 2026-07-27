@@ -15,9 +15,12 @@ type EmailStep = "idle" | "otp" | "done";
 export function ProfileEditor({
   initialName,
   initialEmail,
+  /** Lighter chrome when rendered inside a mobile bottom sheet */
+  embedded = false,
 }: {
   initialName: string;
   initialEmail: string;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
@@ -212,12 +215,14 @@ export function ProfileEditor({
   }
 
   return (
-    <Card className="p-4 lg:p-6">
-      <CardHeading
-        kicker="Personal details"
-        title="How we address you"
-        className="mb-4"
-      />
+    <Card className={embedded ? "border-0 bg-transparent p-0 shadow-none" : "p-4 lg:p-6"}>
+      {!embedded && (
+        <CardHeading
+          kicker="Personal details"
+          title="How we address you"
+          className="mb-4"
+        />
+      )}
 
       <div className="space-y-5">
         <div className="space-y-3">
@@ -302,7 +307,7 @@ export function ProfileEditor({
           ) : (
             <SecurityOtpStep
               title="Confirm your email"
-              description="We emailed a 4-digit code. Enter it to save this address on your account."
+              description="We emailed a 6-digit code. Enter it to save this address on your account."
               destinationHint={destinationHint}
               initialExpiresInSec={expiresInSec}
               onVerified={() => {
