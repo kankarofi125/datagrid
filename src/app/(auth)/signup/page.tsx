@@ -387,7 +387,7 @@ function SignupForm() {
             autoComplete="name"
             value={name}
             maxLength={70}
-            placeholder="Ada Okonkwo"
+            placeholder="Your Name"
             autoFocus={googlePrefill}
             onChange={(e) => setName(e.target.value)}
             disabled={anyBusy}
@@ -413,7 +413,7 @@ function SignupForm() {
             variant="field"
             disabled={anyBusy}
             aria-label="Nigerian phone number"
-            hint="11-digit Nigerian mobile (e.g. 0803…)"
+            hint="11-digit mobile (e.g. 0803…)"
           />
           <Button
             type="submit"
