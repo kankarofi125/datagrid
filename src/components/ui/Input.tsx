@@ -35,10 +35,10 @@ export function Input({
       <input
         id={inputId}
         className={cn(
-          "h-11 w-full rounded-xl border border-line bg-white px-3 text-[15px] text-ink shadow-[0_1px_0_rgba(14,33,26,.02)] sm:px-3.5 sm:text-base",
+          "h-12 w-full rounded-xl border border-line bg-white px-3.5 text-base text-ink shadow-[0_1px_0_rgba(14,33,26,.02)]",
           "placeholder:text-ink/30",
           "outline-none ring-0",
-          "focus:border-green focus:outline-none focus:ring-2 focus:ring-green/10",
+          "focus:border-green focus:outline-none focus:ring-2 focus:ring-green/12",
           mono && "font-mono-num tracking-wide",
           error && "border-danger focus:border-danger",
           className

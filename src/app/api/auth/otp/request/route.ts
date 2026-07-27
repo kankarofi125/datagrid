@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { requestOtp } from "@/lib/auth/otp";
 import { resolveAccountPhoneFromSession } from "@/lib/auth/resolve-account-phone";
+import {
+  maskEmail,
+  normalizeEmail,
+  resolveUserByIdentifier,
+} from "@/lib/auth/resolve-identifier";
 import { prisma } from "@/lib/db";
 import { toE164, toLocalPhone } from "@/lib/phone";
 import { getSession } from "@/lib/auth/session";
@@ -9,6 +14,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     let phone = String(body.phone || "");
+    const emailInput = normalizeEmail(String(body.email || ""));
     const session = await getSession();
 
     const pendingGoogleLive =
@@ -77,11 +83,68 @@ export async function POST(req: Request) {
         };
         await session.save();
       }
+    }
 
-      console.info("[otp/request] phone resolved from account", {
-        source: resolved.result.source,
-        userId: resolved.result.userId || undefined,
-        phoneLast4: resolved.result.phone.replace(/\D/g, "").slice(-4),
+    // --- Email-identifier login OTP (existing accounts only) ---
+    if (emailInput && !phone && !useSessionPhone) {
+      const resolved = await resolveUserByIdentifier({ email: emailInput });
+      if (!resolved.ok) {
+        return NextResponse.json(
+          {
+            error:
+              "No account for this email. Create an account to join the grid.",
+            code: "ACCOUNT_REQUIRED",
+            signup: true,
+          },
+          { status: 404 }
+        );
+      }
+      const user = resolved.user;
+      if (!user.isActive) {
+        return NextResponse.json(
+          {
+            error: "This account is suspended. Contact support.",
+            code: "ACCOUNT_SUSPENDED",
+          },
+          { status: 403 }
+        );
+      }
+      if (user.totpEnabled && user.pinHash && !pending2faLive) {
+        return NextResponse.json(
+          {
+            error:
+              "This account uses email 2FA. Enter your PIN first, then complete the email code.",
+            code: "2FA_PIN_REQUIRED",
+          },
+          { status: 403 }
+        );
+      }
+
+      const result = await requestOtp({
+        email: user.email || emailInput,
+        channels: "email",
+        firstName: user.name?.split(" ")[0],
+        skipCooldown:
+          body.skipCooldown === true && Boolean(pending2faLive),
+      });
+      if (!result.ok) {
+        return NextResponse.json(
+          { error: result.error, cooldownSec: result.cooldownSec },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json({
+        ok: true,
+        identifierType: "email",
+        emailHint: maskEmail(user.email || emailInput),
+        phone: user.phone,
+        phoneLocal: user.phoneLocal,
+        channels: "channels" in result ? result.channels : ["email"],
+        channelHint: "email",
+        expiresInSec: "expiresInSec" in result ? result.expiresInSec : 120,
+        exists: true,
+        hasPin: Boolean(user.pinHash),
+        isNew: false,
       });
     }
 
@@ -123,9 +186,26 @@ export async function POST(req: Request) {
           { status: 403 }
         );
       }
+      // Login OTP for unknown phone (not Google link) — send them to signup.
+      if (
+        !existing &&
+        !pendingGoogleLive &&
+        body.googleLink !== true &&
+        body.allowNew !== true
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "No account for this number. Create an account with your name, email, and phone.",
+            code: "ACCOUNT_REQUIRED",
+            signup: true,
+            phoneLocal: toLocalPhone(phone),
+          },
+          { status: 404 }
+        );
+      }
     }
 
-    // Only trusted *server session* state may skip cooldown — never client flags alone.
     const allowSkipCooldown =
       body.skipCooldown === true &&
       (Boolean(pending2faLive) || Boolean(pendingGoogleLive));
@@ -164,6 +244,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
+      identifierType: "phone",
       phone: result.phone,
       phoneLocal: result.phoneLocal || toLocalPhone(e164),
       email: "email" in result ? result.email : undefined,

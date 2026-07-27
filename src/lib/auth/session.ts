@@ -61,10 +61,26 @@ export type SessionData = {
     verified: boolean;
     expiresAt: number;
   };
+  /** Multi-step create-account flow before a User row exists. */
+  pendingSignup?: {
+    name: string;
+    email: string;
+    phone: string;
+    phoneLocal: string;
+    referral?: string;
+    phoneVerified: boolean;
+    emailVerified: boolean;
+    googleSub?: string;
+    googleAvatar?: string;
+    expiresAt: number;
+  };
   needsPinSetup?: boolean;
   lastActivityAt?: number;
   isLoggedIn: boolean;
 };
+
+/** How long a multi-step signup may sit idle in session. */
+export const PENDING_SIGNUP_MS = 20 * 60 * 1000;
 
 export const sessionOptions: SessionOptions = {
   password: resolveSessionPassword(),
@@ -102,8 +118,18 @@ export async function clearLoggedInSession(
   delete session.lastActivityAt;
   delete session.pendingLogin2fa;
   delete session.pendingSecurity;
+  delete session.pendingSignup;
   session.isLoggedIn = false;
   await session.save();
+}
+
+/** Live pending signup or null if missing/expired. */
+export function getLivePendingSignup(
+  session: Pick<SessionData, "pendingSignup">
+): NonNullable<SessionData["pendingSignup"]> | null {
+  const p = session.pendingSignup;
+  if (!p || p.expiresAt <= Date.now()) return null;
+  return p;
 }
 
 export async function touchSessionActivity(
@@ -193,6 +219,9 @@ export function markSessionLogin(
   session.role = data.role;
   session.isLoggedIn = true;
   session.lastActivityAt = Date.now();
+  delete session.pendingSignup;
+  delete session.pendingLogin2fa;
+  delete session.pendingGoogle;
   if (data.adminUsername) session.adminUsername = data.adminUsername;
   else delete session.adminUsername;
   if (data.needsPinSetup) session.needsPinSetup = true;

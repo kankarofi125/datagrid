@@ -110,9 +110,15 @@ export async function GET(request: Request) {
       return await finishReturningGoogleUser(request, byEmail, identity);
     }
 
-    // Brand-new Google identity → phone link
+    // Brand-new Google identity → signup with email/name prefilled + phone proof
+    const signupQs = new URLSearchParams({
+      google: "1",
+      email: identity.email,
+    });
+    if (identity.name) signupQs.set("name", identity.name);
+    if (referral) signupQs.set("ref", referral);
     const response = NextResponse.redirect(
-      new URL("/login?google=phone", request.url),
+      new URL(`/signup?${signupQs.toString()}`, request.url),
       303
     );
     const session = await getIronSession<SessionData>(
@@ -131,6 +137,7 @@ export async function GET(request: Request) {
     session.isLoggedIn = false;
     delete session.userId;
     delete session.pendingLogin2fa;
+    delete session.pendingSignup;
     await session.save();
     return clearOAuthCookies(response);
   } catch (error) {

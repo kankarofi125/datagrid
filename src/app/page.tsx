@@ -121,8 +121,8 @@ export default async function LandingPage() {
                 Log in
               </Button>
             </Link>
-            <Link href="/login">
-              <Button size="sm">Open DataGrid</Button>
+            <Link href="/signup">
+              <Button size="sm">Create account</Button>
             </Link>
           </div>
         </div>
@@ -168,9 +168,14 @@ export default async function LandingPage() {
                         Buy now
                       </Button>
                     </Link>
-                    <Link href="/login" className="w-full sm:w-auto">
+                    <Link href="/signup" className="w-full sm:w-auto">
                       <Button size="lg" variant="ghost" className="w-full bg-white/55 sm:w-auto">
-                        Open dashboard
+                        Create account
+                      </Button>
+                    </Link>
+                    <Link href="/login" className="w-full sm:w-auto">
+                      <Button size="lg" variant="ghost" className="w-full sm:w-auto">
+                        Sign in
                       </Button>
                     </Link>
                   </div>
@@ -271,14 +276,14 @@ export default async function LandingPage() {
                     fund your wallet and buy data, airtime, and bills securely.
                   </p>
                   <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
-                    <Link href="/login" className="w-full sm:w-auto">
+                    <Link href="/signup" className="w-full sm:w-auto">
                       <Button size="lg" className="w-full sm:w-auto">
-                        Open DataGrid
+                        Create account
                       </Button>
                     </Link>
-                    <Link href="/rates" className="w-full sm:w-auto">
+                    <Link href="/login" className="w-full sm:w-auto">
                       <Button size="lg" variant="ghost" className="w-full sm:w-auto">
-                        View rates
+                        Sign in
                       </Button>
                     </Link>
                   </div>

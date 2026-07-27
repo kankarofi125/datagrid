@@ -105,11 +105,11 @@ export function DigitField({
         aria-label={ariaLabel || label || "Digit entry"}
         aria-invalid={Boolean(error)}
         className={cn(
-          "h-11 w-full rounded-xl border border-line bg-white px-3 text-base text-ink shadow-[0_1px_0_rgba(14,33,26,.02)]",
-          "font-mono-num tracking-[0.2em]",
-          "placeholder:tracking-[0.2em] placeholder:text-ink/25",
+          "h-12 w-full rounded-xl border border-line bg-white px-3.5 text-base text-ink shadow-[0_1px_0_rgba(14,33,26,.02)]",
+          "font-mono-num tracking-[0.18em]",
+          "placeholder:tracking-[0.18em] placeholder:text-ink/25",
           "outline-none ring-0",
-          "focus:border-green focus:outline-none focus:ring-2 focus:ring-green/10",
+          "focus:border-green focus:outline-none focus:ring-2 focus:ring-green/12",
           error && "border-danger focus:border-danger focus:ring-danger/10",
           disabled && "opacity-60"
         )}
@@ -239,7 +239,8 @@ function DigitBoxes({
     applyValue(pasted, Math.min(pasted.length, length - 1));
   }
 
-  const gapClass = length >= 6 ? "gap-1.5 sm:gap-2" : "gap-2";
+  // 6 OTP boxes need tighter gaps on narrow phones; 4 PIN boxes can breathe.
+  const gapClass = length >= 6 ? "gap-1.5 sm:gap-2" : "gap-2 sm:gap-2.5";
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
@@ -281,10 +282,11 @@ function DigitBoxes({
               aria-label={`${ariaLabel}, digit ${i + 1} of ${length}`}
               aria-invalid={Boolean(error)}
               className={cn(
-                "h-12 min-w-0 flex-1 rounded-xl border bg-white text-center font-mono-num text-lg font-semibold text-ink",
-                "shadow-[0_1px_0_rgba(14,33,26,.02)] outline-none transition-colors",
-                "focus:border-green focus:ring-2 focus:ring-green/10",
-                filled ? "border-green/25" : "border-line",
+                // min 44px touch height; slightly taller on small phones for OTP
+                "h-12 min-h-12 min-w-0 flex-1 rounded-[12px] border bg-white text-center font-mono-num text-base font-semibold text-ink sm:h-[3.25rem] sm:text-lg",
+                "shadow-[0_1px_0_rgba(14,33,26,.02)] outline-none transition-[border-color,box-shadow] duration-150",
+                "focus:border-green focus:ring-2 focus:ring-green/12",
+                filled ? "border-green/30 bg-green/[0.03]" : "border-line",
                 error &&
                   "border-danger focus:border-danger focus:ring-danger/10",
                 disabled && "opacity-60"

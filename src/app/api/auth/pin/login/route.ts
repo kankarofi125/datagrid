@@ -8,28 +8,49 @@ import {
   recordPinFailure,
 } from "@/lib/auth/pin-lockout";
 import { startEmail2faChallenge } from "@/lib/auth/login-2fa";
-import { toE164, toLocalPhone } from "@/lib/phone";
+import { resolveUserByIdentifier } from "@/lib/auth/resolve-identifier";
 
 /**
- * Login with phone + PIN.
+ * Login with phone OR email + PIN.
  * If email 2FA is enabled, sends Brevo code and holds pendingLogin2fa.
  */
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const raw = String(body.phone || "");
     const pin = String(body.pin || "");
-    const e164 = toE164(raw);
-    const local = toLocalPhone(raw);
-
-    if (!e164 || !local) {
-      return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
-    }
     if (!isValidPin(pin)) {
       return NextResponse.json({ error: "PIN must be 4 digits" }, { status: 400 });
     }
 
-    const lock = await getPinLockStatus(e164);
+    const resolved = await resolveUserByIdentifier({
+      phone: body.phone ? String(body.phone) : undefined,
+      email: body.email ? String(body.email) : undefined,
+    });
+
+    if (!resolved.ok) {
+      const status = resolved.code === "NOT_FOUND" ? 404 : 400;
+      return NextResponse.json(
+        {
+          error:
+            resolved.code === "NOT_FOUND"
+              ? "No account found. Create an account or check your details."
+              : resolved.error,
+          code: resolved.code,
+        },
+        { status }
+      );
+    }
+
+    const user = resolved.user;
+    if (!user.isActive) {
+      return NextResponse.json(
+        { error: "This account is suspended. Contact support." },
+        { status: 403 }
+      );
+    }
+
+    const lockKey = user.phone;
+    const lock = await getPinLockStatus(lockKey);
     if (lock.locked) {
       return NextResponse.json(
         {
@@ -41,13 +62,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const user = await prisma.user.findUnique({ where: { phone: e164 } });
-    if (!user || !user.isActive) {
-      return NextResponse.json(
-        { error: "No account for this number. Continue with OTP." },
-        { status: 404 }
-      );
-    }
     if (!user.pinHash) {
       return NextResponse.json(
         { error: "Set up your PIN with OTP first.", code: "PIN_REQUIRED" },
@@ -57,7 +71,7 @@ export async function POST(req: Request) {
 
     const ok = await verifyPin(pin, user.pinHash);
     if (!ok) {
-      const fail = await recordPinFailure(e164);
+      const fail = await recordPinFailure(lockKey);
       if (fail.locked) {
         return NextResponse.json(
           {
@@ -77,11 +91,12 @@ export async function POST(req: Request) {
       );
     }
 
-    await clearPinFailures(e164);
+    await clearPinFailures(lockKey);
 
     const session = await getSession();
     delete session.adminUsername;
     delete session.pendingGoogle;
+    delete session.pendingSignup;
     delete session.needsPinSetup;
 
     if (user.totpEnabled && user.email) {

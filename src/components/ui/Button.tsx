@@ -47,7 +47,7 @@ function buttonClassName({
     "pressable inline-flex items-center justify-center gap-2 font-semibold transition-[transform,box-shadow,background-color] duration-150 disabled:pointer-events-none disabled:opacity-50",
     size === "sm" && "h-9 rounded-lg px-3 text-sm",
     size === "md" && "h-11 rounded-xl px-4 text-[15px]",
-    size === "lg" && "h-11 rounded-xl px-4 text-[15px] sm:h-12 sm:px-5 sm:text-base",
+    size === "lg" && "h-12 rounded-xl px-4 text-[15px] sm:h-12 sm:px-5 sm:text-base",
     fullWidth && "w-full",
     variants[variant],
     className

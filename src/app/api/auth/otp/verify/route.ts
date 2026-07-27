@@ -104,14 +104,22 @@ export async function POST(req: Request) {
       ? String(body.referral)
       : pendingGoogle?.referral;
 
-    const result = await verifyOtp(phone, code, {
-      email: body.email ? String(body.email) : undefined,
+    const emailBody = body.email ? String(body.email) : undefined;
+    const result = await verifyOtp(phone || emailBody || "", code, {
+      email: emailBody,
     });
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
-    let user = await prisma.user.findUnique({ where: { phone: result.phone } });
+    let user = result.phone
+      ? await prisma.user.findUnique({ where: { phone: result.phone } })
+      : null;
+    if (!user && result.email) {
+      user = await prisma.user.findFirst({
+        where: { email: { equals: result.email, mode: "insensitive" } },
+      });
+    }
 
     // Suspended accounts cannot complete OTP login.
     if (user && !user.isActive) {
@@ -212,9 +220,27 @@ export async function POST(req: Request) {
       }
     }
 
-    let referredById: string | undefined;
+    /**
+     * Account creation is no longer done via anonymous OTP.
+     * - New users: /signup (name + email + phone, dual OTP)
+     * - Google new: pendingGoogle may create/link only with Google identity parked
+     */
     let createdNew = false;
     if (!user) {
+      if (!pendingGoogle) {
+        return NextResponse.json(
+          {
+            error:
+              "No account for this number. Create an account with your name, email, and phone.",
+            code: "ACCOUNT_REQUIRED",
+            signup: true,
+          },
+          { status: 404 }
+        );
+      }
+
+      // First-time Google + phone proof: create account with Google identity.
+      let referredById: string | undefined;
       if (referral) {
         const ref = await prisma.user.findUnique({
           where: { referralCode: referral.toUpperCase() },
@@ -225,6 +251,10 @@ export async function POST(req: Request) {
         data: {
           phone: result.phone,
           phoneLocal: result.phoneLocal,
+          email: pendingGoogle.email,
+          name: pendingGoogle.name || null,
+          googleSub: pendingGoogle.sub,
+          googleAvatar: pendingGoogle.picture,
           referralCode: refCode(),
           referredById,
           lastLoginAt: new Date(),
@@ -247,14 +277,14 @@ export async function POST(req: Request) {
       });
     }
 
-    if (pendingGoogle) {
+    if (pendingGoogle && user) {
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
           googleSub: pendingGoogle.sub,
           googleAvatar: pendingGoogle.picture,
           name: user.name || pendingGoogle.name || null,
-          email: pendingGoogle.email,
+          email: user.email || pendingGoogle.email,
           lastLoginAt: new Date(),
         },
       });
@@ -268,6 +298,7 @@ export async function POST(req: Request) {
     delete session.adminUsername;
     delete session.pendingGoogle;
     delete session.pendingLogin2fa;
+    delete session.pendingSignup;
     session.isLoggedIn = true;
     session.lastActivityAt = Date.now();
     session.needsPinSetup = needsPinSetup;
