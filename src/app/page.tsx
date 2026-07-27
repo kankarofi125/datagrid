@@ -110,13 +110,16 @@ export default async function LandingPage() {
             </Link>
           </nav>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <Link href="/login" className="hidden sm:block">
-              <Button variant="ghost" size="sm">
+            <Link href="/login">
+              <Button variant="ghost" size="sm" className="px-2.5 sm:px-3">
                 Log in
               </Button>
             </Link>
             <Link href="/signup">
-              <Button size="sm">Create account</Button>
+              <Button size="sm" className="px-2.5 sm:px-3">
+                <span className="sm:hidden">Sign up</span>
+                <span className="hidden sm:inline">Create account</span>
+              </Button>
             </Link>
           </div>
         </div>
