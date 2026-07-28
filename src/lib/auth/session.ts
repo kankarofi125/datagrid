@@ -85,6 +85,9 @@ export const PENDING_SIGNUP_MS = 20 * 60 * 1000;
 export const sessionOptions: SessionOptions = {
   password: resolveSessionPassword(),
   cookieName: "datagrid_session",
+  // Keep seal TTL and cookie maxAge aligned (iron-session docs).
+  // Idle logout is still enforced in requireUser via lastActivityAt.
+  ttl: SESSION_IDLE_SEC,
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,

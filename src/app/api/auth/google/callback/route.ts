@@ -156,11 +156,13 @@ export async function GET(request: Request) {
     delete session.userId;
     delete session.pendingLogin2fa;
     delete session.pendingSignup;
+    // Clear PKCE first, then seal pendingGoogle (same append path as iron-session).
+    clearOAuthCookies(response);
     await session.save();
     console.info("[auth/google/callback] new google → signup", {
       email: identity.email.replace(/^(.).+(@.+)$/, "$1***$2"),
     });
-    return clearOAuthCookies(response);
+    return response;
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown Google OAuth error";
@@ -284,12 +286,15 @@ async function finishReturningGoogleUser(
           ? parked.expiresAt
           : Date.now() + PENDING_2FA_SESSION_MS,
     };
+    clearOAuthCookies(response);
     await session2.save();
-    return clearOAuthCookies(response);
+    return response;
   }
 
-  // Full login (no 2FA) — bounce through continue so the browser stores the cookie
-  // before we hit the RSC app layout (avoids silent bounce to /login).
+  // Full login (no 2FA).
+  // Clear PKCE cookies first (headers.append only), then write session seal.
+  // Never clear OAuth cookies with response.cookies.set() after session.save() —
+  // that can drop iron-session's Set-Cookie and yield login?google=session.
   const needsPin = !user.pinHash;
   const nextPath = needsPin ? "/login?setup=pin" : "/dashboard";
   const response = NextResponse.redirect(
@@ -299,6 +304,8 @@ async function finishReturningGoogleUser(
     ),
     303
   );
+  clearOAuthCookies(response);
+
   const session = await getIronSession<SessionData>(
     request,
     response,
@@ -317,12 +324,25 @@ async function finishReturningGoogleUser(
   delete session.pendingSignup;
   await session.save();
 
+  // One-shot handoff if the browser drops Set-Cookie on the cross-site hop.
+  const handoff = await sealLoginHandoff({
+    userId: user.id,
+    phone: user.phone,
+    role: user.role,
+    needsPinSetup: needsPin,
+  });
+  if (handoff) {
+    const dest = new URL(response.headers.get("location") || "/", request.url);
+    dest.searchParams.set("handoff", handoff);
+    response.headers.set("location", dest.toString());
+  }
+
   console.info("[auth/google/callback] login ok", {
     userId: user.id,
     needsPin,
     nextPath,
   });
-  return clearOAuthCookies(response);
+  return response;
 }
 
 function loginRedirect(request: Request, reason: GoogleLoginReason) {
@@ -334,21 +354,50 @@ function loginRedirect(request: Request, reason: GoogleLoginReason) {
   );
 }
 
+/**
+ * Expire OAuth PKCE cookies via headers.append only.
+ * Mixing NextResponse.cookies.set with iron-session's append("set-cookie")
+ * can wipe the session cookie in production.
+ */
 function clearOAuthCookies(response: NextResponse) {
+  const secure = process.env.NODE_ENV === "production";
   for (const name of Object.values(GOOGLE_OAUTH_COOKIES)) {
-    // Clear both legacy callback-only path and site-wide path
     for (const path of ["/", "/api/auth/google/callback"] as const) {
-      response.cookies.set(name, "", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 0,
-        path,
-      });
+      // Manual serialize — avoid mixing NextResponse.cookies.set with iron-session.
+      const parts = [
+        `${name}=`,
+        "Path=" + path,
+        "Max-Age=0",
+        "HttpOnly",
+        "SameSite=Lax",
+      ];
+      if (secure) parts.push("Secure");
+      response.headers.append("set-cookie", parts.join("; "));
     }
   }
   response.headers.set("Cache-Control", "no-store");
   return response;
+}
+
+async function sealLoginHandoff(data: {
+  userId: string;
+  phone: string;
+  role: string;
+  needsPinSetup: boolean;
+}): Promise<string | null> {
+  try {
+    const { sealData } = await import("iron-session");
+    return await sealData(
+      { ...data, exp: Date.now() + 2 * 60 * 1000 },
+      { password: sessionOptions.password, ttl: 120 }
+    );
+  } catch (err) {
+    console.warn(
+      "[auth/google/callback] handoff seal failed",
+      err instanceof Error ? err.message : err
+    );
+    return null;
+  }
 }
 
 function parseCookieHeader(header: string): Map<string, string> {
