@@ -21,6 +21,7 @@ import {
   verifyGoogleIdToken,
 } from "@/lib/auth/google";
 import { maskEmail } from "@/lib/auth/resolve-identifier";
+// startEmail2faChallenge kept for PIN path below
 
 export const runtime = "nodejs";
 
@@ -147,6 +148,7 @@ export async function POST(req: Request) {
         const otp = await requestOtp({
           email,
           channels: "email",
+          skipCooldown: true,
           firstName:
             byEmail.name?.split(" ")[0] ||
             identity.name?.split(" ")[0] ||
@@ -155,14 +157,18 @@ export async function POST(req: Request) {
         return NextResponse.json({
           ok: true,
           needs2fa: true,
+          needsPinSetup: !byEmail.pinHash,
           emailHint: maskEmail(email),
-          email: email,
+          email,
           phone: byEmail.phoneLocal,
-          expiresInSec: otp.ok && "expiresInSec" in otp ? otp.expiresInSec : 120,
+          expiresInSec:
+            otp.ok && "expiresInSec" in otp ? otp.expiresInSec : 120,
           emailFailed: !otp.ok,
           message: otp.ok
             ? "Enter the email code to finish signing in."
-            : "Email code failed — use phone OTP instead.",
+            : otp.ok === false && "error" in otp
+              ? String(otp.error)
+              : "Email code failed — use phone OTP instead.",
         });
       }
 

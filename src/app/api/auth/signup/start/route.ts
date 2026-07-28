@@ -57,6 +57,15 @@ export async function POST(req: Request) {
     if (googleIdToken) {
       try {
         const audiences = getGoogleAudiences();
+        if (audiences.length === 0) {
+          return NextResponse.json(
+            {
+              error: "Google Sign-In is not configured on the server.",
+              code: "GOOGLE_CONFIG",
+            },
+            { status: 503 }
+          );
+        }
         const identity = await verifyGoogleIdToken({
           idToken: googleIdToken,
           audiences,

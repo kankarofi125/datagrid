@@ -89,10 +89,11 @@ export async function GET(request: Request) {
       code,
       codeVerifier,
     });
+    // Web browser OAuth: requireNonce + single audience (original contract).
     const identity = await verifyGoogleIdToken({
       idToken,
       audience: config.clientId,
-      nonce,
+      nonce: nonce!,
       requireNonce: true,
     });
 
@@ -100,6 +101,7 @@ export async function GET(request: Request) {
       sub: identity.sub.slice(0, 8) + "…",
       email: identity.email.replace(/^(.).+(@.+)$/, "$1***$2"),
       host: requestUrl.host,
+      redirectUri: config.redirectUri,
     });
 
     const bySub = await prisma.user.findUnique({
@@ -160,10 +162,19 @@ export async function GET(request: Request) {
     });
     return clearOAuthCookies(response);
   } catch (error) {
-    console.error(
-      "[auth/google/callback]",
-      error instanceof Error ? error.message : "Unknown Google OAuth error"
-    );
+    const message =
+      error instanceof Error ? error.message : "Unknown Google OAuth error";
+    console.error("[auth/google/callback]", message, {
+      host: requestUrl.host,
+      hasCode: Boolean(code),
+    });
+    // Surface config-ish failures more clearly
+    if (/audience|nonce|authorized presenter|config/i.test(message)) {
+      return loginRedirect(request, "mismatch");
+    }
+    if (/expired/i.test(message)) {
+      return loginRedirect(request, "expired");
+    }
     return loginRedirect(request, "unavailable");
   }
 }

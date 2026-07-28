@@ -274,7 +274,9 @@ export async function verifyGoogleIdToken({
 
   const [encodedHeader, encodedPayload, encodedSignature] = segments;
   const header = decodeJwtPart<GoogleIdTokenHeader>(encodedHeader);
-  const claims = decodeJwtPart<GoogleIdentity>(encodedPayload);
+  const claims = decodeJwtPart<GoogleIdentity & { email_verified?: unknown }>(
+    encodedPayload
+  );
 
   if (header.alg !== "RS256" || !header.kid) {
     throw new Error("Unsupported Google ID token signature");
@@ -297,49 +299,86 @@ export async function verifyGoogleIdToken({
   const validIssuer =
     claims.iss === "https://accounts.google.com" ||
     claims.iss === "accounts.google.com";
-
-  const allowed = [
-    ...(audiences || []),
-    ...(audience ? [audience] : []),
-  ].filter(Boolean);
-  if (allowed.length === 0) {
-    throw new Error("No Google audience configured");
-  }
-
-  const claimAud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
-  const validAudience = claimAud.some((a) => allowed.includes(String(a)));
-
   if (!validIssuer) throw new Error("Invalid Google ID token issuer");
-  if (!validAudience) throw new Error("Invalid Google ID token audience");
-  // azp is often the Android client while aud is the web client — accept either.
-  if (claims.azp && !allowed.includes(claims.azp)) {
-    throw new Error("Invalid Google authorized presenter");
-  }
+
   if (!Number.isFinite(claims.exp) || claims.exp <= now) {
     throw new Error("Expired Google ID token");
   }
   if (!Number.isFinite(claims.iat) || claims.iat > now + 60) {
     throw new Error("Invalid Google ID token issue time");
   }
-  if (requireNonce) {
-    if (!nonce || !claims.nonce || !secureStringEqual(claims.nonce, nonce)) {
-      throw new Error("Invalid Google ID token nonce");
-    }
-  }
   if (!claims.sub || claims.sub.length > 255) {
     throw new Error("Invalid Google account identifier");
   }
-  if (
-    claims.email_verified !== true ||
-    typeof claims.email !== "string" ||
-    !claims.email.includes("@")
-  ) {
+
+  const emailOk =
+    typeof claims.email === "string" && claims.email.includes("@");
+  // Google may encode this as boolean true or (rarely) the string "true"
+  const verifiedFlag = claims.email_verified as unknown;
+  const emailVerified =
+    verifiedFlag === true || verifiedFlag === "true" || verifiedFlag === 1;
+  if (!emailOk || !emailVerified) {
     throw new Error("Google email is not verified");
+  }
+
+  /**
+   * WEB browser OAuth (requireNonce: true) — restore original exact semantics:
+   *   aud must match clientId, azp if present must equal clientId, nonce required.
+   * Do not use multi-audience rules here; those broke nothing on paper but we
+   * keep the pre-mobile path byte-for-byte equivalent for production safety.
+   */
+  if (requireNonce) {
+    if (!audience) throw new Error("No Google audience configured");
+    if (!nonce) throw new Error("Invalid Google ID token nonce");
+
+    const validAudience = Array.isArray(claims.aud)
+      ? claims.aud.includes(audience)
+      : claims.aud === audience;
+    if (!validAudience) throw new Error("Invalid Google ID token audience");
+    if (claims.azp && claims.azp !== audience) {
+      throw new Error("Invalid Google authorized presenter");
+    }
+    if (!claims.nonce || !secureStringEqual(claims.nonce, nonce)) {
+      throw new Error("Invalid Google ID token nonce");
+    }
+  } else {
+    /**
+     * MOBILE native Sign-In:
+     * - aud is usually the Web client ID (serverClientId)
+     * - azp is often the Android/iOS client ID (may not be in env yet)
+     * Accept if aud matches any configured client. If azp is present and we
+     * know extra client IDs, prefer them; otherwise do not reject solely on azp
+     * when aud already matched (otherwise Android breaks without ANDROID_CLIENT_ID).
+     */
+    const allowed = [
+      ...(audiences || []),
+      ...(audience ? [audience] : []),
+      ...getGoogleAudiences(),
+    ].filter(Boolean);
+    const uniqueAllowed = [...new Set(allowed)];
+    if (uniqueAllowed.length === 0) {
+      throw new Error("No Google audience configured");
+    }
+
+    const claimAud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+    const validAudience = claimAud.some((a) =>
+      uniqueAllowed.includes(String(a))
+    );
+    if (!validAudience) throw new Error("Invalid Google ID token audience");
+
+    if (claims.azp && !uniqueAllowed.includes(claims.azp)) {
+      // aud already validated against our web client — common for Android.
+      console.warn(
+        "[auth/google] azp not in allow-list; accepting because aud matched",
+        { azp: claims.azp.slice(0, 12) + "…" }
+      );
+    }
   }
 
   return {
     ...claims,
     email: claims.email.trim().toLowerCase(),
+    email_verified: true,
   };
 }
 
