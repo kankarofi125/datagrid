@@ -17,6 +17,14 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?google=config", request.url), 303);
   }
 
+  const requestOrigin = new URL(request.url).origin;
+  // Exact URI Google must allow (character-for-character).
+  console.info("[auth/google/start]", {
+    origin: requestOrigin,
+    redirectUri: config.redirectUri,
+    clientIdPrefix: config.clientId.slice(0, 16) + "…",
+  });
+
   const state = randomOAuthValue();
   const nonce = randomOAuthValue();
   const codeVerifier = randomOAuthValue(48);

@@ -150,6 +150,9 @@ export function createGoogleAuthorization({
   codeChallenge: string;
 }) {
   const url = new URL(GOOGLE_AUTHORIZATION_ENDPOINT);
+  // Keep params minimal — extra flags (include_granted_scopes, etc.) have
+  // caused Google "Access blocked: This app's request is invalid" on some
+  // projects when redirect_uri / client type is already borderline.
   url.search = new URLSearchParams({
     client_id: config.clientId,
     redirect_uri: config.redirectUri,
@@ -160,7 +163,6 @@ export function createGoogleAuthorization({
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
     access_type: "online",
-    include_granted_scopes: "true",
     prompt: "select_account",
   }).toString();
   return url;
