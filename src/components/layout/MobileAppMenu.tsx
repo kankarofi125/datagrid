@@ -7,13 +7,12 @@ import {
   ShellMenuButton,
   ShellMobileMenuPanel,
 } from "@/components/layout/ShellMobileMenu";
-import { BalanceWithEye } from "@/components/ui/BalanceEyeToggle";
 
 export function MobileAppMenu({
-  balance,
   phone,
 }: {
-  balance: number;
+  /** Kept for API compatibility with AppTopBar; balance is not shown in this menu. */
+  balance?: number;
   phone: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -32,16 +31,16 @@ export function MobileAppMenu({
         items={APP_NAV}
         ariaLabel="All app destinations"
         summary={
-          <div className="rounded-xl border border-line bg-green-deep/5 p-3">
-            <p className="font-mono-num text-[10px] tracking-widest text-ink/45">WALLET</p>
-            <BalanceWithEye
-              amount={balance}
-              variant="card"
-              className="mt-1 text-ink"
-              eyeClassName="mt-1 border-line bg-white text-ink/55 hover:bg-ink/[0.04]"
-            />
-            <p className="mt-0.5 truncate text-xs text-ink/55">{phone || "—"}</p>
-          </div>
+          phone ? (
+            <div className="rounded-xl border border-line bg-green-deep/5 px-3 py-2.5">
+              <p className="font-mono-num text-[10px] tracking-widest text-ink/45">
+                SIGNED IN
+              </p>
+              <p className="mt-0.5 truncate text-sm font-medium text-ink">
+                {phone}
+              </p>
+            </div>
+          ) : undefined
         }
         footer={
           <Link

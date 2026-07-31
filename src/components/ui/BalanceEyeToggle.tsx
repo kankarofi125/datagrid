@@ -4,30 +4,39 @@ import { cn } from "@/lib/cn";
 import { BalanceAmount } from "@/components/ui/BalanceAmount";
 import { useBalanceHidden } from "@/hooks/useBalanceHidden";
 
+/** Standard outline eye (Heroicons / common web password-toggle style). */
 function EyeOpenIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden>
-      <path
-        d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
-      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M2.036 12.322a1.012 1.012 0 0 1 0-.644C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .638C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178Z" />
+      <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
     </svg>
   );
 }
 
+/** Standard eye-slash when balance is hidden. */
 function EyeOffIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden>
-      <path
-        d="M3 3l18 18M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 2.4-1.2M9.9 5.2A10.5 10.5 0 0 1 12 5c6 0 9.5 7 9.5 7a16.8 16.8 0 0 1-3.2 3.9M6.1 6.1C3.9 7.7 2.5 12 2.5 12s3.5 7 9.5 7c1.4 0 2.7-.3 3.9-.8"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
     </svg>
   );
 }
@@ -52,15 +61,17 @@ export function BalanceEyeButton({
       aria-pressed={hidden}
       title={hidden ? "Show balance" : "Hide balance"}
       className={cn(
-        "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition pressable",
+        // Compact ghost control — no large white disc
+        "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent transition pressable",
+        "text-current opacity-70 hover:opacity-100",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green/40",
         className
       )}
     >
       {hidden ? (
-        <EyeOffIcon className={cn("h-[18px] w-[18px]", iconClassName)} />
+        <EyeOffIcon className={cn("h-4 w-4", iconClassName)} />
       ) : (
-        <EyeOpenIcon className={cn("h-[18px] w-[18px]", iconClassName)} />
+        <EyeOpenIcon className={cn("h-4 w-4", iconClassName)} />
       )}
     </button>
   );
@@ -89,7 +100,7 @@ export function BalanceWithEye({
   return (
     <div
       className={cn(
-        "flex min-w-0 items-center gap-2.5",
+        "flex min-w-0 items-center gap-1.5",
         rowClassName
       )}
     >
@@ -100,12 +111,7 @@ export function BalanceWithEye({
         compact={compact}
         className={className}
       />
-      <BalanceEyeButton
-        className={cn(
-          "border-line bg-white/90 text-ink/60 shadow-sm hover:bg-white hover:text-ink",
-          eyeClassName
-        )}
-      />
+      <BalanceEyeButton className={eyeClassName} />
     </div>
   );
 }

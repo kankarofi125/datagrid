@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { Button } from "@/components/ui/Button";
 import {
   groupShellNav,
   isShellNavActive,
@@ -44,6 +45,7 @@ export function ShellSidebar({
 }) {
   const path = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [pending, startTransition] = useTransition();
   const groups = useMemo(() => groupShellNav(items), [items]);
 
   return (
@@ -158,18 +160,28 @@ export function ShellSidebar({
 
       <div className={cn("border-t border-white/8", collapsed ? "p-2" : "p-4")}>
         {onAction && actionLabel && (
-          <button
+          <Button
             type="button"
-            onClick={onAction}
+            variant="amber"
+            size="sm"
+            fullWidth
+            disabled={pending}
             title={collapsed ? actionLabel : undefined}
             className={cn(
-              "mb-2 flex min-h-10 w-full items-center rounded-xl bg-amber px-3 text-xs font-semibold text-[#2c1b02] transition hover:bg-[#eda030]",
-              collapsed ? "justify-center px-1 font-mono-num text-[8px]" : "justify-between"
+              "mb-2",
+              collapsed
+                ? "h-9 px-1 font-mono-num text-[9px] tracking-wide"
+                : "justify-between px-3 text-xs"
             )}
+            onClick={() => {
+              startTransition(async () => {
+                await onAction();
+              });
+            }}
           >
-            <span>{collapsed ? actionCompactLabel : actionLabel}</span>
-            {!collapsed && <span aria-hidden>→</span>}
-          </button>
+            <span>{pending ? "…" : collapsed ? actionCompactLabel : actionLabel}</span>
+            {!collapsed && !pending && <span aria-hidden>→</span>}
+          </Button>
         )}
         <div className={cn("grid gap-2", collapsed ? "grid-cols-1" : "grid-cols-2")}>
           {footerLinks.map((link) => (
