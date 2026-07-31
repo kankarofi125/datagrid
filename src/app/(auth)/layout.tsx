@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GoogleOneTapHost } from "@/components/auth/GoogleOneTapHost";
 
 export const metadata: Metadata = {
   robots: {
@@ -13,5 +14,11 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <>
+      {/* Soft Google One Tap on login + signup (top-right GIS prompt) */}
+      <GoogleOneTapHost context="signin" />
+      {children}
+    </>
+  );
 }

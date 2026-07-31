@@ -12,17 +12,21 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            // identity-credentials-get: Google One Tap / FedCM
+            value:
+              "camera=(), microphone=(), geolocation=(), identity-credentials-get=(self \"https://accounts.google.com\")",
           },
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https:",
+              // Google One Tap / Identity Services
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com",
+              "style-src 'self' 'unsafe-inline' https://accounts.google.com",
+              "img-src 'self' data: blob: https: https://*.googleusercontent.com",
               "font-src 'self' data:",
-              "connect-src 'self' https: wss:",
+              "connect-src 'self' https: wss: https://accounts.google.com",
+              "frame-src 'self' https://accounts.google.com https://apis.google.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

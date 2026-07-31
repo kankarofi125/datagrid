@@ -10,6 +10,7 @@ import { HeroEnter, Reveal } from "@/components/motion/Reveal";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { Button } from "@/components/ui/Button";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { GoogleOneTapHost } from "@/components/auth/GoogleOneTapHost";
 import { prisma } from "@/lib/db";
 import type { NetworkCode } from "@/lib/phone";
 import { cached, CacheKeys, CacheTags, CacheTTL } from "@/lib/cache";
@@ -82,6 +83,8 @@ export default async function LandingPage() {
     <>
       <ScrollProgress />
       <RateTicker items={data.ticker} />
+      {/* Google One Tap — soft continue card for signed-in Google browsers */}
+      <GoogleOneTapHost context="signin" />
 
       <header className="sticky top-2 z-30 mx-3 mt-2 rounded-2xl border border-white/80 bg-paper/92 shadow-[0_18px_48px_-30px_rgba(14,33,26,.38)] backdrop-blur-xl sm:mx-5 lg:mx-auto lg:w-[calc(100%-4rem)] lg:max-w-6xl">
         <div className="mx-auto flex items-center justify-between gap-2 px-3 py-2 sm:px-4 lg:px-5">
