@@ -169,6 +169,18 @@ export function GoogleOneTap({
         await loadGsiScript();
         if (cancelled || !window.google?.accounts?.id) return;
 
+        // Origin must be listed under Google Cloud → Web client →
+        // Authorized JavaScript origins (scheme + host [+ port], no path).
+        // Full OAuth redirect only checks redirect URIs — that is why the
+        // button can work while One Tap returns origin_mismatch.
+        if (process.env.NODE_ENV !== "production") {
+          // eslint-disable-next-line no-console
+          console.info(
+            "[Google One Tap] page origin must be in Authorized JavaScript origins:",
+            window.location.origin
+          );
+        }
+
         window.google.accounts.id.initialize({
           client_id: clientId,
           callback: handleCredential,
@@ -180,13 +192,27 @@ export function GoogleOneTap({
         });
 
         window.google.accounts.id.prompt((notification) => {
-          if (
-            notification.isNotDisplayed() ||
-            notification.isSkippedMoment() ||
-            notification.isDismissedMoment()
-          ) {
-            const dismissed = notification.isDismissedMoment();
-            if (dismissed) setCooldown();
+          if (notification.isNotDisplayed()) {
+            const reason = notification.getNotDisplayedReason?.() || "unknown";
+            // eslint-disable-next-line no-console
+            console.warn("[Google One Tap] not displayed:", reason, {
+              origin: window.location.origin,
+              hint:
+                reason === "origin_mismatch" ||
+                reason === "invalid_client" ||
+                String(reason).includes("origin")
+                  ? `Add ${window.location.origin} to Google Cloud → Credentials → Web client → Authorized JavaScript origins`
+                  : undefined,
+            });
+            onSkipped?.();
+            return;
+          }
+          if (notification.isSkippedMoment()) {
+            onSkipped?.();
+            return;
+          }
+          if (notification.isDismissedMoment()) {
+            setCooldown();
             onSkipped?.();
           }
         });
