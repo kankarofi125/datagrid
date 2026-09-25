@@ -105,6 +105,38 @@ async function sendchampFetch<T>(
   return { ok: true, data: (raw.data ?? ({} as T)) as T, raw };
 }
 
+/**
+ * True if Sendchamp says this number is on WhatsApp, false if not,
+ * null if the check could not be completed.
+ */
+export async function sendchampNumberHasWhatsapp(
+  phone: string
+): Promise<boolean | null> {
+  const res = await sendchampFetch<Record<string, unknown>>("/whatsapp/validate", {
+    phone_number: toSendchampMsisdn(phone),
+  });
+  if (!res.ok) return null;
+  const data = res.data;
+  if (!data || typeof data !== "object") return null;
+  for (const key of ["whatsapp", "on_whatsapp", "is_whatsapp", "valid"]) {
+    if (typeof data[key] === "boolean") return data[key];
+  }
+  const status = String(data.status || data.whatsapp_status || "")
+    .trim()
+    .toLowerCase();
+  if (["valid", "true", "yes", "active", "exists", "found"].includes(status)) {
+    return true;
+  }
+  if (
+    ["invalid", "false", "no", "inactive", "not_found", "not found", "absent"].includes(
+      status
+    )
+  ) {
+    return false;
+  }
+  return null;
+}
+
 /** Sendchamp OTP channel strings (API is case-sensitive; use lowercase). */
 export function normalizeOtpChannel(
   channel: string

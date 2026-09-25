@@ -7,6 +7,7 @@ import {
   isSendchampLive,
   normalizeOtpChannel,
   sendchampConfirmOtp,
+  sendchampNumberHasWhatsapp,
   sendchampSendOtp,
   type SendchampOtpChannel,
 } from "@/lib/sendchamp";
@@ -261,42 +262,64 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
       } else {
         const channel: SendchampOtpChannel =
           normalizeOtpChannel(phoneTransport) || "whatsapp";
+        const smsFallbackOn =
+          (process.env.OTP_WHATSAPP_FALLBACK_SMS || "1") !== "0";
 
-        const phoneSend = await sendchampSendOtp({
-          channel,
-          phone: e164,
-          token: code,
-          tokenLength: TOKEN_LENGTH,
-          expirationMinutes: OTP_TTL_MINUTES,
-          firstName,
-        });
+        // Sendchamp often returns success for WhatsApp even when the number
+        // has no WhatsApp account, so the old "only if the API errors" fallback
+        // never sent an SMS. Check first, and if that check is unavailable,
+        // send SMS as well.
+        let whatsappReachable: boolean | null = null;
+        if (channel === "whatsapp" && smsFallbackOn) {
+          whatsappReachable = await sendchampNumberHasWhatsapp(e164);
+          console.info("[otp] whatsapp reachability", {
+            phone: `••••${e164.slice(-4)}`,
+            whatsappReachable,
+          });
+        }
 
-        if (phoneSend.ok) {
-          providerRef = phoneSend.result.reference;
-          deliveredVia.push(channel);
-          anyOk = true;
+        const sendSms = async (reason: string) => {
+          const smsFallback = await sendchampSendOtp({
+            channel: "sms",
+            phone: e164,
+            token: code,
+            tokenLength: TOKEN_LENGTH,
+            expirationMinutes: OTP_TTL_MINUTES,
+            firstName,
+          });
+          if (smsFallback.ok) {
+            if (!providerRef) providerRef = smsFallback.result.reference;
+            deliveredVia.push("sms");
+            anyOk = true;
+            console.warn(`[otp] SMS sent (${reason})`);
+          } else {
+            console.error("[otp] SMS failed", smsFallback.error);
+          }
+        };
+
+        if (channel === "whatsapp" && whatsappReachable === false) {
+          await sendSms("number is not on WhatsApp");
         } else {
-          console.error(`[otp] Sendchamp ${channel} failed`, phoneSend.error);
+          const phoneSend = await sendchampSendOtp({
+            channel,
+            phone: e164,
+            token: code,
+            tokenLength: TOKEN_LENGTH,
+            expirationMinutes: OTP_TTL_MINUTES,
+            firstName,
+          });
 
-          if (
-            channel === "whatsapp" &&
-            (process.env.OTP_WHATSAPP_FALLBACK_SMS || "1") !== "0"
-          ) {
-            const smsFallback = await sendchampSendOtp({
-              channel: "sms",
-              phone: e164,
-              token: code,
-              tokenLength: TOKEN_LENGTH,
-              expirationMinutes: OTP_TTL_MINUTES,
-              firstName,
-            });
-            if (smsFallback.ok) {
-              providerRef = smsFallback.result.reference;
-              deliveredVia.push("sms");
-              anyOk = true;
-              console.warn("[otp] WhatsApp failed; delivered via SMS fallback");
-            } else {
-              console.error("[otp] SMS fallback also failed", smsFallback.error);
+          if (phoneSend.ok) {
+            providerRef = phoneSend.result.reference;
+            deliveredVia.push(channel);
+            anyOk = true;
+            if (channel === "whatsapp" && smsFallbackOn && whatsappReachable === null) {
+              await sendSms("WhatsApp reachability unknown");
+            }
+          } else {
+            console.error(`[otp] Sendchamp ${channel} failed`, phoneSend.error);
+            if (channel === "whatsapp" && smsFallbackOn) {
+              await sendSms("WhatsApp API failed");
             }
           }
         }
