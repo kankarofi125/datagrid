@@ -24,6 +24,8 @@ type Props = {
   className?: string;
   id?: string;
   "aria-label"?: string;
+  /** Called once when every digit is filled (typing or paste). */
+  onComplete?: (value: string) => void;
   /**
    * Force single-line input (e.g. phone). Default: multi-cell boxes when
    * length is 4–8 (OTP / PIN), single field otherwise.
@@ -51,6 +53,7 @@ export function DigitField({
   id: idProp,
   "aria-label": ariaLabel,
   variant = "auto",
+  onComplete,
 }: Props) {
   const autoId = useId();
   const id = idProp || autoId;
@@ -75,6 +78,7 @@ export function DigitField({
         className={className}
         ariaLabel={ariaLabel || label || "Digit entry"}
         onChange={onChange}
+        onComplete={onComplete}
       />
     );
   }
@@ -113,9 +117,11 @@ export function DigitField({
           error && "border-danger focus:border-danger focus:ring-danger/10",
           disabled && "opacity-60"
         )}
-        onChange={(e) =>
-          onChange(e.target.value.replace(/\D/g, "").slice(0, length))
-        }
+        onChange={(e) => {
+          const next = e.target.value.replace(/\D/g, "").slice(0, length);
+          onChange(next);
+          if (next.length === length) onComplete?.(next);
+        }}
       />
       {error ? (
         <p className="text-sm text-danger" role="alert">
@@ -142,6 +148,7 @@ function DigitBoxes({
   className,
   ariaLabel,
   onChange,
+  onComplete,
 }: {
   id: string;
   label?: string;
@@ -156,8 +163,10 @@ function DigitBoxes({
   className?: string;
   ariaLabel: string;
   onChange: (value: string) => void;
+  onComplete?: (value: string) => void;
 }) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
+  const completedRef = useRef("");
 
   useEffect(() => {
     if (!autoFocus || disabled) return;
@@ -171,6 +180,14 @@ function DigitBoxes({
   function applyValue(next: string, focusIndex?: number) {
     const cleaned = next.replace(/\D/g, "").slice(0, length);
     onChange(cleaned);
+    if (cleaned.length === length) {
+      if (completedRef.current !== cleaned) {
+        completedRef.current = cleaned;
+        onComplete?.(cleaned);
+      }
+    } else {
+      completedRef.current = "";
+    }
     if (typeof focusIndex === "number") {
       window.requestAnimationFrame(() => {
         refs.current[Math.max(0, Math.min(focusIndex, length - 1))]?.focus();

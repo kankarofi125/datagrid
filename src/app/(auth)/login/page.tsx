@@ -364,7 +364,8 @@ function LoginForm() {
     setStep(as2faFallback ? "otp" : "otp");
   }
 
-  function verifyOtp() {
+  function verifyOtp(codeValue = code) {
+    if (codeValue.length < OTP_LENGTH) return;
     void runBusy("verifyOtp", async () => {
       const res = await fetch("/api/auth/otp/verify", {
         method: "POST",
@@ -372,7 +373,7 @@ function LoginForm() {
         body: JSON.stringify({
           phone: mode === "phone" || googleState === "phone" ? phone : undefined,
           email: mode === "email" ? email.trim() : undefined,
-          code,
+          code: codeValue,
           referral: params.get("ref") || undefined,
           googleLink: googleState === "phone",
         }),
@@ -399,15 +400,16 @@ function LoginForm() {
     });
   }
 
-  function loginWithPin() {
+  function loginWithPin(pinValue = pin) {
+    if (pinValue.length < 4) return;
     void runBusy("pinLogin", async () => {
       const res = await fetch("/api/auth/pin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           mode === "email"
-            ? { email: email.trim(), pin }
-            : { phone, pin }
+            ? { email: email.trim(), pin: pinValue }
+            : { phone, pin: pinValue }
         ),
       });
       const data = await res.json().catch(() => ({}));
@@ -442,13 +444,14 @@ function LoginForm() {
     });
   }
 
-  function verifyLogin2fa() {
+  function verifyLogin2fa(codeValue = code) {
+    if (codeValue.length < OTP_LENGTH) return;
     void runBusy("verify2fa", async () => {
       const res = await fetch("/api/auth/otp/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          code,
+          code: codeValue,
           login2fa: true,
           purpose: "login2fa",
         }),
@@ -488,8 +491,9 @@ function LoginForm() {
     requestOtp({});
   }
 
-  function savePinAndEnter() {
-    if (pin !== pinConfirm) {
+  function savePinAndEnter(confirmValue = pinConfirm) {
+    if (confirmValue.length < 4) return;
+    if (pin !== confirmValue) {
       setError("PINs do not match");
       setPin("");
       setPinConfirm("");
@@ -656,6 +660,9 @@ function LoginForm() {
                     : `Sent to ${local || phone}`
             }
             aria-label="One-time password"
+            onComplete={(value) => {
+              if (otpRemainingSec > 0) verifyOtp(value);
+            }}
           />
           <OtpExpiryBanner
             remainingSec={otpRemainingSec}
@@ -721,6 +728,9 @@ function LoginForm() {
                 : `Enter the ${OTP_LENGTH}-digit code from your email`
             }
             aria-label="Email two-factor code"
+            onComplete={(value) => {
+              if (otpRemainingSec > 0) verifyLogin2fa(value);
+            }}
           />
           <OtpExpiryBanner
             remainingSec={otpRemainingSec}
@@ -784,6 +794,7 @@ function LoginForm() {
                 : `For ${local || phone}`
             }
             aria-label="Login PIN"
+            onComplete={(value) => loginWithPin(value)}
           />
           <Button
             type="submit"
@@ -828,6 +839,12 @@ function LoginForm() {
             autoFocus
             hint="Used for login and wallet purchases"
             aria-label="Create PIN"
+            onComplete={(value) => {
+              setPin(value);
+              setPinConfirm("");
+              setError(null);
+              setStep("pin-confirm");
+            }}
           />
           <Button
             type="submit"
@@ -851,6 +868,7 @@ function LoginForm() {
             autoFocus
             disabled={busy === "savePin"}
             aria-label="Confirm PIN"
+            onComplete={(value) => savePinAndEnter(value)}
           />
           <Button
             type="submit"

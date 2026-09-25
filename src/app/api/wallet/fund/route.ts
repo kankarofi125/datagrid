@@ -4,7 +4,10 @@ import { prisma } from "@/lib/db";
 import { makeIdempotencyKey, makeOrderRef } from "@/lib/order-ref";
 import { initializePaystack } from "@/lib/payments/paystack";
 import { initializeFlutterwave } from "@/lib/payments/flutterwave";
-import { ensureVirtualAccount } from "@/lib/payments/monnify";
+import {
+  ensureVirtualAccount,
+  initializeMonnifyCheckout,
+} from "@/lib/payments/monnify";
 import { isPaymentSimulateMode } from "@/lib/payments/simulator";
 import { creditWallet } from "@/lib/wallet/service";
 import { maybeSignupBonus } from "@/lib/commissions";
@@ -169,20 +172,75 @@ export async function POST(req: Request) {
     });
   }
 
-  // Monnify VA
+  if (method === "monnify_checkout") {
+    const orderRef = makeOrderRef();
+    const paymentReference = makeIdempotencyKey("mny");
+    const origin = new URL(req.url).origin;
+    const callbackUrl = `${origin}/wallet?monnifyRef=${encodeURIComponent(paymentReference)}`;
+    try {
+      const init = await initializeMonnifyCheckout({
+        amountNaira: amount,
+        email: user.email || `${user.phoneLocal.replace(/^0/, "")}@datagrid.ng`,
+        name: user.name || `DG ${user.phoneLocal}`,
+        userId: user.id,
+        paymentReference,
+        callbackUrl,
+      });
+
+      await prisma.transaction.create({
+        data: {
+          userId: user.id,
+          service: "WALLET_FUND",
+          status: "PENDING",
+          amount,
+          idempotencyKey: paymentReference,
+          orderRef,
+          fundingProvider: "MONNIFY",
+          fundingRef: init.reference,
+          statusTrail: JSON.stringify([
+            {
+              at: new Date().toISOString(),
+              status: "PENDING",
+              note: "Awaiting Monnify checkout",
+            },
+          ]),
+        },
+      });
+
+      return NextResponse.json({
+        simulated: false,
+        authorization_url: init.checkoutUrl,
+        reference: init.reference,
+        orderRef,
+        provider: "MONNIFY",
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Monnify checkout failed";
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
+  }
+
+  // Monnify reserved virtual account (sandbox or live)
   const existing = user.virtualAccounts.find((v) => v.provider === "MONNIFY" && v.isActive);
-  const vaData = await ensureVirtualAccount({
-    userId: user.id,
-    accountName: user.name || `DG ${user.phoneLocal}`,
-    existing: existing
-      ? {
-          accountNumber: existing.accountNumber,
-          bankName: existing.bankName,
-          accountName: existing.accountName,
-          providerRef: existing.providerRef,
-        }
-      : null,
-  });
+  let vaData;
+  try {
+    vaData = await ensureVirtualAccount({
+      userId: user.id,
+      accountName: user.name || `DG ${user.phoneLocal}`,
+      email: user.email || undefined,
+      existing: existing
+        ? {
+            accountNumber: existing.accountNumber,
+            bankName: existing.bankName,
+            accountName: existing.accountName,
+            providerRef: existing.providerRef,
+          }
+        : null,
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Monnify virtual account failed";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 
   let va = existing;
   if (!va) {

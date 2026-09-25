@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { creditWallet } from "@/lib/wallet/service";
 import { makeIdempotencyKey, makeOrderRef } from "@/lib/order-ref";
-import { verifyMonnifyWebhook } from "@/lib/payments/monnify";
+import { queryMonnifyPayment, verifyMonnifyWebhook } from "@/lib/payments/monnify";
 
 /**
  * Monnify payment notification webhook.
@@ -22,19 +22,12 @@ export async function POST(req: Request) {
     req.headers.get("x-monnify-signature") ||
     null;
   const eventData = (body.eventData || body) as Record<string, unknown>;
-  const computeHash =
-    (typeof body.computeHash === "string" && body.computeHash) ||
-    (typeof eventData.transactionHash === "string" &&
-      eventData.transactionHash) ||
-    null;
 
-  if (
-    !verifyMonnifyWebhook({
-      rawBody: raw,
-      signatureHeader,
-      computeHash,
-    })
-  ) {
+  const auth = verifyMonnifyWebhook({
+    rawBody: raw,
+    signatureHeader,
+  });
+  if (auth === "reject") {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -45,17 +38,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
+  const destination = (eventData.destinationAccountInformation ||
+    {}) as Record<string, unknown>;
   const accountNumber = String(
-    eventData.destinationAccountNumber || eventData.accountNumber || ""
+    eventData.destinationAccountNumber ||
+      eventData.accountNumber ||
+      destination.accountNumber ||
+      ""
   );
   const amount = Number(eventData.amountPaid || eventData.amount || 0);
   const paymentRef = String(
     eventData.paymentReference || eventData.transactionReference || ""
   ).trim();
 
-  if (!accountNumber || !amount || amount <= 0) {
+  if (!amount || amount <= 0) {
     return NextResponse.json(
-      { error: "Missing account or amount" },
+      { error: "Missing amount" },
       { status: 400 }
     );
   }
@@ -66,10 +64,34 @@ export async function POST(req: Request) {
     );
   }
 
+  // Sandbox webhooks are unsigned. Confirm with Monnify before crediting.
+  if (auth === "sandbox-unsigned") {
+    try {
+      const queried = await queryMonnifyPayment(paymentRef);
+      if (!queried.paid) {
+        return NextResponse.json(
+          { ok: true, ignored: true, reason: "not-paid" },
+          { status: 200 }
+        );
+      }
+    } catch (e) {
+      console.error(
+        "[webhooks/monnify] sandbox confirm failed",
+        e instanceof Error ? e.message : e
+      );
+      return NextResponse.json(
+        { error: "Could not confirm payment with Monnify" },
+        { status: 502 }
+      );
+    }
+  }
+
   const dup = await prisma.transaction.findFirst({
     where: {
-      fundingRef: paymentRef,
-      fundingProvider: "MONNIFY",
+      OR: [
+        { fundingRef: paymentRef, fundingProvider: "MONNIFY" },
+        { idempotencyKey: paymentRef, fundingProvider: "MONNIFY" },
+      ],
       service: "WALLET_FUND",
     },
   });
@@ -77,11 +99,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, duplicate: true });
   }
 
-  const va = await prisma.virtualAccount.findFirst({
-    where: { accountNumber, isActive: true },
-  });
-  if (!va) {
-    return NextResponse.json({ error: "Unknown virtual account" }, { status: 404 });
+  const va = accountNumber
+    ? await prisma.virtualAccount.findFirst({
+        where: { accountNumber, isActive: true },
+      })
+    : null;
+
+  const userId = dup?.userId || va?.userId;
+  if (!userId) {
+    return NextResponse.json(
+      { error: "Unknown payment or virtual account" },
+      { status: 404 }
+    );
   }
 
   const orderRef = dup?.orderRef || makeOrderRef();
@@ -90,7 +119,7 @@ export async function POST(req: Request) {
     try {
       tx = await prisma.transaction.create({
         data: {
-          userId: va.userId,
+          userId,
           service: "WALLET_FUND",
           status: "PROCESSING",
           amount,
@@ -108,7 +137,6 @@ export async function POST(req: Request) {
         },
       });
     } catch {
-      // Unique race — treat as duplicate
       const again = await prisma.transaction.findFirst({
         where: { fundingRef: paymentRef, fundingProvider: "MONNIFY" },
       });
@@ -120,7 +148,7 @@ export async function POST(req: Request) {
   }
 
   const balance = await creditWallet({
-    userId: va.userId,
+    userId,
     amount,
     transactionId: tx.id,
     memo: "Monnify transfer",
@@ -144,7 +172,7 @@ export async function POST(req: Request) {
   try {
     const { emailWalletFunded } = await import("@/lib/email/notify");
     await emailWalletFunded({
-      userId: va.userId,
+      userId,
       amount,
       orderRef,
       balance,

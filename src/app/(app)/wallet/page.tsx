@@ -45,7 +45,9 @@ export default function WalletPage() {
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const { hidden } = useBalanceHidden();
   const [amount, setAmount] = useState("2000");
-  const [tab, setTab] = useState<"card" | "flutterwave" | "transfer">("transfer");
+  const [tab, setTab] = useState<"transfer" | "checkout" | "card" | "flutterwave">(
+    "transfer"
+  );
   const [open, setOpen] = useState(false);
   const [xferOpen, setXferOpen] = useState(false);
   const [xferPhone, setXferPhone] = useState("");
@@ -93,6 +95,44 @@ export default function WalletPage() {
     return () => cancelAnimationFrame(frame);
   }, [refresh]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const monnifyRef = params.get("monnifyRef") || params.get("paymentReference");
+    if (!monnifyRef) return;
+    void (async () => {
+      setMsg("Confirming Monnify payment…");
+      try {
+        const res = await fetch(
+          `/api/wallet/fund/verify?reference=${encodeURIComponent(monnifyRef)}`
+        );
+        const data = await res.json();
+        if (data.ok) {
+          setMsg("Wallet funded via Monnify.");
+          if (data.orderRef) {
+            setFundReceipt({
+              orderRef: data.orderRef,
+              service: "WALLET_FUND",
+              amount: Number(amount),
+              planName: "Monnify funding",
+            });
+            setOpen(true);
+          }
+          await refresh();
+        } else if (data.pending) {
+          setMsg("Payment still pending. If you paid, wait a moment and refresh.");
+        } else {
+          setMsg(data.error || "Could not confirm payment");
+        }
+      } catch {
+        setMsg("Could not confirm Monnify payment");
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.delete("monnifyRef");
+      url.searchParams.delete("paymentReference");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    })();
+  }, [amount, refresh]);
+
   function fund() {
     start(async () => {
       await runBlocking(async () => {
@@ -108,7 +148,9 @@ export default function WalletPage() {
                 ? "paystack"
                 : tab === "flutterwave"
                   ? "flutterwave"
-                  : "monnify",
+                  : tab === "checkout"
+                    ? "monnify_checkout"
+                    : "monnify",
           }),
         });
         const data = await res.json();
@@ -117,6 +159,10 @@ export default function WalletPage() {
           return;
         }
         if (data.virtualAccount) setVa(data.virtualAccount);
+        if (data.authorization_url && !data.simulated) {
+          window.location.href = data.authorization_url as string;
+          return;
+        }
         if (data.simulated && data.balance != null) {
           setBalance(data.balance);
           setMsg(
@@ -275,10 +321,11 @@ export default function WalletPage() {
           fund();
         }}
       >
-      <div className="mb-4 grid grid-cols-3 gap-1">
+      <div className="mb-4 grid grid-cols-4 gap-1">
         {(
           [
-            ["transfer", "MONNIFY"],
+            ["transfer", "TRANSFER"],
+            ["checkout", "MONNIFY"],
             ["card", "PAYSTACK"],
             ["flutterwave", "FLW"],
           ] as const
@@ -316,6 +363,11 @@ export default function WalletPage() {
           </button>
           <p className="mt-1 text-sm">{va.bankName}</p>
           <p className="text-sm text-paper/70">{va.accountName}</p>
+          <p className="mt-3 text-xs leading-relaxed text-paper/70">
+            Pay only to {va.bankName}. The same digits can belong to someone else
+            at another bank (for example Zenith). Sandbox demo: use the Monnify
+            bank simulator, not a real bank app.
+          </p>
           <Button
             className="mt-4"
             variant="amber"
@@ -332,12 +384,14 @@ export default function WalletPage() {
           ? "Pay with Paystack (sim)"
           : tab === "flutterwave"
             ? "Pay with Flutterwave (sim)"
-            : va
-              ? "Refresh virtual account"
-              : "Get virtual account"}
+            : tab === "checkout"
+              ? "Pay with Monnify (sandbox)"
+              : va
+                ? "Refresh virtual account"
+                : "Get Monnify account"}
       </Button>
       <p className="font-mono-num mt-3 text-center text-[10px] text-ink/40">
-        PAYSTACK → FLUTTERWAVE FALLBACK · MONNIFY VA
+        MONNIFY SANDBOX · CARD / TRANSFER / USSD
       </p>
       </form>
       )}
