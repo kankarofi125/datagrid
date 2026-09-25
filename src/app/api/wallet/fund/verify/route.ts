@@ -37,7 +37,7 @@ export async function GET(req: Request) {
   }
 
   let paid = false;
-  let amount = tx.amount;
+  let amount = Number(tx.amount);
   try {
     const q = await queryMonnifyPayment(reference);
     paid = q.paid;
