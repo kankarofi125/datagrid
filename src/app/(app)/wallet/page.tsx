@@ -45,9 +45,7 @@ export default function WalletPage() {
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const { hidden } = useBalanceHidden();
   const [amount, setAmount] = useState("2000");
-  const [tab, setTab] = useState<"transfer" | "checkout" | "card" | "flutterwave">(
-    "transfer"
-  );
+  const [tab, setTab] = useState<"checkout" | "card" | "flutterwave">("checkout");
   const [open, setOpen] = useState(false);
   const [xferOpen, setXferOpen] = useState(false);
   const [xferPhone, setXferPhone] = useState("");
@@ -60,12 +58,6 @@ export default function WalletPage() {
   const [fundReceipt, setFundReceipt] = useState<WalletReceipt | null>(null);
   const [transferReceipt, setTransferReceipt] = useState<WalletReceipt | null>(null);
   const [payoutReceipt, setPayoutReceipt] = useState<WalletReceipt | null>(null);
-  const [va, setVa] = useState<{
-    accountNumber: string;
-    bankName: string;
-    accountName: string;
-  } | null>(null);
-  const [copied, setCopied] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -148,9 +140,7 @@ export default function WalletPage() {
                 ? "paystack"
                 : tab === "flutterwave"
                   ? "flutterwave"
-                  : tab === "checkout"
-                    ? "monnify_checkout"
-                    : "monnify",
+                  : "monnify_checkout",
           }),
         });
         const data = await res.json();
@@ -158,7 +148,6 @@ export default function WalletPage() {
           setMsg(data.error || "Failed");
           return;
         }
-        if (data.virtualAccount) setVa(data.virtualAccount);
         if (data.authorization_url && !data.simulated) {
           window.location.href = data.authorization_url as string;
           return;
@@ -255,44 +244,6 @@ export default function WalletPage() {
     });
   }
 
-  function simulateTransfer() {
-    start(async () => {
-      await runBlocking(async () => {
-        setFundReceipt(null);
-        const res = await fetch("/api/wallet/fund/simulate-transfer", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: Number(amount) }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setMsg(data.error || "Failed");
-          return;
-        }
-        setBalance(data.balance);
-        setMsg("Monnify transfer received (sim webhook).");
-        setFundReceipt({
-          orderRef: data.orderRef,
-          service: "WALLET_FUND",
-          amount: Number(amount),
-          planName: "Monnify bank transfer",
-        });
-        await refresh();
-      });
-    });
-  }
-
-  async function copyAccount() {
-    if (!va) return;
-    try {
-      await navigator.clipboard.writeText(va.accountNumber);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* ignore */
-    }
-  }
-
   const transferPinDenied = isPinDenied(xferError);
   const payoutPinDenied = isPinDenied(payoutError);
 
@@ -321,10 +272,9 @@ export default function WalletPage() {
           fund();
         }}
       >
-      <div className="mb-4 grid grid-cols-4 gap-1">
+      <div className="mb-4 grid grid-cols-3 gap-1">
         {(
           [
-            ["transfer", "TRANSFER"],
             ["checkout", "MONNIFY"],
             ["card", "PAYSTACK"],
             ["flutterwave", "FLW"],
@@ -349,49 +299,15 @@ export default function WalletPage() {
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
       />
-      {tab === "transfer" && va && (
-        <div className="mt-4 rounded-lg border border-line bg-green-deep p-4 text-paper">
-          <p className="font-mono-num text-[10px] text-amber">
-            RESERVED ACCOUNT · {va.bankName.includes("sim") ? "SIM" : "MONNIFY"}
-          </p>
-          <button
-            type="button"
-            onClick={copyAccount}
-            className="font-mono-num mt-2 text-left text-2xl tracking-wide"
-          >
-            {va.accountNumber} {copied ? "✓" : ""}
-          </button>
-          <p className="mt-1 text-sm">{va.bankName}</p>
-          <p className="text-sm text-paper/70">{va.accountName}</p>
-          <p className="mt-3 text-xs leading-relaxed text-paper/70">
-            Pay only to {va.bankName}. The same digits can belong to someone else
-            at another bank (for example Zenith). Sandbox demo: use the Monnify
-            bank simulator, not a real bank app.
-          </p>
-          <Button
-            className="mt-4"
-            variant="amber"
-            fullWidth
-            onClick={simulateTransfer}
-            disabled={pending}
-          >
-            Simulate bank transfer
-          </Button>
-        </div>
-      )}
       <Button type="submit" className="mt-4" fullWidth size="lg" disabled={pending}>
         {tab === "card"
           ? "Pay with Paystack (sim)"
           : tab === "flutterwave"
             ? "Pay with Flutterwave (sim)"
-            : tab === "checkout"
-              ? "Pay with Monnify (sandbox)"
-              : va
-                ? "Refresh virtual account"
-                : "Get Monnify account"}
+            : "Pay with Monnify"}
       </Button>
       <p className="font-mono-num mt-3 text-center text-[10px] text-ink/40">
-        MONNIFY SANDBOX · CARD / TRANSFER / USSD
+        MONNIFY CHECKOUT · ONE PAYMENT PER TRANSFER
       </p>
       </form>
       )}
@@ -624,7 +540,7 @@ export default function WalletPage() {
           <PageHeader
             kicker="TREASURY"
             title="WALLET."
-            description="Fund via Paystack, Flutterwave, or Monnify VA. Send money to other DataGrid users."
+            description="Fund via Monnify, Paystack, or Flutterwave. Send money to other DataGrid users."
             actions={
               <div className="flex gap-2">
                 <Button size="lg" variant="ghost" onClick={() => setXferOpen(true)}>
