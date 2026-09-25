@@ -45,7 +45,6 @@ export default function WalletPage() {
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const { hidden } = useBalanceHidden();
   const [amount, setAmount] = useState("2000");
-  const [tab, setTab] = useState<"checkout" | "card" | "flutterwave">("checkout");
   const [open, setOpen] = useState(false);
   const [xferOpen, setXferOpen] = useState(false);
   const [xferPhone, setXferPhone] = useState("");
@@ -135,12 +134,7 @@ export default function WalletPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             amount: Number(amount),
-            method:
-              tab === "card"
-                ? "paystack"
-                : tab === "flutterwave"
-                  ? "flutterwave"
-                  : "monnify_checkout",
+            method: "monnify_checkout",
           }),
         });
         const data = await res.json();
@@ -148,27 +142,11 @@ export default function WalletPage() {
           setMsg(data.error || "Failed");
           return;
         }
-        if (data.authorization_url && !data.simulated) {
+        if (data.authorization_url) {
           window.location.href = data.authorization_url as string;
           return;
         }
-        if (data.simulated && data.balance != null) {
-          setBalance(data.balance);
-          setMsg(
-            tab === "flutterwave"
-              ? "Flutterwave (sim) credited your wallet."
-              : "Paystack (sim) credited your wallet."
-          );
-          if (data.orderRef) {
-            setFundReceipt({
-              orderRef: data.orderRef,
-              service: "WALLET_FUND",
-              amount: Number(amount),
-              planName: tab === "flutterwave" ? "Flutterwave funding" : "Paystack funding",
-            });
-          }
-          await refresh();
-        }
+        setMsg(data.error || "Monnify did not return a checkout link");
       });
     });
   }
@@ -272,27 +250,6 @@ export default function WalletPage() {
           fund();
         }}
       >
-      <div className="mb-4 grid grid-cols-3 gap-1">
-        {(
-          [
-            ["checkout", "MONNIFY"],
-            ["card", "PAYSTACK"],
-            ["flutterwave", "FLW"],
-          ] as const
-        ).map(([k, label]) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setTab(k)}
-            className={cn(
-              "font-mono-num rounded py-2 text-[10px]",
-              tab === k ? "bg-green text-white" : "border border-line"
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
       <Input
         label="Amount (min ₦100)"
         mono
@@ -300,14 +257,10 @@ export default function WalletPage() {
         onChange={(e) => setAmount(e.target.value)}
       />
       <Button type="submit" className="mt-4" fullWidth size="lg" disabled={pending}>
-        {tab === "card"
-          ? "Pay with Paystack (sim)"
-          : tab === "flutterwave"
-            ? "Pay with Flutterwave (sim)"
-            : "Pay with Monnify"}
+        Pay with Monnify
       </Button>
       <p className="font-mono-num mt-3 text-center text-[10px] text-ink/40">
-        MONNIFY CHECKOUT · ONE PAYMENT PER TRANSFER
+        CARD OR BANK TRANSFER · ONE PAYMENT AT A TIME
       </p>
       </form>
       )}
@@ -540,7 +493,7 @@ export default function WalletPage() {
           <PageHeader
             kicker="TREASURY"
             title="WALLET."
-            description="Fund via Monnify, Paystack, or Flutterwave. Send money to other DataGrid users."
+            description="Fund with Monnify. Send money to other DataGrid users."
             actions={
               <div className="flex gap-2">
                 <Button size="lg" variant="ghost" onClick={() => setXferOpen(true)}>
