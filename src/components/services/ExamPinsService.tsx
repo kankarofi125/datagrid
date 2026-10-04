@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
 import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Responsive";
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
@@ -12,7 +13,6 @@ import { TokenReceipt } from "@/components/buy/TokenReceipt";
 import { Card } from "@/components/ui/Card";
 import { formatNaira } from "@/lib/money";
 import { SkeletonPage } from "@/components/ui/Skeleton";
-import { cn } from "@/lib/cn";
 import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 type Biller = {
@@ -109,32 +109,20 @@ export default function ExamPinsService() {
       <p className="text-sm text-ink/65">
         Result-checker pins delivered in-app. Copy and use on the exam body portal.
       </p>
-      <div className="grid gap-3">
-        {billers.map((b) => {
-          const price = b.packages[0]?.amount || 0;
-          return (
-            <button
-              key={b.code}
-              type="button"
-              onClick={() => setBillerCode(b.code)}
-              className={cn(
-                "flex items-center justify-between rounded-xl border px-4 py-4 text-left",
-                billerCode === b.code
-                  ? "border-green ring-2 ring-green/20"
-                  : "border-line hover:border-green"
-              )}
-            >
-              <div>
-                <p className="font-display text-2xl">{b.code}</p>
-                <p className="text-sm text-ink/55">{b.packages[0]?.name || b.name}</p>
-              </div>
-              <p className="font-mono-num text-lg font-semibold text-green">
-                {formatNaira(price, { compact: true })}
-              </p>
-            </button>
-          );
-        })}
-      </div>
+      <Select
+        label="Exam body"
+        name="exam"
+        value={billerCode}
+        onChange={(e) => setBillerCode(e.target.value)}
+        hint={biller ? `${biller.packages[0]?.name || biller.name} · result-checker pin` : "Choose an exam body"}
+      >
+        {billers.map((b) => (
+          <option key={b.code} value={b.code}>
+            {b.code} · {b.packages[0]?.name || b.name} ·{" "}
+            {formatNaira(b.packages[0]?.amount || 0)}
+          </option>
+        ))}
+      </Select>
 
       {error && !open && (
         <p className="text-sm text-danger" role="alert">

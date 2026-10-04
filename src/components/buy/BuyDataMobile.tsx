@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
 import { Sheet } from "@/components/ui/Sheet";
 import { PinPad } from "@/components/buy/PinPad";
 import { StatusTrail } from "@/components/buy/StatusTrail";
@@ -60,6 +61,16 @@ export function BuyDataFormBody({
   s: BuyDataState;
   compact?: boolean;
 }) {
+  // Drop selections that fall outside the current filter (e.g. plan from
+  // another network after retyping the number). Render-time adjust keeps
+  // the hook state — and therefore submit — always consistent.
+  const visible = s.filtered.some((p) => p.id === s.selected?.id)
+    ? s.selected
+    : null;
+  if (s.selected && !visible) {
+    s.setSelected(null);
+  }
+
   return (
     <form
       className="space-y-5"
@@ -126,41 +137,27 @@ export function BuyDataFormBody({
         ))}
       </div>
 
-      <div className={cn("grid gap-2", !compact && "sm:grid-cols-2 xl:grid-cols-3")}>
-        {s.filtered.map((p) => {
-          const active = s.selected?.id === p.id;
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => s.setSelected(p)}
-              className={cn(
-                "edge-card flex items-center justify-between rounded-lg border bg-paper px-3 py-3 text-left",
-                active ? "border-green ring-2 ring-green/20" : "border-line"
-              )}
-              style={{
-                borderLeftWidth: 4,
-                borderLeftColor: NETWORK_COLORS[p.networkCode],
-              }}
-            >
-              <div>
-                <p className="font-semibold">{p.name}</p>
-                <p className="font-mono-num text-[11px] text-ink/50">
-                  {p.type} · {p.validityDays}D
-                </p>
-              </div>
-              <p className="font-mono-num text-base font-semibold text-green">
-                {formatNaira(p.retailPrice, { compact: true })}
-              </p>
-            </button>
-          );
-        })}
-        {s.filtered.length === 0 && (
-          <p className="col-span-full text-sm text-ink/50">
-            No plans for this filter. Try another network.
-          </p>
-        )}
-      </div>
+      <Select
+        label={`Plan · ${s.filtered.length} available`}
+        name="plan"
+        value={visible?.id || ""}
+        onChange={(e) => {
+          const p = s.filtered.find((x) => x.id === e.target.value) || null;
+          s.setSelected(p);
+        }}
+        hint={
+          visible
+            ? `${visible.type} · ${visible.validityDays} days validity`
+            : "Choose a plan to see the price"
+        }
+      >
+        <option value="">Select a plan…</option>
+        {s.filtered.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name} · {p.validityDays}D · {formatNaira(p.retailPrice)}
+          </option>
+        ))}
+      </Select>
 
       {s.error && !s.open && (
         <p className="text-sm text-danger" role="alert">
@@ -183,12 +180,12 @@ export function BuyDataFormBody({
           type="submit"
           fullWidth
           size="lg"
-          disabled={!s.selected || !s.local}
+          disabled={!visible || !s.local}
         >
           Continue
-          {s.selected && (
+          {visible && (
             <span className="font-mono-num">
-              {formatNaira(s.selected.retailPrice, { compact: true })}
+              {formatNaira(visible.retailPrice, { compact: true })}
             </span>
           )}
         </Button>

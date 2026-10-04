@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Responsive";
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
@@ -201,31 +202,19 @@ export default function CableService() {
         </div>
       )}
 
-      <div>
-        <p className="font-mono-num mb-2 text-[11px] uppercase tracking-[0.14em] text-ink/70">
-          Package
-        </p>
-        <div className="grid gap-2">
-          {(biller?.packages || []).map((p) => (
-            <button
-              key={p.code}
-              type="button"
-              onClick={() => setPackageCode(p.code)}
-              className={cn(
-                "flex items-center justify-between rounded-lg border px-3 py-3 text-left",
-                packageCode === p.code
-                  ? "border-green ring-2 ring-green/20"
-                  : "border-line"
-              )}
-            >
-              <span className="font-semibold">{p.name}</span>
-              <span className="font-mono-num text-green">
-                {formatNaira(p.amount, { compact: true })}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <Select
+        label={`Package · ${biller?.name || ""}`}
+        name="package"
+        value={packageCode}
+        onChange={(e) => setPackageCode(e.target.value)}
+        hint={pkg ? `${formatNaira(pkg.amount)} charged on confirm` : "Select a package"}
+      >
+        {(biller?.packages || []).map((p) => (
+          <option key={p.code} value={p.code}>
+            {p.name} · {formatNaira(p.amount)}
+          </option>
+        ))}
+      </Select>
 
       {error && !open && (
         <p className="text-sm text-danger" role="alert">

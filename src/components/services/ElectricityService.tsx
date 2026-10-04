@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Responsive";
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
@@ -13,7 +14,6 @@ import { Card } from "@/components/ui/Card";
 import { TokenReceipt } from "@/components/buy/TokenReceipt";
 import { formatNaira } from "@/lib/money";
 import { SkeletonPage } from "@/components/ui/Skeleton";
-import { cn } from "@/lib/cn";
 import { useBlockingLoader } from "@/components/ui/BlockingLoader";
 
 type Biller = { id: string; code: string; name: string };
@@ -151,31 +151,22 @@ export default function ElectricityService() {
         else validateMeter();
       }}
     >
-      <div>
-        <p className="font-mono-num mb-2 text-[11px] uppercase tracking-[0.14em] text-ink/70">
-          DisCo
-        </p>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {billers.map((b) => (
-            <button
-              key={b.code}
-              type="button"
-              onClick={() => {
-                setDisco(b.code);
-                setCustomerName(null);
-              }}
-              className={cn(
-                "font-mono-num rounded-lg border px-2 py-2.5 text-xs font-semibold",
-                disco === b.code
-                  ? "border-green bg-green text-white"
-                  : "border-line hover:border-green"
-              )}
-            >
-              {b.code}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Select
+        label={`DisCo · ${billers.length} available`}
+        name="disco"
+        value={disco}
+        onChange={(e) => {
+          setDisco(e.target.value);
+          setCustomerName(null);
+        }}
+        hint={customerName ? `Validated · ${customerName}` : "Choose your distribution company"}
+      >
+        {billers.map((b) => (
+          <option key={b.code} value={b.code}>
+            {b.name}
+          </option>
+        ))}
+      </Select>
 
       <Input
         label="Meter number (11 digits)"
