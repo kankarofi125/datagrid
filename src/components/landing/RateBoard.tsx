@@ -32,6 +32,7 @@ export function RateBoard({ lockedNetwork }: { lockedNetwork?: string }) {
   // lockedNetwork is static per page — initial state only, no sync effect.
   const [network, setNetwork] = useState<string>(lockedNetwork || "ALL");
   const [category, setCategory] = useState<string>("ALL");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,6 +57,10 @@ export function RateBoard({ lockedNetwork }: { lockedNetwork?: string }) {
     if (category !== "ALL") list = list.filter((p) => p.type === category);
     return list;
   }, [plans, network, category]);
+
+  // Derived, never synced: falls back to the first option when the filter moves.
+  const selected =
+    filtered.find((p) => p.id === selectedId) ?? filtered[0] ?? null;
 
   return (
     <div className="surface overflow-hidden">
@@ -105,63 +110,82 @@ export function RateBoard({ lockedNetwork }: { lockedNetwork?: string }) {
         ))}
       </div>
 
-      <p className="font-mono-num px-4 pt-2 text-[10px] tracking-wide text-ink/45">
-        {loading
-          ? "Loading live rates…"
-          : `${filtered.length} plan${filtered.length === 1 ? "" : "s"}${
-              network !== "ALL" ? ` · ${network}` : ""
-            }${category !== "ALL" ? ` · ${category}` : ""}`}
-      </p>
+      <div className="space-y-3 p-4">
+        <div>
+          <label
+            htmlFor="rate-plan-select"
+            className="font-mono-num mb-1.5 block text-[10px] tracking-widest text-ink/45"
+          >
+            {loading
+              ? "Loading live rates…"
+              : `${filtered.length} plan${filtered.length === 1 ? "" : "s"}${
+                  network !== "ALL" ? ` · ${network}` : ""
+                }${category !== "ALL" ? ` · ${category}` : ""} — pick one`}
+          </label>
+          {loading ? (
+            <div className="h-12 animate-pulse rounded-xl border border-line bg-ink/[0.03]" />
+          ) : (
+            <div className="relative">
+              <select
+                id="rate-plan-select"
+                value={selected?.id ?? ""}
+                onChange={(e) => setSelectedId(e.target.value)}
+                disabled={filtered.length === 0}
+                className="font-mono-num min-h-12 w-full appearance-none rounded-xl border border-line bg-paper py-3 pl-3 pr-10 text-sm font-semibold outline-none transition focus:border-green disabled:opacity-50"
+              >
+                {filtered.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {network === "ALL" ? `${p.networkName} · ` : ""}
+                    {p.name} · {p.validityDays}D ·{" "}
+                    {formatNaira(p.retailPrice)}
+                  </option>
+                ))}
+              </select>
+              <span
+                aria-hidden
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink/50"
+              >
+                ▾
+              </span>
+            </div>
+          )}
+        </div>
 
-      <div className="grid gap-2 p-4 sm:grid-cols-2">
-        {loading &&
-          Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-[68px] animate-pulse rounded-lg border border-line bg-ink/[0.03]"
-            />
-          ))}
-        {!loading &&
-          filtered.map((p) => (
-            <Link
-              key={p.id}
-              href={`/services?service=data&planId=${p.id}`}
-              aria-label={`Buy ${p.name} for ${formatNaira(p.retailPrice)}`}
-              className="edge-card group flex items-center justify-between gap-2 rounded-lg border border-line bg-paper px-3 py-3 text-left transition hover:border-green/50"
-              style={{
-                borderLeftWidth: 4,
-                borderLeftColor: p.networkColor || undefined,
-              }}
-            >
-              <div className="min-w-0">
-                <p className="truncate font-semibold">{p.name}</p>
-                <p className="font-mono-num mt-0.5 flex items-center gap-1.5 text-[11px] text-ink/50">
-                  <span
-                    className={cn(
-                      "rounded px-1.5 py-px text-[10px] font-semibold tracking-wide",
-                      TYPE_STYLES[p.type] || "bg-ink/[0.06] text-ink/70"
-                    )}
-                  >
-                    {p.type}
-                  </span>
-                  {p.validityDays}D
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <p className="font-mono-num text-base font-semibold text-green tabular-nums">
-                  {formatNaira(p.retailPrice, { compact: true })}
-                </p>
+        {selected && (
+          <div
+            className="edge-card flex items-center justify-between gap-3 rounded-xl border border-line bg-paper px-4 py-3"
+            style={{
+              borderLeftWidth: 4,
+              borderLeftColor: selected.networkColor || undefined,
+            }}
+          >
+            <div className="min-w-0">
+              <p className="font-mono-num flex items-center gap-1.5 text-[11px] text-ink/50">
                 <span
-                  aria-hidden
-                  className="text-green transition-transform group-hover:translate-x-0.5"
+                  className={cn(
+                    "rounded px-1.5 py-px text-[10px] font-semibold tracking-wide",
+                    TYPE_STYLES[selected.type] || "bg-ink/[0.06] text-ink/70"
+                  )}
                 >
-                  →
+                  {selected.type}
                 </span>
-              </div>
+                {selected.validityDays} days validity
+              </p>
+              <p className="font-mono-num mt-1 text-2xl font-semibold text-green tabular-nums">
+                {formatNaira(selected.retailPrice)}
+              </p>
+            </div>
+            <Link
+              href={`/services?service=data&planId=${selected.id}`}
+              className="font-mono-num shrink-0 rounded-xl bg-green px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#007a49]"
+            >
+              Buy
             </Link>
-          ))}
+          </div>
+        )}
+
         {!loading && filtered.length === 0 && (
-          <p className="col-span-full py-4 text-center text-sm text-ink/50">
+          <p className="py-2 text-center text-sm text-ink/50">
             No plans for this filter. Try another network or type.
           </p>
         )}
