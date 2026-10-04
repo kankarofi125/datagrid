@@ -64,6 +64,8 @@ enum PlanType {
   SME
   GIFTING
   RETAIL
+  CG
+  SME2
 }
 
 enum ProviderRole {

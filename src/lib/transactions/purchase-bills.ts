@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { makeIdempotencyKey, makeOrderRef } from "@/lib/order-ref";
+import { toLocalPhone } from "@/lib/phone";
 import { debitWallet, refundToWallet, WalletError } from "@/lib/wallet/service";
 import { vtuRouter } from "@/lib/vtu/router";
 import { verifyPin } from "@/lib/auth/pin";
@@ -18,8 +19,7 @@ function step(status: string, note?: string): TrailStep {
   return { at: new Date().toISOString(), status, note };
 }
 
-async function assertUserPin(userId: string, pin: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+async function assertUserPin(userId: string, pin: string) {  const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return { ok: false as const, error: "User not found", status: 404 };
   if (!user.isActive) {
     return { ok: false as const, error: "Account suspended", status: 403 };
@@ -60,6 +60,16 @@ async function assertUserPin(userId: string, pin: string) {
   }
   await clearLoginFailures("tx-pin", pinLockKey);
   return { ok: true as const, user };
+}
+
+/** Recipient phone for provider receipts (VTpass mandates `phone` on buys). */
+async function contactPhone(userId: string): Promise<string | undefined> {
+  const me = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { phone: true, phoneLocal: true },
+  });
+  if (!me) return undefined;
+  return me.phoneLocal || toLocalPhone(me.phone) || undefined;
 }
 
 function serializeTx(t: {
@@ -131,7 +141,7 @@ async function runWalletPurchase(opts: {
   };
   execute: (
     idempotencyKey: string
-  ) => Promise<{ success: boolean; providerCode: string; providerRef?: string; token?: string; pin?: string; error?: string; customerName?: string }>;
+  ) => Promise<{ success: boolean; providerCode: string; providerRef?: string; token?: string; pin?: string; error?: string; customerName?: string; costNgn?: number }>;
 }) {
   const pinCheck = await assertUserPin(opts.userId, opts.pin);
   if (!pinCheck.ok) return pinCheck;
@@ -249,7 +259,7 @@ async function runWalletPurchase(opts: {
       customerName: result.customerName || opts.fields.customerName,
       deliveredAt: new Date(),
       statusTrail: trail(steps),
-      cost: amount * 0.95,
+      cost: result.costNgn ?? amount * 0.95,
     },
   });
 
@@ -363,12 +373,13 @@ export async function purchaseElectricity(input: {
       billerId: biller.id,
       meta: { disco: biller.code, discoName: biller.name },
     },
-    execute: (idem) =>
+    execute: async (idem) =>
       vtuRouter.buyToken({
         disco: biller.code,
         meter,
         amount: input.amount,
         idempotencyKey: idem,
+        phone: await contactPhone(input.userId),
       }),
   });
 }
@@ -411,13 +422,14 @@ export async function purchaseCable(input: {
       billerId: biller.id,
       meta: { biller: biller.code, packageName: pkg.name },
     },
-    execute: (idem) =>
+    execute: async (idem) =>
       vtuRouter.buyCable({
         biller: biller.code,
         smartCard: card,
         packageCode: pkg.code,
         amount,
         idempotencyKey: idem,
+        phone: await contactPhone(input.userId),
       }),
   });
 }
@@ -451,12 +463,13 @@ export async function purchaseExamPin(input: {
       billerId: biller.id,
       meta: { biller: biller.code, packageName: pkg.name, quantity: qty },
     },
-    execute: (idem) =>
+    execute: async (idem) =>
       vtuRouter.buyExamPin({
         biller: biller.code,
         quantity: qty,
         amount,
         idempotencyKey: idem,
+        phone: await contactPhone(input.userId),
       }),
   });
 }

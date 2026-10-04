@@ -1,4 +1,4 @@
-import { PrismaClient, PlanType, BillerCategory, ProviderRole, UserRole } from "@prisma/client";
+import { PrismaClient, BillerCategory, ProviderRole, UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { DEFAULT_PREFIXES } from "../src/lib/phone";
 
@@ -36,28 +36,11 @@ async function main() {
     }
   }
 
-  // Plans
-  const plans: {
-    network: string;
-    type: PlanType;
-    name: string;
-    sizeMb: number;
-    validityDays: number;
-    retailPrice: number;
-    resellerPrice: number;
-  }[] = [
-    { network: "MTN", type: "SME", name: "1GB SME", sizeMb: 1024, validityDays: 30, retailPrice: 400, resellerPrice: 360 },
-    { network: "MTN", type: "SME", name: "2GB SME", sizeMb: 2048, validityDays: 30, retailPrice: 750, resellerPrice: 690 },
-    { network: "MTN", type: "SME", name: "5GB SME", sizeMb: 5120, validityDays: 30, retailPrice: 1800, resellerPrice: 1680 },
-    { network: "MTN", type: "GIFTING", name: "1.5GB Gifting", sizeMb: 1536, validityDays: 30, retailPrice: 550, resellerPrice: 510 },
-    { network: "MTN", type: "RETAIL", name: "1GB Retail", sizeMb: 1024, validityDays: 30, retailPrice: 500, resellerPrice: 470 },
-    { network: "GLO", type: "GIFTING", name: "1GB Gifting", sizeMb: 1024, validityDays: 14, retailPrice: 450, resellerPrice: 410 },
-    { network: "GLO", type: "SME", name: "2GB SME", sizeMb: 2048, validityDays: 30, retailPrice: 900, resellerPrice: 840 },
-    { network: "AIRTEL", type: "RETAIL", name: "1.5GB Retail", sizeMb: 1536, validityDays: 30, retailPrice: 500, resellerPrice: 460 },
-    { network: "AIRTEL", type: "SME", name: "3GB SME", sizeMb: 3072, validityDays: 30, retailPrice: 1200, resellerPrice: 1120 },
-    { network: "NINEMOBILE", type: "SME", name: "1GB SME", sizeMb: 1024, validityDays: 30, retailPrice: 400, resellerPrice: 365 },
-    { network: "NINEMOBILE", type: "GIFTING", name: "2GB Gifting", sizeMb: 2048, validityDays: 30, retailPrice: 850, resellerPrice: 790 },
-  ];
+  // Plans — canonical catalog lives in ./data-plans.ts (Alrahuz lineup).
+  // Fresh installs wipe + recreate; live DBs use `npx tsx prisma/sync-plans.ts`
+  // (match-update, no deletes) instead of this block.
+  const { DATA_PLANS } = await import("./data-plans");
+  const plans = DATA_PLANS;
 
   await prisma.plan.deleteMany();
   for (const [i, p] of plans.entries()) {
@@ -70,7 +53,7 @@ async function main() {
         validityDays: p.validityDays,
         retailPrice: p.retailPrice,
         resellerPrice: p.resellerPrice,
-        providerCode: `${p.network}_${p.sizeMb}_${p.type}`,
+        providerCode: `ALR-${p.alrId}`,
         sortOrder: i,
       },
     });
@@ -150,37 +133,17 @@ async function main() {
   }
 
   // Providers
-  // Lower priority number = tried first. Without live keys adapters use sim internally.
+  // Single-stack fulfillment: ROUTER_DATA (vendored engine) is the only
+  // live provider. Legacy VTPASS / CLUBKONNECT / SIMULATOR rows are left
+  // untouched here — deactivate them in the DB (history stays intact).
   await prisma.provider.upsert({
-    where: { code: "VTPASS" },
-    update: { isActive: true, priority: 10, role: ProviderRole.PRIMARY },
+    where: { code: "ROUTER_DATA" },
+    update: { isActive: true, priority: 5, role: ProviderRole.PRIMARY },
     create: {
-      code: "VTPASS",
-      name: "VTpass",
+      code: "ROUTER_DATA",
+      name: "DataGrid Price Engine",
       role: ProviderRole.PRIMARY,
-      priority: 10,
-      isActive: true,
-    },
-  });
-  await prisma.provider.upsert({
-    where: { code: "CLUBKONNECT" },
-    update: { isActive: true, priority: 20, role: ProviderRole.FALLBACK },
-    create: {
-      code: "CLUBKONNECT",
-      name: "ClubKonnect",
-      role: ProviderRole.FALLBACK,
-      priority: 20,
-      isActive: true,
-    },
-  });
-  await prisma.provider.upsert({
-    where: { code: "SIMULATOR" },
-    update: { isActive: true, priority: 100, role: ProviderRole.FALLBACK },
-    create: {
-      code: "SIMULATOR",
-      name: "DataGrid Simulator",
-      role: ProviderRole.FALLBACK,
-      priority: 100,
+      priority: 5,
       isActive: true,
     },
   });

@@ -109,7 +109,7 @@ export function BuyDataFormBody({
       )}
 
       <div className="flex gap-2 overflow-x-auto">
-        {(["ALL", "SME", "GIFTING", "RETAIL"] as TypeFilter[]).map((t) => (
+        {(["ALL", "SME", "CG", "SME2", "GIFTING"] as TypeFilter[]).map((t) => (
           <button
             key={t}
             type="button"

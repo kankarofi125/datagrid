@@ -97,7 +97,7 @@ export async function POST(req: Request) {
   }
 
   if (action === "simulate_failure") {
-    const provider = await prisma.provider.findUnique({ where: { code: "SIMULATOR" } });
+    const provider = await prisma.provider.findUnique({ where: { code: "ROUTER_DATA" } });
     if (provider) {
       await prisma.providerLog.create({
         data: {

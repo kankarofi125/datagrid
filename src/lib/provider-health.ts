@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db";
-import { SimulatorProvider } from "@/lib/vtu/simulator";
 import { publishRealtime, adminChannel, publicChannel } from "@/lib/realtime";
 import { invalidate, CacheTags } from "@/lib/cache";
 
@@ -11,8 +10,9 @@ export type ProviderHealthResult = {
 };
 
 /**
- * Probe all active VTU providers and record health + logs.
- * Simulator always runs; others mark lastHealth with lightweight status.
+ * Probe the fulfillment stack and record health + logs.
+ * ROUTER_DATA reports whether any engine wholesaler is credentialed;
+ * per-wholesaler outcomes land in provider logs on every purchase.
  */
 export async function runProviderHealthChecks(): Promise<{
   checked: number;
@@ -31,26 +31,16 @@ export async function runProviderHealthChecks(): Promise<{
     let error: string | undefined;
 
     try {
-      if (p.code === "SIMULATOR") {
-        const status = await SimulatorProvider.status();
+      if (p.code === "ROUTER_DATA") {
+        const { RouterDataProvider } = await import("@/lib/vtu/router-data");
+        const status = await RouterDataProvider.status();
         ok = Boolean(status.ok);
-        if (!ok) error = "simulator unhealthy";
+        if (!ok) error = "engine has no provider credentials";
       } else {
-        // Lightweight probe — mark reachable if config exists
-        // Real VTU would call provider status API here
-        ok = true;
-        if (p.code === "VTPASS" && !process.env.VTPASS_API_KEY && process.env.PAYMENT_MODE !== "simulate") {
-          ok = false;
-          error = "missing VTPASS_API_KEY";
-        }
-        if (
-          p.code === "CLUBKONNECT" &&
-          !process.env.CLUBKONNECT_API_KEY &&
-          process.env.PAYMENT_MODE !== "simulate"
-        ) {
-          ok = false;
-          error = "missing CLUBKONNECT keys";
-        }
+        // Retired legacy code (VTpass/ClubKonnect/Simulator rows kept for
+        // history) — never probed, never healed.
+        ok = false;
+        error = "retired provider code";
       }
     } catch (e) {
       ok = false;
@@ -82,7 +72,7 @@ export async function runProviderHealthChecks(): Promise<{
     });
 
     // Soft network status if all probes fail for primary
-    if (p.code === "SIMULATOR" || p.role === "PRIMARY") {
+    if (p.code === "ROUTER_DATA" || p.role === "PRIMARY") {
       // no-op on networks unless we want global signal
     }
 

@@ -30,7 +30,7 @@ export type Beneficiary = {
   networkCode: string | null;
 };
 
-export type TypeFilter = "ALL" | "SME" | "GIFTING" | "RETAIL";
+export type TypeFilter = "ALL" | "SME" | "CG" | "SME2" | "GIFTING";
 
 export function useBuyData(initial?: {
   phone?: string;

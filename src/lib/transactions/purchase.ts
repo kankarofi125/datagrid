@@ -109,6 +109,9 @@ export async function purchaseWithWallet(input: PurchaseInput) {
   let planId: string | null = null;
   let planName: string | undefined;
   let providerPlanCode = "DEMO";
+  let planSizeMb = 0;
+  let planValidityDays = 0;
+  let planType: string | undefined;
 
   if (input.service === "DATA") {
     const plan = input.planId
@@ -129,6 +132,9 @@ export async function purchaseWithWallet(input: PurchaseInput) {
     planId = plan.id;
     planName = plan.name;
     providerPlanCode = plan.providerCode || plan.id;
+    planSizeMb = plan.sizeMb;
+    planValidityDays = plan.validityDays;
+    planType = String(plan.type);
   } else {
     if (!amount || amount < 50 || amount > 100_000) {
       return {
@@ -214,6 +220,10 @@ export async function purchaseWithWallet(input: PurchaseInput) {
           planCode: providerPlanCode,
           amount,
           idempotencyKey,
+          sizeMb: planSizeMb,
+          validityDays: planValidityDays,
+          planType,
+          planName,
         })
       : await vtuRouter.buyAirtime({
           network: String(networkCode || "MTN"),
@@ -265,7 +275,8 @@ export async function purchaseWithWallet(input: PurchaseInput) {
       token: vtuResult.token,
       deliveredAt: new Date(),
       statusTrail: trail(steps),
-      cost: amount * 0.92, // rough provider cost for analytics
+      // Actual engine cost when known, else the historical rough estimate.
+      cost: vtuResult.costNgn ?? amount * 0.92,
     },
   });
 

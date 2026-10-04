@@ -1,16 +1,20 @@
-import { SimulatorProvider } from "./simulator";
-import { VtpassProvider } from "./vtpass";
-import { ClubKonnectProvider } from "./clubkonnect";
+import { RouterDataProvider } from "./router-data";
 import { prisma } from "@/lib/db";
 import type { VTUProvider, VTUResult } from "./types";
 
+/**
+ * Single-stack fulfillment: every action goes through ROUTER_DATA
+ * (vendored price/failover engine). Failover across wholesalers happens
+ * inside the engine — this chain only logs the outcome per action.
+ *
+ * Unknown Provider rows (legacy codes) are ignored here; deactivate them
+ * in the DB to keep the admin view clean. History (transactions, logs)
+ * still resolves through their stored providerId.
+ */
 const registry: Record<string, VTUProvider> = {
-  SIMULATOR: SimulatorProvider,
-  VTPASS: VtpassProvider,
-  CLUBKONNECT: ClubKonnectProvider,
+  ROUTER_DATA: RouterDataProvider,
 };
 
-/** Ordered active providers from DB; always keep simulator as last hop */
 export async function resolveProviderChain(): Promise<VTUProvider[]> {
   try {
     const rows = await prisma.provider.findMany({
@@ -20,14 +24,12 @@ export async function resolveProviderChain(): Promise<VTUProvider[]> {
     const chain: VTUProvider[] = [];
     for (const r of rows) {
       const p = registry[r.code];
-      if (p) chain.push(p);
+      if (p && !chain.some((c) => c.code === p.code)) chain.push(p);
     }
-    if (!chain.some((p) => p.code === "SIMULATOR")) {
-      chain.push(SimulatorProvider);
-    }
-    return chain.length ? chain : [SimulatorProvider];
+    if (!chain.length) chain.push(RouterDataProvider);
+    return chain;
   } catch {
-    return [VtpassProvider, ClubKonnectProvider, SimulatorProvider];
+    return [RouterDataProvider];
   }
 }
 
@@ -36,22 +38,29 @@ async function withFailover(
   logAction: string
 ): Promise<VTUResult & { providerCode: string }> {
   const providers = await resolveProviderChain();
-  let lastError = "All providers failed";
+  let lastError = "Provider failed";
 
   for (const p of providers) {
     const t0 = Date.now();
     try {
       const result = await action(p);
+      // Provider doesn't serve this action — move on without logging noise.
+      if (result.skipped) continue;
       await logProvider(p.code, logAction, result.success, Date.now() - t0, result.error);
       if (result.success) return { ...result, providerCode: p.code };
       lastError = result.error || lastError;
+      // Ambiguous outcome (provider may have delivered) — stop the chain.
+      // Retrying elsewhere risks a double purchase.
+      if (result.retryable === false) {
+        return { success: false, error: lastError, providerCode: p.code };
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Provider error";
       await logProvider(p.code, logAction, false, Date.now() - t0, msg);
       lastError = msg;
     }
   }
-  return { success: false, error: lastError, providerCode: "NONE" };
+  return { success: false, error: lastError, providerCode: providers[0]?.code ?? "NONE" };
 }
 
 async function logProvider(
