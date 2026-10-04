@@ -6,7 +6,7 @@ import { createPublicMetadata } from "@/lib/site";
 export const metadata = createPublicMetadata({
   title: "Data Prices in Nigeria — MTN, Airtel, Glo & 9mobile",
   description:
-    "Compare current MTN, Airtel, Glo and 9mobile data plans on DataGrid, including SME, gifting and retail options with instant delivery.",
+    "Compare current MTN, Airtel, Glo and 9mobile data plans on DataGrid, including SME, Corporate Gifting, SME2 and Gifting options with instant delivery.",
   path: "/rates",
   keywords: [
     "data prices Nigeria",
