@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
+import { Select } from "@/components/ui/Select";
 
 type PlanRow = {
   id: string;
@@ -111,45 +112,32 @@ export function RateBoard({ lockedNetwork }: { lockedNetwork?: string }) {
       </div>
 
       <div className="space-y-3 p-4">
-        <div>
-          <label
-            htmlFor="rate-plan-select"
-            className="font-mono-num mb-1.5 block text-[10px] tracking-widest text-ink/45"
-          >
-            {loading
+        <Select
+          label="Plan"
+          name="rate-plan"
+          value={selected?.id ?? ""}
+          onChange={(e) => setSelectedId(e.target.value)}
+          disabled={loading || filtered.length === 0}
+          hint={
+            loading
               ? "Loading live rates…"
               : `${filtered.length} plan${filtered.length === 1 ? "" : "s"}${
                   network !== "ALL" ? ` · ${network}` : ""
-                }${category !== "ALL" ? ` · ${category}` : ""} — pick one`}
-          </label>
-          {loading ? (
-            <div className="h-12 animate-pulse rounded-xl border border-line bg-ink/[0.03]" />
-          ) : (
-            <div className="relative">
-              <select
-                id="rate-plan-select"
-                value={selected?.id ?? ""}
-                onChange={(e) => setSelectedId(e.target.value)}
-                disabled={filtered.length === 0}
-                className="font-mono-num min-h-12 w-full appearance-none rounded-xl border border-line bg-paper py-3 pl-3 pr-10 text-sm font-semibold outline-none transition focus:border-green disabled:opacity-50"
-              >
-                {filtered.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {network === "ALL" ? `${p.networkName} · ` : ""}
-                    {p.name} · {p.validityDays}D ·{" "}
-                    {formatNaira(p.retailPrice)}
-                  </option>
-                ))}
-              </select>
-              <span
-                aria-hidden
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink/50"
-              >
-                ▾
-              </span>
-            </div>
+                }${category !== "ALL" ? ` · ${category}` : ""}`
+          }
+        >
+          {!loading && (
+            <option value="">
+              {filtered.length ? "Select a plan…" : "No plans for this filter"}
+            </option>
           )}
-        </div>
+          {filtered.map((p) => (
+            <option key={p.id} value={p.id}>
+              {network === "ALL" ? `${p.networkName} · ` : ""}
+              {p.name} · {p.validityDays}D · {formatNaira(p.retailPrice)}
+            </option>
+          ))}
+        </Select>
 
         {selected && (
           <div
