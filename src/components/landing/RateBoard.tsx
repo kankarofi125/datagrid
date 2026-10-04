@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
@@ -13,9 +14,11 @@ type PlanRow = {
   retailPrice: number;
   networkCode: string;
   networkName: string;
+  networkColor: string;
 };
 
 const NETWORKS = ["ALL", "MTN", "GLO", "AIRTEL", "NINEMOBILE"] as const;
+const CATEGORIES = ["ALL", "SME", "CG", "SME2", "GIFTING"] as const;
 
 const TYPE_STYLES: Record<string, string> = {
   SME: "bg-green/10 text-green",
@@ -24,9 +27,11 @@ const TYPE_STYLES: Record<string, string> = {
   GIFTING: "bg-ink/[0.06] text-ink/70",
 };
 
-export function RateBoard() {
+export function RateBoard({ lockedNetwork }: { lockedNetwork?: string }) {
   const [plans, setPlans] = useState<PlanRow[]>([]);
-  const [network, setNetwork] = useState<(typeof NETWORKS)[number]>("ALL");
+  // lockedNetwork is static per page — initial state only, no sync effect.
+  const [network, setNetwork] = useState<string>(lockedNetwork || "ALL");
+  const [category, setCategory] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,13 +50,12 @@ export function RateBoard() {
     };
   }, []);
 
-  const filtered = useMemo(
-    () =>
-      network === "ALL"
-        ? plans
-        : plans.filter((p) => p.networkCode === network),
-    [plans, network]
-  );
+  const filtered = useMemo(() => {
+    let list = plans;
+    if (network !== "ALL") list = list.filter((p) => p.networkCode === network);
+    if (category !== "ALL") list = list.filter((p) => p.type === category);
+    return list;
+  }, [plans, network, category]);
 
   return (
     <div className="surface overflow-hidden">
@@ -61,82 +65,106 @@ export function RateBoard() {
           LIVE PRICING
         </span>
       </div>
-      <div className="flex gap-2 overflow-x-auto border-b border-line px-4 py-3">
-        {NETWORKS.map((n) => (
+
+      {!lockedNetwork && (
+        <div className="flex gap-2 overflow-x-auto border-b border-line px-4 py-3">
+          {NETWORKS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setNetwork(n)}
+              className={cn(
+                "font-mono-num shrink-0 rounded border px-2 py-1 text-[10px] tracking-wide transition",
+                network === n
+                  ? "border-green bg-green text-white"
+                  : "border-line text-ink/60 hover:border-green/40"
+              )}
+            >
+              {n === "NINEMOBILE" ? "9MOBILE" : n}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2 overflow-x-auto px-4 pt-3">
+        {CATEGORIES.map((c) => (
           <button
-            key={n}
+            key={c}
             type="button"
-            onClick={() => setNetwork(n)}
+            onClick={() => setCategory(c)}
+            aria-pressed={category === c}
             className={cn(
-              "font-mono-num shrink-0 rounded border px-2 py-1 text-[10px] tracking-wide transition",
-              network === n
-                ? "border-green bg-green text-white"
+              "font-mono-num shrink-0 rounded-full border px-3 py-1 text-[10px] tracking-wide transition",
+              category === c
+                ? "border-green-deep bg-green-deep text-white"
                 : "border-line text-ink/60 hover:border-green/40"
             )}
           >
-            {n === "NINEMOBILE" ? "9MOBILE" : n}
+            {c === "ALL" ? "All types" : c}
           </button>
         ))}
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[520px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-line bg-ink/[0.03]">
-              {["NETWORK", "PLAN", "TYPE", "RETAIL"].map((h) => (
-                <th
-                  key={h}
-                  className="font-mono-num px-4 py-2 text-[10px] tracking-[0.14em] text-ink/50"
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((p) => (
-              <tr key={p.id} className="border-b border-line last:border-0">
-                <td className="px-4 py-3 font-semibold">{p.networkName}</td>
-                <td className="font-mono-num px-4 py-3">
-                  {p.name}{" "}
-                  <span className="text-ink/45">· {p.validityDays}D</span>
-                </td>
-                <td className="px-4 py-3">
+
+      <p className="font-mono-num px-4 pt-2 text-[10px] tracking-wide text-ink/45">
+        {loading
+          ? "Loading live rates…"
+          : `${filtered.length} plan${filtered.length === 1 ? "" : "s"}${
+              network !== "ALL" ? ` · ${network}` : ""
+            }${category !== "ALL" ? ` · ${category}` : ""}`}
+      </p>
+
+      <div className="grid gap-2 p-4 sm:grid-cols-2">
+        {loading &&
+          Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-[68px] animate-pulse rounded-lg border border-line bg-ink/[0.03]"
+            />
+          ))}
+        {!loading &&
+          filtered.map((p) => (
+            <Link
+              key={p.id}
+              href={`/services?service=data&planId=${p.id}`}
+              aria-label={`Buy ${p.name} for ${formatNaira(p.retailPrice)}`}
+              className="edge-card group flex items-center justify-between gap-2 rounded-lg border border-line bg-paper px-3 py-3 text-left transition hover:border-green/50"
+              style={{
+                borderLeftWidth: 4,
+                borderLeftColor: p.networkColor || undefined,
+              }}
+            >
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{p.name}</p>
+                <p className="font-mono-num mt-0.5 flex items-center gap-1.5 text-[11px] text-ink/50">
                   <span
                     className={cn(
-                      "font-mono-num rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
+                      "rounded px-1.5 py-px text-[10px] font-semibold tracking-wide",
                       TYPE_STYLES[p.type] || "bg-ink/[0.06] text-ink/70"
                     )}
                   >
                     {p.type}
                   </span>
-                </td>
-                <td className="font-mono-num px-4 py-3 text-green">
+                  {p.validityDays}D
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <p className="font-mono-num text-base font-semibold text-green tabular-nums">
                   {formatNaira(p.retailPrice, { compact: true })}
-                </td>
-              </tr>
-            ))}
-            {!loading && filtered.length === 0 && (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="px-4 py-6 text-center text-sm text-ink/50"
+                </p>
+                <span
+                  aria-hidden
+                  className="text-green transition-transform group-hover:translate-x-0.5"
                 >
-                  No plans for this network yet.
-                </td>
-              </tr>
-            )}
-            {loading && (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="font-mono-num px-4 py-6 text-center text-xs tracking-wide text-ink/45"
-                >
-                  Loading live rates…
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  →
+                </span>
+              </div>
+            </Link>
+          ))}
+        {!loading && filtered.length === 0 && (
+          <p className="col-span-full py-4 text-center text-sm text-ink/50">
+            No plans for this filter. Try another network or type.
+          </p>
+        )}
       </div>
     </div>
   );

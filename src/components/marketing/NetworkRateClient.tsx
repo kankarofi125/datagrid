@@ -2,8 +2,16 @@
 
 import Link from "next/link";
 import { HeroEnter, Reveal } from "@/components/motion/Reveal";
+import { RateBoard } from "@/components/landing/RateBoard";
+
+const CODE_ALIASES: Record<string, string> = {
+  "9MOBILE": "NINEMOBILE",
+  ETISALAT: "NINEMOBILE",
+};
 
 export function NetworkRateClient({ network }: { network: string }) {
+  const code =
+    CODE_ALIASES[network.toUpperCase()] || network.toUpperCase();
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 lg:px-8 lg:py-16">
       <HeroEnter delay={0}>
@@ -18,22 +26,13 @@ export function NetworkRateClient({ network }: { network: string }) {
       </HeroEnter>
       <HeroEnter delay={140}>
         <p className="mt-3 text-ink/70">
-          Cheap {network} data reseller rates with wallet checkout and one-tap repeat. Live plans
-          load from the DataGrid catalog.
+          Live {network} plans by type — tap any plan to check out with your
+          wallet.
         </p>
       </HeroEnter>
       <Reveal delay={200}>
-        <div className="surface mt-10 p-6">
-          <p className="font-mono-num text-[10px] tracking-widest text-ink/45">NEXT STEP</p>
-          <p className="mt-2 text-sm text-ink/70">
-            Open the live purchase widget on the home page or sign in to buy with wallet balance.
-          </p>
-          <Link
-            href="/#buy"
-            className="mt-4 inline-block font-mono-num text-sm font-semibold text-green"
-          >
-            BUY NOW →
-          </Link>
+        <div className="mt-8">
+          <RateBoard lockedNetwork={code} />
         </div>
       </Reveal>
     </div>
