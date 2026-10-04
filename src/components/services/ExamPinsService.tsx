@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
+import { Picker } from "@/components/ui/Picker";
 import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Responsive";
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
@@ -109,20 +109,18 @@ export default function ExamPinsService() {
       <p className="text-sm text-ink/65">
         Result-checker pins delivered in-app. Copy and use on the exam body portal.
       </p>
-      <Select
+      <Picker
         label="Exam body"
-        name="exam"
         value={billerCode}
-        onChange={(e) => setBillerCode(e.target.value)}
+        placeholder="Select exam body…"
+        options={billers.map((b) => ({
+          value: b.code,
+          label: `${b.code} · ${b.packages[0]?.name || b.name}`,
+          price: formatNaira(b.packages[0]?.amount || 0),
+        }))}
+        onChange={setBillerCode}
         hint={biller ? `${biller.packages[0]?.name || biller.name} · result-checker pin` : "Choose an exam body"}
-      >
-        {billers.map((b) => (
-          <option key={b.code} value={b.code}>
-            {b.code} · {b.packages[0]?.name || b.name} ·{" "}
-            {formatNaira(b.packages[0]?.amount || 0)}
-          </option>
-        ))}
-      </Select>
+      />
 
       {error && !open && (
         <p className="text-sm text-danger" role="alert">

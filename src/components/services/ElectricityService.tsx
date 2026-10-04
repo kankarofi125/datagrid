@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+import { Picker } from "@/components/ui/Picker";
 import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Responsive";
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
@@ -151,22 +151,17 @@ export default function ElectricityService() {
         else validateMeter();
       }}
     >
-      <Select
+      <Picker
         label={`DisCo · ${billers.length} available`}
-        name="disco"
         value={disco}
-        onChange={(e) => {
-          setDisco(e.target.value);
+        placeholder="Select DisCo…"
+        options={billers.map((b) => ({ value: b.code, label: b.name }))}
+        onChange={(v) => {
+          setDisco(v);
           setCustomerName(null);
         }}
         hint={customerName ? `Validated · ${customerName}` : "Choose your distribution company"}
-      >
-        {billers.map((b) => (
-          <option key={b.code} value={b.code}>
-            {b.name}
-          </option>
-        ))}
-      </Select>
+      />
 
       <Input
         label="Meter number (11 digits)"

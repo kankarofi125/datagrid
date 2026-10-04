@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+import { Picker } from "@/components/ui/Picker";
 import { MobileOnly, DesktopOnly, PageHeader } from "@/components/layout/Responsive";
 import { MotionMobileHeader } from "@/components/motion/PageChrome";
 import { Reveal } from "@/components/motion/Reveal";
@@ -202,19 +202,18 @@ export default function CableService() {
         </div>
       )}
 
-      <Select
+      <Picker
         label={`Package · ${biller?.name || ""}`}
-        name="package"
         value={packageCode}
-        onChange={(e) => setPackageCode(e.target.value)}
+        placeholder="Select a package…"
+        options={(biller?.packages || []).map((p) => ({
+          value: p.code,
+          label: p.name,
+          price: formatNaira(p.amount),
+        }))}
+        onChange={setPackageCode}
         hint={pkg ? `${formatNaira(pkg.amount)} charged on confirm` : "Select a package"}
-      >
-        {(biller?.packages || []).map((p) => (
-          <option key={p.code} value={p.code}>
-            {p.name} · {formatNaira(p.amount)}
-          </option>
-        ))}
-      </Select>
+      />
 
       {error && !open && (
         <p className="text-sm text-danger" role="alert">

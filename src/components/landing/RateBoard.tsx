@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatNaira } from "@/lib/money";
 import { cn } from "@/lib/cn";
-import { Select } from "@/components/ui/Select";
+import { Picker } from "@/components/ui/Picker";
 
 type PlanRow = {
   id: string;
@@ -112,11 +112,17 @@ export function RateBoard({ lockedNetwork }: { lockedNetwork?: string }) {
       </div>
 
       <div className="space-y-3 p-4">
-        <Select
+        <Picker
           label="Plan"
-          name="rate-plan"
           value={selected?.id ?? ""}
-          onChange={(e) => setSelectedId(e.target.value)}
+          placeholder={filtered.length ? "Select a plan…" : "No plans for this filter"}
+          options={filtered.map((p) => ({
+            value: p.id,
+            label: `${network === "ALL" ? `${p.networkName} · ` : ""}${p.name}`,
+            meta: `${p.type} · ${p.validityDays} days validity`,
+            price: formatNaira(p.retailPrice),
+          }))}
+          onChange={setSelectedId}
           disabled={loading || filtered.length === 0}
           hint={
             loading
@@ -125,19 +131,7 @@ export function RateBoard({ lockedNetwork }: { lockedNetwork?: string }) {
                   network !== "ALL" ? ` · ${network}` : ""
                 }${category !== "ALL" ? ` · ${category}` : ""}`
           }
-        >
-          {!loading && (
-            <option value="">
-              {filtered.length ? "Select a plan…" : "No plans for this filter"}
-            </option>
-          )}
-          {filtered.map((p) => (
-            <option key={p.id} value={p.id}>
-              {network === "ALL" ? `${p.networkName} · ` : ""}
-              {p.name} · {p.validityDays}D · {formatNaira(p.retailPrice)}
-            </option>
-          ))}
-        </Select>
+        />
 
         {selected && (
           <div

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
+import { Picker } from "@/components/ui/Picker";
 import { Sheet } from "@/components/ui/Sheet";
 import { PinPad } from "@/components/buy/PinPad";
 import { StatusTrail } from "@/components/buy/StatusTrail";
@@ -137,12 +137,18 @@ export function BuyDataFormBody({
         ))}
       </div>
 
-      <Select
+      <Picker
         label={`Plan · ${s.filtered.length} available`}
-        name="plan"
         value={visible?.id || ""}
-        onChange={(e) => {
-          const p = s.filtered.find((x) => x.id === e.target.value) || null;
+        placeholder="Select a plan…"
+        options={s.filtered.map((p) => ({
+          value: p.id,
+          label: p.name,
+          meta: `${p.type} · ${p.validityDays} days validity`,
+          price: formatNaira(p.retailPrice),
+        }))}
+        onChange={(id) => {
+          const p = s.filtered.find((x) => x.id === id) || null;
           s.setSelected(p);
         }}
         hint={
@@ -150,14 +156,7 @@ export function BuyDataFormBody({
             ? `${visible.type} · ${visible.validityDays} days validity`
             : "Choose a plan to see the price"
         }
-      >
-        <option value="">Select a plan…</option>
-        {s.filtered.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name} · {p.validityDays}D · {formatNaira(p.retailPrice)}
-          </option>
-        ))}
-      </Select>
+      />
 
       {s.error && !s.open && (
         <p className="text-sm text-danger" role="alert">
