@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -201,28 +202,33 @@ export function AuthTextAction({
   children,
   onClick,
   disabled,
+  loading = false,
   tone = "green",
   className,
 }: {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
+  /** Marks the action in flight (spinner + aria-busy). */
+  loading?: boolean;
   tone?: "green" | "muted" | "quiet";
   className?: string;
 }) {
   return (
     <button
       type="button"
-      disabled={disabled}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       onClick={onClick}
       className={cn(
-        "font-mono-num flex min-h-11 w-full items-center justify-center text-center text-xs tracking-wide transition-opacity disabled:opacity-40",
+        "font-mono-num inline-flex min-h-11 w-full items-center justify-center gap-2 text-center text-xs tracking-wide transition-opacity disabled:opacity-40",
         tone === "green" && "text-green",
         tone === "muted" && "text-ink/50",
         tone === "quiet" && "text-ink/40",
         className
       )}
     >
+      {loading && <Spinner className="h-3.5 w-3.5" />}
       {children}
     </button>
   );

@@ -149,6 +149,8 @@ export async function POST(req: Request) {
     }
 
     const e164Preview = toE164(phone);
+    // Fetched once here and reused for the response below (no second round trip).
+    let phoneUser: { pinHash: string | null } | null = null;
     if (e164Preview) {
       const existing = await prisma.user.findUnique({
         where: { phone: e164Preview },
@@ -159,6 +161,7 @@ export async function POST(req: Request) {
           pinHash: true,
         },
       });
+      phoneUser = existing;
       if (existing && !existing.isActive) {
         return NextResponse.json(
           {
@@ -228,10 +231,13 @@ export async function POST(req: Request) {
     }
 
     const e164 = toE164(phone) || result.phone;
-    const user = await prisma.user.findUnique({
-      where: { phone: e164 },
-      select: { pinHash: true },
-    });
+    const user =
+      e164Preview && e164Preview === e164
+        ? phoneUser
+        : await prisma.user.findUnique({
+            where: { phone: e164 },
+            select: { pinHash: true },
+          });
 
     const delivered = "channels" in result ? result.channels || [] : [];
     const channelHint = delivered.includes("sms")

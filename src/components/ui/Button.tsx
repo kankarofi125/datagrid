@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { Spinner } from "@/components/ui/Spinner";
 import Link, { type LinkProps } from "next/link";
 import type {
   AnchorHTMLAttributes,
@@ -23,6 +24,8 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
   size?: "sm" | "md" | "lg";
   fullWidth?: boolean;
+  /** Shows a spinner, locks the button, and sets aria-busy. */
+  loading?: boolean;
 };
 
 type LinkButtonProps = LinkProps &
@@ -60,6 +63,8 @@ export function Button({
   size = "md",
   fullWidth,
   type = "button",
+  loading = false,
+  disabled,
   children,
   ...props
 }: Props) {
@@ -67,8 +72,15 @@ export function Button({
     <button
       type={type}
       className={buttonClassName({ className, variant, size, fullWidth })}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
     >
+      {loading && (
+        <Spinner
+          className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
+        />
+      )}
       {children}
     </button>
   );

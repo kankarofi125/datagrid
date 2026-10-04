@@ -604,6 +604,7 @@ function LoginForm() {
             type="submit"
             fullWidth
             size="lg"
+            loading={busy === "lookup" || busy === "sendOtp"}
             disabled={
               anyBusy ||
               (mode === "phone" || googleState === "phone"
@@ -675,6 +676,7 @@ function LoginForm() {
             disabled={
               anyBusy || code.length < OTP_LENGTH || otpRemainingSec <= 0
             }
+            loading={busy === "verifyOtp"}
           >
             {busy === "verifyOtp"
               ? "Verifying code…"
@@ -685,6 +687,7 @@ function LoginForm() {
           <div className="-mx-0.5 flex flex-col gap-0.5">
             <AuthTextAction
               disabled={anyBusy || cooldown > 0}
+              loading={otpSendBusy}
               onClick={() => requestOtp({ resend: true })}
             >
               {otpSendBusy
@@ -743,6 +746,7 @@ function LoginForm() {
             disabled={
               anyBusy || code.length < OTP_LENGTH || otpRemainingSec <= 0
             }
+            loading={busy === "verify2fa"}
           >
             {busy === "verify2fa"
               ? "Signing you in…"
@@ -753,6 +757,7 @@ function LoginForm() {
           <div className="flex flex-col gap-0.5">
             <AuthTextAction
               disabled={anyBusy}
+              loading={busy === "sendOtp"}
               onClick={() => {
                 setOtpSource("2fa-fallback");
                 requestOtp({});
@@ -800,12 +805,17 @@ function LoginForm() {
             type="submit"
             fullWidth
             size="lg"
+            loading={busy === "pinLogin"}
             disabled={anyBusy || pin.length < 4}
           >
             {busy === "pinLogin" ? "Signing in…" : "Enter the grid"}
           </Button>
           {!email2faOn && (
-            <AuthTextAction disabled={anyBusy} onClick={forgotPinWithOtp}>
+            <AuthTextAction
+              disabled={anyBusy}
+              loading={otpSendBusy}
+              onClick={forgotPinWithOtp}
+            >
               {otpSendBusy ? "Sending code…" : "Forgot PIN? Use OTP"}
             </AuthTextAction>
           )}
@@ -875,6 +885,7 @@ function LoginForm() {
             fullWidth
             size="lg"
             disabled={anyBusy || pinConfirm.length < 4}
+            loading={busy === "savePin"}
           >
             {busy === "savePin" ? "Saving PIN…" : "Save PIN & enter"}
           </Button>

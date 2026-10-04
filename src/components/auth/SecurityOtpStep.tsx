@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { DigitField } from "@/components/ui/DigitField";
+import { Spinner } from "@/components/ui/Spinner";
+import { usePendingAction } from "@/hooks/usePendingAction";
 import { OTP_LENGTH } from "@/lib/auth/otp-constants";
 import { cn } from "@/lib/cn";
 
@@ -55,7 +57,7 @@ export function SecurityOtpStep({
     () => Date.now() + initialExpiresInSec * 1000
   );
   const [remaining, setRemaining] = useState(initialExpiresInSec);
-  const [pending, start] = useTransition();
+  const { pending, action, run } = usePendingAction<"verify" | "resend">();
 
   useEffect(() => {
     const tick = () => {
@@ -74,7 +76,7 @@ export function SecurityOtpStep({
 
   function submit() {
     if (code.length < OTP_LENGTH) return;
-    start(async () => {
+    run("verify", async () => {
       setError(null);
       setMessage(null);
       const result = await onVerify(code);
@@ -88,7 +90,7 @@ export function SecurityOtpStep({
   }
 
   function resend() {
-    start(async () => {
+    run("resend", async () => {
       setError(null);
       setMessage(null);
       const result = await onResend();
@@ -107,6 +109,8 @@ export function SecurityOtpStep({
   }
 
   const expired = remaining <= 0;
+  const verifying = pending && action === "verify";
+  const resending = pending && action === "resend";
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -140,18 +144,21 @@ export function SecurityOtpStep({
         <Button
           type="button"
           fullWidth
+          loading={verifying}
           disabled={pending || code.length < OTP_LENGTH || expired}
           onClick={submit}
         >
-          {pending ? "Checking…" : expired ? "Code expired" : "Verify code"}
+          {verifying ? "Checking…" : expired ? "Code expired" : "Verify code"}
         </Button>
         <button
           type="button"
-          className="font-mono-num text-center text-xs tracking-wide text-green disabled:opacity-40"
+          aria-busy={resending || undefined}
+          className="font-mono-num inline-flex items-center justify-center gap-1.5 text-center text-xs tracking-wide text-green disabled:opacity-40"
           disabled={pending}
           onClick={resend}
         >
-          Resend code
+          {resending && <Spinner className="h-3 w-3" />}
+          {resending ? "Sending…" : "Resend code"}
         </button>
         {onCancel && (
           <button

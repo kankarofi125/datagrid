@@ -80,12 +80,20 @@ function getTransporter(): nodemailer.Transporter | null {
     port,
     secure: port === 465,
     auth: { user, pass },
+    // Nodemailer waits two minutes by default — a stuck relay must not hold
+    // an OTP button open that long.
+    connectionTimeout: 8_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 15_000,
   });
   return transporter;
 }
 
 function humanizeBrevoError(message: string): string {
   const lower = message.toLowerCase();
+  if (lower.includes("abort") || lower.includes("timeout") || lower.includes("timed out")) {
+    return "Brevo took too long to respond. Try again shortly.";
+  }
   if (
     lower.includes("unrecognised ip") ||
     lower.includes("unrecognized ip") ||
@@ -142,6 +150,7 @@ async function sendViaApi(input: {
       },
       body: JSON.stringify(payload),
       cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
     });
 
     const body = (await response.json().catch(() => ({}))) as {

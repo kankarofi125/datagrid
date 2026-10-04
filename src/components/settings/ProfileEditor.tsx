@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeading } from "@/components/ui/Card";
+import { usePendingAction } from "@/hooks/usePendingAction";
 import {
   SecurityOtpStep,
   SecurityStepRail,
@@ -44,7 +45,7 @@ export function ProfileEditor({
   const [expiresInSec, setExpiresInSec] = useState(120);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const { pending, action, run } = usePendingAction<"name" | "email">();
 
   const nameChanged = name.trim() !== savedName;
   const emailChanged =
@@ -53,7 +54,7 @@ export function ProfileEditor({
     !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   function saveNameOnly() {
-    startTransition(async () => {
+    run("name", async () => {
       setMessage(null);
       setError(null);
       const response = await fetch("/api/profile", {
@@ -74,7 +75,7 @@ export function ProfileEditor({
   }
 
   function startEmailVerify() {
-    startTransition(async () => {
+    run("email", async () => {
       setMessage(null);
       setError(null);
       if (!email.trim()) {
@@ -240,10 +241,11 @@ export function ProfileEditor({
             type="button"
             variant="ghost"
             size="sm"
+            loading={pending && action === "name"}
             disabled={!nameChanged || pending || emailStep === "otp"}
             onClick={saveNameOnly}
           >
-            {pending && !emailChanged ? "Saving…" : "Save name"}
+            {pending && action === "name" ? "Saving…" : "Save name"}
           </Button>
         </div>
 
@@ -292,10 +294,11 @@ export function ProfileEditor({
               <Button
                 type="button"
                 fullWidth
+                loading={pending && action === "email"}
                 disabled={!emailChanged || pending || !emailLooksValid}
                 onClick={startEmailVerify}
               >
-                {pending
+                {pending && action === "email"
                   ? "Working…"
                   : !email.trim() && savedEmail
                     ? "Remove email"

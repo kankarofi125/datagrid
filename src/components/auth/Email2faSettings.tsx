@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { DigitField } from "@/components/ui/DigitField";
+import { usePendingAction } from "@/hooks/usePendingAction";
 import { cn } from "@/lib/cn";
 
 /**
@@ -22,7 +23,7 @@ export function Email2faSettings({
   const [email, setEmail] = useState(emailProp);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+  const { pending, run } = usePendingAction<"enable" | "disable">();
   const [confirmOff, setConfirmOff] = useState(false);
   const [pin, setPin] = useState("");
 
@@ -34,7 +35,7 @@ export function Email2faSettings({
   const hasEmail = Boolean(email?.includes("@"));
 
   function set2fa(next: boolean, pinOverride?: string) {
-    start(async () => {
+    run(next ? "enable" : "disable", async () => {
       setError(null);
       setMessage(null);
 
@@ -97,6 +98,7 @@ export function Email2faSettings({
           type="button"
           role="switch"
           aria-checked={enabled}
+          aria-busy={pending || undefined}
           disabled={pending || (!hasEmail && !enabled)}
           onClick={() => {
             if (enabled) {
@@ -138,6 +140,7 @@ export function Email2faSettings({
             <Button
               type="button"
               size="sm"
+              loading={pending}
               disabled={pending || pin.length < 4}
               onClick={() => set2fa(false, pin)}
             >

@@ -9,7 +9,6 @@ import {
   sendchampConfirmOtp,
   sendchampNumberHasWhatsapp,
   sendchampSendOtp,
-  type SendchampOtpChannel,
 } from "@/lib/sendchamp";
 import {
   OTP_LENGTH,
@@ -222,11 +221,13 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
 
   // Fixed 1234 only for local OTP_MODE=simulate. Live paths always use random codes.
   const code = generateOtpCode(explicitSim);
-  const codeHash = await bcrypt.hash(code, 8);
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+  // bcrypt plus 1–3 provider HTTP calls own the latency of this route —
+  // hash and deliver concurrently instead of stacking the waits.
+  const codeHashPromise = bcrypt.hash(code, 8);
 
   let providerRef: string | null = null;
-  let deliveredVia: string[] = [];
+  const deliveredVia: string[] = [];
   let anyOk = false;
 
   console.info("[otp] delivery plan", {
@@ -246,88 +247,136 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
     console.info(
       `[DataGrid OTP simulate] phone=${e164 || "—"} email=${resolvedEmail || "—"} via=${phoneTransport || "—"} → ${code}`
     );
-    deliveredVia = [
-      ...(sendPhone ? [phoneTransport!] : []),
-      ...(sendEmail ? ["email"] : []),
-    ];
+    if (sendPhone) deliveredVia.push(phoneTransport!);
+    if (sendEmail) deliveredVia.push("email");
     anyOk = deliveredVia.length > 0;
   } else {
+    const smsFallbackOn =
+      (process.env.OTP_WHATSAPP_FALLBACK_SMS || "1") !== "0";
+
+    const smsSend = (reason: string) =>
+      sendchampSendOtp({
+        channel: "sms",
+        phone: e164!,
+        token: code,
+        tokenLength: TOKEN_LENGTH,
+        expirationMinutes: OTP_TTL_MINUTES,
+        firstName,
+      }).then((sent) => {
+        if (sent.ok) {
+          console.warn(`[otp] SMS sent (${reason})`);
+          return sent.result.reference;
+        }
+        console.error("[otp] SMS failed", sent.error);
+        return null;
+      });
+
+    type PhoneDelivery = {
+      ref: string | null;
+      channels: string[];
+      error: string | null;
+    };
+
     // ---- Phone OTP: Sendchamp only (WhatsApp / SMS) ----
-    if (sendPhone && e164 && phoneTransport) {
+    const phoneDelivery = (async (): Promise<PhoneDelivery> => {
+      if (!sendPhone || !e164 || !phoneTransport) {
+        return { ref: null, channels: [], error: null };
+      }
       if (!phoneLive) {
         console.error(
           "[otp] Phone OTP requested but Sendchamp is not live " +
             "(set SENDCHAMP_API_KEY and OTP_MODE=sendchamp). Brevo email may still send."
         );
-      } else {
-        const channel: SendchampOtpChannel =
-          normalizeOtpChannel(phoneTransport) || "whatsapp";
-        const smsFallbackOn =
-          (process.env.OTP_WHATSAPP_FALLBACK_SMS || "1") !== "0";
-
-        // Sendchamp often returns success for WhatsApp even when the number
-        // has no WhatsApp account, so the old "only if the API errors" fallback
-        // never sent an SMS. Check first, and if that check is unavailable,
-        // send SMS as well.
-        let whatsappReachable: boolean | null = null;
-        if (channel === "whatsapp" && smsFallbackOn) {
-          whatsappReachable = await sendchampNumberHasWhatsapp(e164);
-          console.info("[otp] whatsapp reachability", {
-            phone: `••••${e164.slice(-4)}`,
-            whatsappReachable,
-          });
-        }
-
-        const sendSms = async (reason: string) => {
-          const smsFallback = await sendchampSendOtp({
-            channel: "sms",
-            phone: e164,
-            token: code,
-            tokenLength: TOKEN_LENGTH,
-            expirationMinutes: OTP_TTL_MINUTES,
-            firstName,
-          });
-          if (smsFallback.ok) {
-            if (!providerRef) providerRef = smsFallback.result.reference;
-            deliveredVia.push("sms");
-            anyOk = true;
-            console.warn(`[otp] SMS sent (${reason})`);
-          } else {
-            console.error("[otp] SMS failed", smsFallback.error);
-          }
-        };
-
-        if (channel === "whatsapp" && whatsappReachable === false) {
-          await sendSms("number is not on WhatsApp");
-        } else {
-          const phoneSend = await sendchampSendOtp({
-            channel,
-            phone: e164,
-            token: code,
-            tokenLength: TOKEN_LENGTH,
-            expirationMinutes: OTP_TTL_MINUTES,
-            firstName,
-          });
-
-          if (phoneSend.ok) {
-            providerRef = phoneSend.result.reference;
-            deliveredVia.push(channel);
-            anyOk = true;
-            if (channel === "whatsapp" && smsFallbackOn && whatsappReachable === null) {
-              await sendSms("WhatsApp reachability unknown");
-            }
-          } else {
-            console.error(`[otp] Sendchamp ${channel} failed`, phoneSend.error);
-            if (channel === "whatsapp" && smsFallbackOn) {
-              await sendSms("WhatsApp API failed");
-            }
-          }
-        }
+        return { ref: null, channels: [], error: null };
       }
-    }
+
+      const channel = normalizeOtpChannel(phoneTransport) || "whatsapp";
+
+      if (channel !== "whatsapp") {
+        const sent = await sendchampSendOtp({
+          channel,
+          phone: e164,
+          token: code,
+          tokenLength: TOKEN_LENGTH,
+          expirationMinutes: OTP_TTL_MINUTES,
+          firstName,
+        });
+        if (sent.ok) {
+          return { ref: sent.result.reference, channels: [channel], error: null };
+        }
+        console.error(`[otp] Sendchamp ${channel} failed`, sent.error);
+        return { ref: null, channels: [], error: sent.error };
+      }
+
+      // Sendchamp often returns success for WhatsApp even when the number has
+      // no WhatsApp account, so an error-only fallback never sent an SMS.
+      // /whatsapp/validate is slow (1.2–3.7s measured) and currently answers
+      // 500, so the check runs beside the WhatsApp send behind a hard cap —
+      // it may pick the channel, it may never hold the response hostage.
+      const REACHABILITY_TIMEOUT_MS = 800;
+      let reachTimer: ReturnType<typeof setTimeout> | undefined;
+      const reachTimeout = new Promise<boolean | null>((resolve) => {
+        reachTimer = setTimeout(() => resolve(null), REACHABILITY_TIMEOUT_MS);
+      });
+      const reachPromise: Promise<boolean | null> = !smsFallbackOn
+        ? Promise.resolve(true)
+        : Promise.race([
+            sendchampNumberHasWhatsapp(e164),
+            reachTimeout,
+          ]).finally(() => clearTimeout(reachTimer));
+
+      const whatsappPromise = sendchampSendOtp({
+        channel: "whatsapp",
+        phone: e164,
+        token: code,
+        tokenLength: TOKEN_LENGTH,
+        expirationMinutes: OTP_TTL_MINUTES,
+        firstName,
+      });
+
+      const smsPromise = Promise.all([reachPromise, whatsappPromise]).then(
+        async ([whatsappReachable, phoneSend]) => {
+          if (phoneSend.ok && whatsappReachable === true) return null;
+          if (!phoneSend.ok) {
+            console.error("[otp] Sendchamp whatsapp failed", phoneSend.error);
+            return smsSend("WhatsApp API failed");
+          }
+          return smsSend(
+            whatsappReachable === false
+              ? "number is not on WhatsApp"
+              : "WhatsApp reachability unknown"
+          );
+        }
+      );
+
+      const [whatsappReachable, phoneSend, smsRef] = await Promise.all([
+        reachPromise,
+        whatsappPromise,
+        smsPromise,
+      ]);
+      console.info("[otp] whatsapp reachability", {
+        phone: `••••${e164.slice(-4)}`,
+        whatsappReachable,
+      });
+
+      if (phoneSend.ok) {
+        return {
+          ref: phoneSend.result.reference,
+          channels: smsRef ? ["whatsapp", "sms"] : ["whatsapp"],
+          error: null,
+        };
+      }
+      if (smsRef) return { ref: smsRef, channels: ["sms"], error: null };
+      return { ref: null, channels: [], error: phoneSend.error };
+    })();
 
     // ---- Email OTP: Brevo only (never Sendchamp) ----
-    if (sendEmail && resolvedEmail) {
+    const emailDelivery = (async (): Promise<{
+      channel: string | null;
+      error: string | null;
+    }> => {
+      if (!sendEmail || !resolvedEmail) return { channel: null, error: null };
+
       const phoneHint = local
         ? `••••${local.slice(-4)}`
         : e164
@@ -343,62 +392,70 @@ export async function requestOtp(rawPhoneOrInput: string | RequestOtpInput) {
           phoneHint,
         });
         if (emailSend.ok) {
-          deliveredVia.push("email");
-          anyOk = true;
-          console.info("[otp] Brevo email delivered", {
-            to: resolvedEmail,
-            // messageId logged inside brevo.ts
-          });
-        } else {
-          console.error("[otp] Brevo branded email failed", emailSend.error);
-          if (allowDevFallback) {
-            console.info(
-              `[DataGrid OTP email fallback] ${resolvedEmail} → ${code}\n` +
-                `  (Brevo error: ${emailSend.error})`
-            );
-            deliveredVia.push("email-dev");
-            anyOk = true;
-          } else if (!anyOk) {
-            // Email-only (or phone already failed): surface Brevo error to client.
-            return {
-              ok: false as const,
-              error: emailSend.error,
-            };
-          }
+          console.info("[otp] Brevo email delivered", { to: resolvedEmail });
+          return { channel: "email", error: null };
         }
-      } else if (allowDevFallback) {
+        console.error("[otp] Brevo branded email failed", emailSend.error);
+        if (allowDevFallback) {
+          console.info(
+            `[DataGrid OTP email fallback] ${resolvedEmail} → ${code}\n` +
+              `  (Brevo error: ${emailSend.error})`
+          );
+          return { channel: "email-dev", error: null };
+        }
+        return { channel: null, error: emailSend.error };
+      }
+
+      if (allowDevFallback) {
         console.info(
           `[DataGrid OTP email fallback] ${resolvedEmail} → ${code} (Brevo not configured)`
         );
-        deliveredVia.push("email-dev");
-        anyOk = true;
-      } else if (!anyOk) {
-        return {
-          ok: false as const,
-          error:
-            "Email delivery is not configured. Set BREVO_API_KEY or Brevo SMTP credentials on this environment (Vercel).",
-        };
-      } else {
+        return { channel: "email-dev", error: null };
+      }
+      if (!emailLive) {
         console.error(
           "[otp] Email requested but Brevo is not configured (BREVO_API_KEY / SMTP)"
         );
       }
+      return {
+        channel: null,
+        error:
+          "Email delivery is not configured. Set BREVO_API_KEY or Brevo SMTP credentials on this environment (Vercel).",
+      };
+    })();
+
+    const [phoneResult, emailResult] = await Promise.all([
+      phoneDelivery,
+      emailDelivery,
+    ]);
+
+    if (phoneResult.channels.length > 0 && phoneResult.ref) {
+      providerRef = phoneResult.ref;
+      deliveredVia.push(...phoneResult.channels);
+      anyOk = true;
+    }
+    if (emailResult.channel) {
+      deliveredVia.push(emailResult.channel);
+      anyOk = true;
     }
 
     if (!anyOk) {
       const onlyEmail = sendEmail && !sendPhone;
       return {
         ok: false as const,
-        error: onlyEmail
-          ? "Could not send verification email. Check Brevo keys on this environment."
-          : phoneTransport === "whatsapp"
-            ? "Could not send WhatsApp code. Confirm Sendchamp WhatsApp is active, or try again."
-            : "Could not send verification code. Try again shortly.",
+        error: emailResult.error && sendEmail && resolvedEmail
+          ? emailResult.error
+          : onlyEmail
+            ? "Could not send verification email. Check Brevo keys on this environment (Vercel)."
+            : phoneTransport === "whatsapp"
+              ? "Could not send WhatsApp code. Confirm Sendchamp WhatsApp is active, or try again."
+              : "Could not send verification code. Try again shortly.",
       };
     }
   }
 
   const channelLabel = deliveredVia.join("+") || "whatsapp";
+  const codeHash = await codeHashPromise;
 
   await prisma.otpChallenge.create({
     data: {

@@ -419,6 +419,7 @@ function SignupForm() {
             type="submit"
             fullWidth
             size="lg"
+            loading={busy === "start"}
             disabled={
               anyBusy ||
               name.trim().length < 2 ||
@@ -461,6 +462,7 @@ function SignupForm() {
             type="submit"
             fullWidth
             size="lg"
+            loading={busy === "verifyPhone"}
             disabled={
               anyBusy || code.length < OTP_LENGTH || otpRemainingSec <= 0
             }
@@ -470,6 +472,7 @@ function SignupForm() {
           <div className="flex flex-col gap-0.5">
             <AuthTextAction
               disabled={anyBusy || cooldown > 0}
+              loading={busy === "resend"}
               onClick={() => resend("phone")}
             >
               {busy === "resend"
@@ -514,6 +517,7 @@ function SignupForm() {
             type="submit"
             fullWidth
             size="lg"
+            loading={busy === "verifyEmail"}
             disabled={
               anyBusy || code.length < OTP_LENGTH || otpRemainingSec <= 0
             }
@@ -524,6 +528,7 @@ function SignupForm() {
           </Button>
           <AuthTextAction
             disabled={anyBusy || cooldown > 0}
+            loading={busy === "resend"}
             onClick={() => resend("email")}
           >
             {busy === "resend"
@@ -575,6 +580,7 @@ function SignupForm() {
             fullWidth
             size="lg"
             disabled={anyBusy || pinConfirm.length < 4}
+            loading={busy === "savePin"}
           >
             {busy === "savePin" ? "Saving PIN…" : "Save PIN & enter"}
           </Button>

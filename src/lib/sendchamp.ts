@@ -76,10 +76,17 @@ async function sendchampFetch<T>(
       },
       body: JSON.stringify(body),
       cache: "no-store",
+      // Sendchamp has been measured at 1.2–3.7s per call; a hung call must
+      // never leave an OTP button spinning for a minute.
+      signal: AbortSignal.timeout(8_000),
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Sendchamp network error";
+      error instanceof Error && /abort|timeout/i.test(error.message)
+        ? "Sendchamp took too long to respond. Try again shortly."
+        : error instanceof Error
+          ? error.message
+          : "Sendchamp network error";
     return { ok: false, error: message };
   }
 

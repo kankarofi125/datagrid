@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { PinPad } from "@/components/buy/PinPad";
+import { usePendingAction } from "@/hooks/usePendingAction";
 import {
   SecurityOtpStep,
   SecurityStepRail,
@@ -21,7 +22,7 @@ export function PinSettings({ hasPin: initial }: { hasPin: boolean }) {
   const [expiresInSec, setExpiresInSec] = useState(120);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+  const { pending, run } = usePendingAction<"otp" | "save">();
 
   const railSteps = hasPin
     ? ["Verify", "New PIN", "Confirm"]
@@ -50,7 +51,7 @@ export function PinSettings({ hasPin: initial }: { hasPin: boolean }) {
 
   /** Change / reset — phone OTP first. */
   function startChange() {
-    start(async () => {
+    run("otp", async () => {
       resetLocal();
       setError(null);
       const res = await fetch("/api/security/otp/request", {
@@ -108,7 +109,7 @@ export function PinSettings({ hasPin: initial }: { hasPin: boolean }) {
       setStep("new");
       return;
     }
-    start(async () => {
+    run("save", async () => {
       setError(null);
       const res = await fetch("/api/auth/pin", {
         method: "POST",
@@ -158,7 +159,12 @@ export function PinSettings({ hasPin: initial }: { hasPin: boolean }) {
         <div className="flex flex-wrap gap-2">
           {hasPin ? (
             <>
-              <Button type="button" onClick={startChange} disabled={pending}>
+              <Button
+                type="button"
+                onClick={startChange}
+                loading={pending}
+                disabled={pending}
+              >
                 {pending ? "Sending code…" : "Change / reset PIN"}
               </Button>
             </>
@@ -232,6 +238,7 @@ export function PinSettings({ hasPin: initial }: { hasPin: boolean }) {
           <Button
             type="button"
             fullWidth
+            loading={pending}
             disabled={confirm.length < 4 || pending}
             onClick={savePin}
           >
